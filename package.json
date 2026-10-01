@@ -2,7 +2,7 @@
   "name": "maxsen-planner",
   "private": true,
   "version": "0.1.0",
-  "description": "Maxsen Smart Home Planner — internal floor-plan planning, device counting and export tool",
+  "description": "Maxsen Smart Home Planner \u2014 internal floor-plan planning, device counting and export tool",
   "type": "module",
   "packageManager": "pnpm@10.28.0",
   "engines": {
@@ -28,5 +28,10 @@
     "prettier": "^3.6.0",
     "typescript": "^5.9.0",
     "typescript-eslint": "^8.38.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   }
 }
