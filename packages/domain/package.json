@@ -1,0 +1,22 @@
+{
+  "name": "@maxsen/domain",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Framework-free domain logic for the Maxsen Smart Home Planner: categories, icon shapes, geometry, quantity engine, scene model, sample data",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "tsx --test \"test/**/*.test.ts\"",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.0"
+  }
+}

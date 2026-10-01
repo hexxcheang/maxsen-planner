@@ -1,0 +1,8 @@
+node_modules
+dist
+data
+pnpm-lock.yaml
+test-results
+playwright-report
+.superpowers
+docs/product
