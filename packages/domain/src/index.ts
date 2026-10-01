@@ -14,3 +14,4 @@ export * from './totals/adjustments.ts';
 export * from './exports/filenames.ts';
 export * from './render/styles.ts';
 export * from './render/scene.ts';
+export * as sample from './sample/index.ts';

@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 1000" width="1400" height="1000">
+<rect width="1400" height="1000" fill="#ffffff"/>
+<rect x="150" y="300" width="240" height="90" rx="10" fill="none" stroke="#c9c9c9" stroke-width="2"/>
+<rect x="480" y="420" width="220" height="110" rx="55" fill="none" stroke="#c9c9c9" stroke-width="2"/>
+<rect x="110" y="670" width="380" height="60" rx="2" fill="none" stroke="#c9c9c9" stroke-width="2"/>
+<rect x="960" y="160" width="200" height="170" rx="6" fill="none" stroke="#c9c9c9" stroke-width="2"/>
+<rect x="860" y="640" width="170" height="140" rx="6" fill="none" stroke="#c9c9c9" stroke-width="2"/>
+<rect x="100" y="100" width="700" height="120" fill="none" stroke="#1a1a1a" stroke-width="8" stroke-linejoin="miter"/>
+<text x="450" y="168" font-size="26" fill="#8a8a8a" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" letter-spacing="1">Balcony</text>
+<rect x="100" y="220" width="700" height="440" fill="none" stroke="#1a1a1a" stroke-width="8" stroke-linejoin="miter"/>
+<text x="450" y="448" font-size="26" fill="#8a8a8a" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" letter-spacing="1">Living / Dining</text>
+<rect x="100" y="660" width="400" height="240" fill="none" stroke="#1a1a1a" stroke-width="8" stroke-linejoin="miter"/>
+<text x="300" y="780" font-size="26" fill="#8a8a8a" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" letter-spacing="1">Kitchen</text><text x="300" y="804" font-size="18" fill="#a0a0a0" text-anchor="middle" font-family="Helvetica, Arial, sans-serif">Open</text>
+<rect x="500" y="660" width="300" height="240" fill="none" stroke="#1a1a1a" stroke-width="8" stroke-linejoin="miter"/>
+<text x="650" y="788" font-size="26" fill="#8a8a8a" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" letter-spacing="1">Foyer</text>
+<rect x="800" y="100" width="500" height="400" fill="none" stroke="#1a1a1a" stroke-width="8" stroke-linejoin="miter"/>
+<text x="1050" y="308" font-size="26" fill="#8a8a8a" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" letter-spacing="1">Master Bedroom</text>
+<rect x="1100" y="500" width="200" height="180" fill="none" stroke="#1a1a1a" stroke-width="8" stroke-linejoin="miter"/>
+<text x="1200" y="598" font-size="26" fill="#8a8a8a" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" letter-spacing="1">M. Bath</text>
+<rect x="800" y="500" width="300" height="400" fill="none" stroke="#1a1a1a" stroke-width="8" stroke-linejoin="miter"/>
+<text x="950" y="708" font-size="26" fill="#8a8a8a" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" letter-spacing="1">Bedroom 2</text>
+<rect x="1100" y="680" width="200" height="220" fill="none" stroke="#1a1a1a" stroke-width="8" stroke-linejoin="miter"/>
+<text x="1200" y="798" font-size="26" fill="#8a8a8a" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" letter-spacing="1">Bath 2</text>
+<rect x="160" y="95" width="580" height="10" fill="#fff"/><line x1="160" y1="97" x2="740" y2="97" stroke="#1a1a1a" stroke-width="2"/><line x1="160" y1="103" x2="740" y2="103" stroke="#1a1a1a" stroke-width="2"/>
+<rect x="1295" y="160" width="10" height="280" fill="#fff"/><line x1="1297" y1="160" x2="1297" y2="440" stroke="#1a1a1a" stroke-width="2"/><line x1="1303" y1="160" x2="1303" y2="440" stroke="#1a1a1a" stroke-width="2"/>
+<rect x="1295" y="720" width="10" height="140" fill="#fff"/><line x1="1297" y1="720" x2="1297" y2="860" stroke="#1a1a1a" stroke-width="2"/><line x1="1303" y1="720" x2="1303" y2="860" stroke="#1a1a1a" stroke-width="2"/>
+<rect x="95" y="300" width="10" height="300" fill="#fff"/><line x1="97" y1="300" x2="97" y2="600" stroke="#1a1a1a" stroke-width="2"/><line x1="103" y1="300" x2="103" y2="600" stroke="#1a1a1a" stroke-width="2"/>
+<rect x="610" y="894" width="90" height="12" fill="#fff"/>
+<line x1="700" y1="900" x2="700" y2="810" stroke="#8a8a8a" stroke-width="3"/>
+<polyline points="610.0,900.0 610.8,888.3 613.1,876.7 616.9,865.6 622.1,855.0 628.6,845.2 636.4,836.4 645.2,828.6 655.0,822.1 665.6,816.9 676.7,813.1 688.3,810.8 700.0,810.0" fill="none" stroke="#8a8a8a" stroke-width="1.5" stroke-dasharray="4 3"/>
+<rect x="794" y="295" width="12" height="85" fill="#fff"/>
+<line x1="800" y1="380" x2="885" y2="380" stroke="#8a8a8a" stroke-width="3"/>
+<polyline points="800.0,295.0 811.1,295.7 822.0,297.9 832.5,301.5 842.5,306.4 851.7,312.6 860.1,319.9 867.4,328.3 873.6,337.5 878.5,347.5 882.1,358.0 884.3,368.9 885.0,380.0" fill="none" stroke="#8a8a8a" stroke-width="1.5" stroke-dasharray="4 3"/>
+<rect x="794" y="515" width="12" height="85" fill="#fff"/>
+<line x1="800" y1="600" x2="885" y2="600" stroke="#8a8a8a" stroke-width="3"/>
+<polyline points="800.0,515.0 811.1,515.7 822.0,517.9 832.5,521.5 842.5,526.4 851.7,532.6 860.1,539.9 867.4,548.3 873.6,557.5 878.5,567.5 882.1,578.0 884.3,588.9 885.0,600.0" fill="none" stroke="#8a8a8a" stroke-width="1.5" stroke-dasharray="4 3"/>
+<rect x="1094" y="560" width="12" height="70" fill="#fff"/>
+<line x1="1100" y1="560" x2="1170" y2="560" stroke="#8a8a8a" stroke-width="3"/>
+<polyline points="1100.0,630.0 1109.1,629.4 1118.1,627.6 1126.8,624.7 1135.0,620.6 1142.6,615.5 1149.5,609.5 1155.5,602.6 1160.6,595.0 1164.7,586.8 1167.6,578.1 1169.4,569.1 1170.0,560.0" fill="none" stroke="#8a8a8a" stroke-width="1.5" stroke-dasharray="4 3"/>
+<rect x="1094" y="710" width="12" height="70" fill="#fff"/>
+<line x1="1100" y1="780" x2="1170" y2="780" stroke="#8a8a8a" stroke-width="3"/>
+<polyline points="1100.0,710.0 1109.1,710.6 1118.1,712.4 1126.8,715.3 1135.0,719.4 1142.6,724.5 1149.5,730.5 1155.5,737.4 1160.6,745.0 1164.7,753.2 1167.6,761.9 1169.4,770.9 1170.0,780.0" fill="none" stroke="#8a8a8a" stroke-width="1.5" stroke-dasharray="4 3"/>
+
+<g font-family="Helvetica, Arial, sans-serif">
+<rect x="960" y="918" width="340" height="66" fill="none" stroke="#1a1a1a" stroke-width="2"/>
+<line x1="960" y1="950" x2="1300" y2="950" stroke="#1a1a1a" stroke-width="1"/>
+<text x="972" y="940" font-size="15" fill="#1a1a1a" font-weight="700">Marina One — Type B2</text>
+<text x="972" y="972" font-size="12" fill="#8a8a8a">SAMPLE DRAWING — NOT TO SCALE</text>
+<text x="1288" y="972" font-size="12" fill="#8a8a8a" text-anchor="end">Sheet A-201</text>
+</g>
+<g transform="translate(1250 60)" stroke="#1a1a1a" fill="none" stroke-width="2">
+<circle r="22"/><path d="M0 -18 L8 10 L0 4 L-8 10 Z" fill="#1a1a1a" stroke="none"/>
+<text y="-30" font-size="12" text-anchor="middle" fill="#1a1a1a" stroke="none" font-family="Helvetica, Arial, sans-serif">N</text>
+</g>
+</svg>

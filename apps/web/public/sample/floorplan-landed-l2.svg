@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 1000" width="1400" height="1000">
+<rect width="1400" height="1000" fill="#ffffff"/>
+<rect x="160" y="320" width="220" height="180" rx="6" fill="none" stroke="#c9c9c9" stroke-width="2"/>
+<rect x="860" y="220" width="300" height="110" rx="10" fill="none" stroke="#c9c9c9" stroke-width="2"/>
+<rect x="150" y="690" width="180" height="150" rx="6" fill="none" stroke="#c9c9c9" stroke-width="2"/>
+<rect x="700" y="700" width="180" height="150" rx="6" fill="none" stroke="#c9c9c9" stroke-width="2"/>
+<rect x="1000" y="700" width="240" height="90" rx="2" fill="none" stroke="#c9c9c9" stroke-width="2"/>
+<rect x="100" y="100" width="400" height="140" fill="none" stroke="#1a1a1a" stroke-width="8" stroke-linejoin="miter"/>
+<text x="300" y="178" font-size="26" fill="#8a8a8a" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" letter-spacing="1">Balcony</text>
+<rect x="100" y="240" width="480" height="380" fill="none" stroke="#1a1a1a" stroke-width="8" stroke-linejoin="miter"/>
+<text x="340" y="438" font-size="26" fill="#8a8a8a" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" letter-spacing="1">Master Bedroom</text>
+<rect x="580" y="240" width="200" height="200" fill="none" stroke="#1a1a1a" stroke-width="8" stroke-linejoin="miter"/>
+<text x="680" y="348" font-size="26" fill="#8a8a8a" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" letter-spacing="1">Walk-in</text>
+<rect x="580" y="440" width="200" height="180" fill="none" stroke="#1a1a1a" stroke-width="8" stroke-linejoin="miter"/>
+<text x="680" y="538" font-size="26" fill="#8a8a8a" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" letter-spacing="1">M. Bath</text>
+<rect x="780" y="100" width="520" height="520" fill="none" stroke="#1a1a1a" stroke-width="8" stroke-linejoin="miter"/>
+<text x="1040" y="368" font-size="26" fill="#8a8a8a" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" letter-spacing="1">Family Area</text>
+<rect x="100" y="620" width="320" height="280" fill="none" stroke="#1a1a1a" stroke-width="8" stroke-linejoin="miter"/>
+<text x="260" y="768" font-size="26" fill="#8a8a8a" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" letter-spacing="1">Bedroom 2</text>
+<rect x="420" y="760" width="160" height="140" fill="none" stroke="#1a1a1a" stroke-width="8" stroke-linejoin="miter"/>
+<text x="500" y="838" font-size="26" fill="#8a8a8a" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" letter-spacing="1">Stairs</text>
+<rect x="420" y="620" width="160" height="140" fill="none" stroke="#1a1a1a" stroke-width="8" stroke-linejoin="miter"/>
+<text x="500" y="698" font-size="26" fill="#8a8a8a" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" letter-spacing="1">Bath</text>
+<rect x="580" y="620" width="360" height="280" fill="none" stroke="#1a1a1a" stroke-width="8" stroke-linejoin="miter"/>
+<text x="760" y="768" font-size="26" fill="#8a8a8a" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" letter-spacing="1">Bedroom 3</text>
+<rect x="940" y="620" width="360" height="280" fill="none" stroke="#1a1a1a" stroke-width="8" stroke-linejoin="miter"/>
+<text x="1120" y="768" font-size="26" fill="#8a8a8a" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" letter-spacing="1">Study</text>
+<rect x="1295" y="180" width="10" height="320" fill="#fff"/><line x1="1297" y1="180" x2="1297" y2="500" stroke="#1a1a1a" stroke-width="2"/><line x1="1303" y1="180" x2="1303" y2="500" stroke="#1a1a1a" stroke-width="2"/>
+<rect x="95" y="300" width="10" height="260" fill="#fff"/><line x1="97" y1="300" x2="97" y2="560" stroke="#1a1a1a" stroke-width="2"/><line x1="103" y1="300" x2="103" y2="560" stroke="#1a1a1a" stroke-width="2"/>
+<rect x="160" y="895" width="200" height="10" fill="#fff"/><line x1="160" y1="897" x2="360" y2="897" stroke="#1a1a1a" stroke-width="2"/><line x1="160" y1="903" x2="360" y2="903" stroke="#1a1a1a" stroke-width="2"/>
+<rect x="660" y="895" width="200" height="10" fill="#fff"/><line x1="660" y1="897" x2="860" y2="897" stroke="#1a1a1a" stroke-width="2"/><line x1="660" y1="903" x2="860" y2="903" stroke="#1a1a1a" stroke-width="2"/>
+<rect x="1020" y="895" width="200" height="10" fill="#fff"/><line x1="1020" y1="897" x2="1220" y2="897" stroke="#1a1a1a" stroke-width="2"/><line x1="1020" y1="903" x2="1220" y2="903" stroke="#1a1a1a" stroke-width="2"/>
+<rect x="300" y="234" width="100" height="12" fill="#fff"/>
+<line x1="300" y1="240" x2="300" y2="340" stroke="#8a8a8a" stroke-width="3"/>
+<polyline points="400.0,240.0 399.1,253.1 396.6,265.9 392.4,278.3 386.6,290.0 379.3,300.9 370.7,310.7 360.9,319.3 350.0,326.6 338.3,332.4 325.9,336.6 313.1,339.1 300.0,340.0" fill="none" stroke="#8a8a8a" stroke-width="1.5" stroke-dasharray="4 3"/>
+<rect x="574" y="300" width="12" height="80" fill="#fff"/>
+<line x1="580" y1="380" x2="660" y2="380" stroke="#8a8a8a" stroke-width="3"/>
+<polyline points="580.0,300.0 590.4,300.7 600.7,302.7 610.6,306.1 620.0,310.7 628.7,316.5 636.6,323.4 643.5,331.3 649.3,340.0 653.9,349.4 657.3,359.3 659.3,369.6 660.0,380.0" fill="none" stroke="#8a8a8a" stroke-width="1.5" stroke-dasharray="4 3"/>
+<rect x="574" y="490" width="12" height="70" fill="#fff"/>
+<line x1="580" y1="560" x2="650" y2="560" stroke="#8a8a8a" stroke-width="3"/>
+<polyline points="580.0,490.0 589.1,490.6 598.1,492.4 606.8,495.3 615.0,499.4 622.6,504.5 629.5,510.5 635.5,517.4 640.6,525.0 644.7,533.2 647.6,541.9 649.4,550.9 650.0,560.0" fill="none" stroke="#8a8a8a" stroke-width="1.5" stroke-dasharray="4 3"/>
+<rect x="774" y="430" width="12" height="90" fill="#fff"/>
+<line x1="780" y1="520" x2="690" y2="520" stroke="#8a8a8a" stroke-width="3"/>
+<polyline points="780.0,430.0 768.3,430.8 756.7,433.1 745.6,436.9 735.0,442.1 725.2,448.6 716.4,456.4 708.6,465.2 702.1,475.0 696.9,485.6 693.1,496.7 690.8,508.3 690.0,520.0" fill="none" stroke="#8a8a8a" stroke-width="1.5" stroke-dasharray="4 3"/>
+<rect x="200" y="614" width="80" height="12" fill="#fff"/>
+<line x1="200" y1="620" x2="200" y2="700" stroke="#8a8a8a" stroke-width="3"/>
+<polyline points="280.0,620.0 279.3,630.4 277.3,640.7 273.9,650.6 269.3,660.0 263.5,668.7 256.6,676.6 248.7,683.5 240.0,689.3 230.6,693.9 220.7,697.3 210.4,699.3 200.0,700.0" fill="none" stroke="#8a8a8a" stroke-width="1.5" stroke-dasharray="4 3"/>
+<rect x="460" y="614" width="70" height="12" fill="#fff"/>
+<line x1="460" y1="620" x2="460" y2="690" stroke="#8a8a8a" stroke-width="3"/>
+<polyline points="530.0,620.0 529.4,629.1 527.6,638.1 524.7,646.8 520.6,655.0 515.5,662.6 509.5,669.5 502.6,675.5 495.0,680.6 486.8,684.7 478.1,687.6 469.1,689.4 460.0,690.0" fill="none" stroke="#8a8a8a" stroke-width="1.5" stroke-dasharray="4 3"/>
+<rect x="650" y="614" width="80" height="12" fill="#fff"/>
+<line x1="650" y1="620" x2="650" y2="700" stroke="#8a8a8a" stroke-width="3"/>
+<polyline points="730.0,620.0 729.3,630.4 727.3,640.7 723.9,650.6 719.3,660.0 713.5,668.7 706.6,676.6 698.7,683.5 690.0,689.3 680.6,693.9 670.7,697.3 660.4,699.3 650.0,700.0" fill="none" stroke="#8a8a8a" stroke-width="1.5" stroke-dasharray="4 3"/>
+<rect x="1000" y="614" width="80" height="12" fill="#fff"/>
+<line x1="1000" y1="620" x2="1000" y2="700" stroke="#8a8a8a" stroke-width="3"/>
+<polyline points="1080.0,620.0 1079.3,630.4 1077.3,640.7 1073.9,650.6 1069.3,660.0 1063.5,668.7 1056.6,676.6 1048.7,683.5 1040.0,689.3 1030.6,693.9 1020.7,697.3 1010.4,699.3 1000.0,700.0" fill="none" stroke="#8a8a8a" stroke-width="1.5" stroke-dasharray="4 3"/>
+
+<g font-family="Helvetica, Arial, sans-serif">
+<rect x="960" y="918" width="340" height="66" fill="none" stroke="#1a1a1a" stroke-width="2"/>
+<line x1="960" y1="950" x2="1300" y2="950" stroke="#1a1a1a" stroke-width="1"/>
+<text x="972" y="940" font-size="15" fill="#1a1a1a" font-weight="700">Serangoon Gardens — Level 2</text>
+<text x="972" y="972" font-size="12" fill="#8a8a8a">SAMPLE DRAWING — NOT TO SCALE</text>
+<text x="1288" y="972" font-size="12" fill="#8a8a8a" text-anchor="end">Sheet A-302</text>
+</g>
+<g transform="translate(1250 60)" stroke="#1a1a1a" fill="none" stroke-width="2">
+<circle r="22"/><path d="M0 -18 L8 10 L0 4 L-8 10 Z" fill="#1a1a1a" stroke="none"/>
+<text y="-30" font-size="12" text-anchor="middle" fill="#1a1a1a" stroke="none" font-family="Helvetica, Arial, sans-serif">N</text>
+</g>
+</svg>
