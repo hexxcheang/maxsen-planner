@@ -107,16 +107,14 @@ export function LevelList({ projectId, levels, plans, selectedId, onSelect }: Le
                     size="sm"
                     label={`Move ${l.name} up`}
                     icon={<ArrowUp />}
-                    disabled={i === 0}
-                    className="disabled:text-ink-3 disabled:hover:bg-transparent"
+                    disabledReason={i === 0 ? 'Already first' : undefined}
                     onClick={() => actions.moveLevel(l.id, -1)}
                   />
                   <IconButton
                     size="sm"
                     label={`Move ${l.name} down`}
                     icon={<ArrowDown />}
-                    disabled={i === levels.length - 1}
-                    className="disabled:text-ink-3 disabled:hover:bg-transparent"
+                    disabledReason={i === levels.length - 1 ? 'Already last' : undefined}
                     onClick={() => actions.moveLevel(l.id, 1)}
                   />
                 </span>

@@ -83,17 +83,15 @@ export function FavouritesSection() {
                     size="sm"
                     label={`Move ${text} up`}
                     icon={<ArrowUp />}
-                    disabled={i === 0}
+                    disabledReason={i === 0 ? 'Already first' : undefined}
                     onClick={() => move(i, -1)}
-                    className="disabled:text-ink-3"
                   />
                   <IconButton
                     size="sm"
                     label={`Move ${text} down`}
                     icon={<ArrowDown />}
-                    disabled={i === ids.length - 1}
+                    disabledReason={i === ids.length - 1 ? 'Already last' : undefined}
                     onClick={() => move(i, 1)}
-                    className="disabled:text-ink-3"
                   />
                   <IconButton
                     size="sm"

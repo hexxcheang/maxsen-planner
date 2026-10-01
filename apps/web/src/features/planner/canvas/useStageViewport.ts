@@ -60,13 +60,16 @@ export function useStageViewport(store: PlannerStore, sheet: Size, container: Si
   );
 
   const zoom = viewport.scale / fitScale;
+  // Read the store, not the render value, so rapid wheel events compound instead of overwriting.
+  const liveZoom = () => store.getState().viewport.scale / fitScale;
   return {
     viewport,
     zoom,
     fit,
-    zoomIn: () => zoomTo(zoom * 1.25),
-    zoomOut: () => zoomTo(zoom / 1.25),
-    zoomBy: (factor: number, around: { x: number; y: number }) => zoomTo(zoom * factor, around),
+    zoomIn: () => zoomTo(liveZoom() * 1.25),
+    zoomOut: () => zoomTo(liveZoom() / 1.25),
+    zoomBy: (factor: number, around: { x: number; y: number }) =>
+      zoomTo(liveZoom() * factor, around),
     panTo: (x: number, y: number) => setViewport({ ...store.getState().viewport, x, y }),
   };
 }

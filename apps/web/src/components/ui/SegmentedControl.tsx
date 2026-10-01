@@ -57,6 +57,8 @@ export function SegmentedControl<T extends string>({
     >
       {options.map((o, i) => {
         const selected = o.value === value;
+        // Keep the group reachable by Tab even when no option matches the value.
+        const tabbable = selected || (!options.some((x) => x.value === value) && o === enabled[0]);
         return (
           <button
             key={o.value}
@@ -66,7 +68,7 @@ export function SegmentedControl<T extends string>({
             type="button"
             role="radio"
             aria-checked={selected}
-            tabIndex={selected ? 0 : -1}
+            tabIndex={tabbable ? 0 : -1}
             disabled={o.disabled}
             onClick={() => onChange(o.value)}
             className={cn(

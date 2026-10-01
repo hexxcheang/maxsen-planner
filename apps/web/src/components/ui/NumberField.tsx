@@ -1,4 +1,4 @@
-import { useEffect, useState, type KeyboardEvent } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Minus, Plus } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { useFieldControl } from './field-context';
@@ -46,6 +46,8 @@ export function NumberField({
 }: NumberFieldProps) {
   const field = useFieldControl();
   const [text, setText] = useState(format(value));
+  // Re-entering the current value still commits (e.g. confirming an adjustment after a warning).
+  const edited = useRef(false);
   useEffect(() => setText(format(value)), [value]);
 
   const clamp = (n: number) => {
@@ -54,6 +56,8 @@ export function NumberField({
   };
 
   const commit = (raw: string) => {
+    const wasEdited = edited.current;
+    edited.current = false;
     const trimmed = raw.trim();
     if (trimmed === '') {
       if (allowEmpty) {
@@ -68,7 +72,7 @@ export function NumberField({
     }
     const next = clamp(n);
     setText(format(next));
-    if (next !== value) onChange?.(next);
+    if (next !== value || wasEdited) onChange?.(next);
   };
 
   const nudge = (dir: 1 | -1) => commit(String((value ?? 0) + dir * step));
@@ -112,7 +116,10 @@ export function NumberField({
           placeholder={placeholder}
           aria-describedby={field?.describedBy}
           aria-invalid={field?.invalid || undefined}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => {
+            edited.current = true;
+            setText(e.target.value);
+          }}
           onBlur={(e) => commit(e.target.value)}
           onKeyDown={onKeyDown}
           className={cn(

@@ -64,6 +64,15 @@ test.describe('planner', () => {
     await expect(canvas).toHaveAttribute('data-scale', '1.00');
   });
 
+  test('space activates a focused toolbar button instead of panning', async ({ page }) => {
+    await page.goto(MARINA);
+    const canvas = page.getByTestId('plan-canvas');
+    await expect(canvas).toHaveAttribute('data-scale', '1.00');
+    await page.getByRole('button', { name: 'Zoom in' }).focus();
+    await page.keyboard.press('Space');
+    await expect(canvas).toHaveAttribute('data-scale', '1.25');
+  });
+
   test('a missing plan shows the set-up prompt', async ({ page }) => {
     await page.goto('/projects/proj_sample_lim/plan?level=lvl_lim_3&type=smart-home');
     await expect(

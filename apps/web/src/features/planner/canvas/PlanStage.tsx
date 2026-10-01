@@ -52,10 +52,11 @@ export function PlanStage({
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      if (
-        e.code === 'Space' &&
-        !(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)
-      ) {
+      const t = e.target instanceof HTMLElement ? e.target : null;
+      // Space pans only from the canvas or the page itself; on buttons and fields it keeps its normal job.
+      const onCanvas =
+        !t || t === document.body || t.closest('[data-testid="plan-canvas"]') !== null;
+      if (e.code === 'Space' && onCanvas) {
         e.preventDefault();
         setSpaceHeld(true);
       }

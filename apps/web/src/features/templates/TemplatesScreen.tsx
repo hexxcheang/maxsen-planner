@@ -42,7 +42,7 @@ export function TemplatesScreen() {
     <Page>
       <PageHeader
         title="Templates"
-        description="Approved starting layouts. A new project copies the levels, plans and placed devices, then asks for its own drawings in Setup."
+        description="Approved starting layouts. A new project copies the template’s levels and export settings, then gets its own drawings in Setup. Copying placed devices comes with drawing assignment in a later phase."
       />
       {templates.length === 0 ? (
         <EmptyState

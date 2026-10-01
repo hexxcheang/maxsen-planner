@@ -32,6 +32,21 @@ nothing truncated that matters.
 | 13  | Exports        | Category checkbox names doubled ("Cameras Cameras") because glyphs were labelled images  | `CategoryGlyph` is decorative unless given a `title`                                                                                          |
 | 14  | Logo           | Tagline overflowed the SVG viewBox                                                       | Tagline moved under the brass rule; assets regenerated                                                                                        |
 
+## Code review (whole branch)
+
+An independent review of `e20ed89..HEAD` found eight defects, none high severity. All were fixed:
+
+| Finding                                                                                                | Fix                                                                                                                                                                      |
+| ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Space was swallowed page-wide on the planner (buttons, checkboxes, radios stopped responding to Space) | Space pans only when focus is on the canvas or the page body; e2e test added                                                                                             |
+| Template export settings were dropped when starting from a template                                    | Re-keyed from template level order to the new level ids; unit test added. Copying placed devices needs drawing assignment and stays with Phase J; Templates copy says so |
+| A segmented control with no matching value had no Tab stop (custom icon sizes)                         | First enabled option is tabbable when nothing matches; unit test added                                                                                                   |
+| Dialogs opened from a dropdown item returned focus to `<body>`                                         | Menu actions run after the menu has refocused its trigger; unit test added                                                                                               |
+| Icon badge text couldn't be cleared while editing                                                      | Local draft, saved on blur or Enter, empty reverts                                                                                                                       |
+| Re-entering the same export quantity couldn't clear a change warning                                   | `NumberField` commits whenever the user typed; unit test added                                                                                                           |
+| Rapid wheel zoom lost steps                                                                            | Zoom reads the live store scale                                                                                                                                          |
+| Level (and favourite) move buttons disabled at the ends, dropping keyboard focus                       | Kept focusable with an "Already first / last" reason                                                                                                                     |
+
 ## Deliberate deviations from the plan
 
 - **New project** is a screen at `/projects/new` (two steps on one screen) rather than `NewProjectDialog.tsx`, matching the route in Task 9.
@@ -65,4 +80,4 @@ for drag-to-place. Everything else on every screen works against the sample stor
 ## Verification
 
 `pnpm check` (typecheck, lint with zero warnings, domain + web + server unit tests) and `pnpm e2e`
-(44 tests across both projects) pass.
+(46 tests across both projects) pass.

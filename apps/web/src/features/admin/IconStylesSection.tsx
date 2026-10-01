@@ -57,6 +57,37 @@ function HexInput({
   );
 }
 
+/** Badge text is edited freely and saved on blur or Enter; an empty badge reverts. */
+function BadgeInput({
+  value,
+  label,
+  onCommit,
+}: {
+  value: string;
+  label: string;
+  onCommit: (badge: string) => void;
+}) {
+  const [text, setText] = useState(value);
+  useEffect(() => setText(value), [value]);
+  const commit = () => {
+    const v = text.trim().toUpperCase();
+    if (v && v !== value) onCommit(v);
+    else setText(value);
+  };
+  return (
+    <Input
+      compact
+      aria-label={label}
+      className="w-16 uppercase"
+      maxLength={3}
+      value={text}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => e.key === 'Enter' && commit()}
+    />
+  );
+}
+
 export function IconStylesSection() {
   const { data: settings } = useSettings();
   const actions = useActions();
@@ -130,16 +161,10 @@ export function IconStylesSection() {
                   </span>
                 </Td>
                 <Td>
-                  <Input
-                    compact
-                    aria-label={`${c.name} badge`}
-                    className="w-16 uppercase"
-                    maxLength={3}
+                  <BadgeInput
                     value={style.badge}
-                    onChange={(e) =>
-                      e.target.value.trim() &&
-                      patch(c.id, { badge: e.target.value.trim().toUpperCase() })
-                    }
+                    label={`${c.name} badge`}
+                    onCommit={(badge) => patch(c.id, { badge })}
                   />
                 </Td>
                 <Td>

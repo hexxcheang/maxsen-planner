@@ -34,7 +34,11 @@ export function DropdownMenu({ trigger, items, align = 'end' }: DropdownMenuProp
               <RM.Item
                 key={item.label}
                 disabled={Boolean(item.disabledReason)}
-                onSelect={item.onSelect}
+                onSelect={() => {
+                  // Defer until the menu has closed and refocused its trigger, so a dialog opened
+                  // here remembers the trigger (not the unmounting item) as its focus-return target.
+                  if (item.onSelect) requestAnimationFrame(item.onSelect);
+                }}
                 className={cn(
                   'flex cursor-default items-center gap-2 rounded-[3px] px-2 py-1.5 text-control outline-none select-none',
                   '[&_svg]:size-4 [&_svg]:text-ink-2',
