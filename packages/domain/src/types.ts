@@ -1,0 +1,336 @@
+/**
+ * Entity and document types for the Maxsen Smart Home Planner (technical design §5).
+ *
+ * Coordinates: every plan has an isotropic "plan units" space in which the background's width is
+ * exactly 1000 units and its height is 1000 × H / W. Positions, path points, icon sizes, stroke
+ * widths and note font sizes are all expressed in plan units.
+ */
+import type { BadgeStyle, CategoryId, PlanType } from './categories.ts';
+
+export type { BadgeStyle, CategoryId, PlanType };
+
+export interface Pt {
+  x: number;
+  y: number;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Plan documents (stored as JSON on each plan)
+// ---------------------------------------------------------------------------------------------
+
+export interface PointMarker {
+  kind: 'marker';
+  id: string;
+  /** Layer order; elements render in ascending z. */
+  z: number;
+  variantId: string;
+  x: number;
+  y: number;
+  /** Degrees, clockwise, around the marker centre. */
+  rotation: number;
+  /** Optional short label; empty string when none. */
+  label: string;
+}
+
+export interface LedStripPath {
+  kind: 'led-strip';
+  id: string;
+  z: number;
+  variantId: string;
+  points: Pt[];
+  /** Join the last point back to the first (loop). */
+  closed: boolean;
+  /** Draw a smooth curve through the points instead of straight segments. */
+  smooth: boolean;
+  /** Manually entered total length; null until the planner enters it. Never derived from scale. */
+  metres: number | null;
+  showLabel: boolean;
+}
+
+export interface TrackPath {
+  kind: 'track';
+  id: string;
+  z: number;
+  variantId: string;
+  points: Pt[];
+  /** Number of light heads / modules drawn along the track; ≥ 1. */
+  headCount: number;
+  showLabel: boolean;
+}
+
+export interface TextNote {
+  kind: 'note';
+  id: string;
+  z: number;
+  x: number;
+  y: number;
+  text: string;
+  /** Plan units. */
+  fontSize: number;
+  bold: boolean;
+  /** Hex colour. */
+  color: string;
+  /** Hex background highlight colour, or null for none. */
+  highlight: string | null;
+}
+
+export type PlanElement = PointMarker | LedStripPath | TrackPath | TextNote;
+export type PlanElementKind = PlanElement['kind'];
+
+/** Editor view state: saved with the plan but not part of undo history. */
+export interface PlanViewState {
+  hiddenCategories: CategoryId[];
+  legendVisible: boolean;
+}
+
+export interface PlanDocument {
+  schemaVersion: 1;
+  elements: PlanElement[];
+  view: PlanViewState;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Projects, levels, plans, uploads
+// ---------------------------------------------------------------------------------------------
+
+export type PaperSize = 'A4' | 'A3';
+export type Orientation = 'portrait' | 'landscape';
+export type PropertyType = 'HDB' | 'Condo' | 'Landed' | 'Commercial' | 'Other';
+export type ProjectStatus = 'draft' | 'in-progress' | 'completed';
+
+/** The product/variant facts a project keeps from the moment it first used a variant. */
+export interface VariantSnapshot {
+  variantId: string;
+  productId: string;
+  categoryId: CategoryId;
+  productName: string;
+  variantName: string;
+  description: string;
+  imageFileId: string | null;
+  /** ISO timestamp. */
+  capturedAt: string;
+}
+
+export interface QuantityAdjustment {
+  /** The export quantity the planner chose. */
+  quantity: number;
+  /** The calculated quantity at the moment of adjustment; a later difference raises a warning. */
+  calculatedAtAdjustment: number;
+  /** ISO timestamp. */
+  adjustedAt: string;
+}
+
+export interface FloorPlanExportSettings {
+  showCustomerName: boolean;
+  showCustomerContact: boolean;
+  showPropertyAddress: boolean;
+  /** Which plan pages to include, per level. Levels missing from the map are included by default. */
+  levels: Record<string, { smartHome: boolean; lighting: boolean }>;
+  hiddenCategories: CategoryId[];
+  showLabels: boolean;
+  showLedLengths: boolean;
+  showTrackLabels: boolean;
+  showNotes: boolean;
+  showLegend: boolean;
+}
+
+export interface ProductPdfExportSettings {
+  showCustomerName: boolean;
+  showCustomerContact: boolean;
+  showPropertyAddress: boolean;
+  excludedCategories: CategoryId[];
+}
+
+export interface ExportSettings {
+  floorPlan: FloorPlanExportSettings;
+  productDescription: ProductPdfExportSettings;
+}
+
+export interface ProjectDetails {
+  title: string;
+  customerName: string;
+  customerContact: string;
+  propertyAddress: string;
+  propertyType: PropertyType | null;
+  status: ProjectStatus;
+}
+
+export interface Project extends ProjectDetails {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  lastOpened: { levelId: string; planType: PlanType } | null;
+  thumbnailFileId: string | null;
+  catalogueSnapshot: Record<string, VariantSnapshot>;
+  quantityAdjustments: Record<string, QuantityAdjustment>;
+  exportSettings: ExportSettings;
+  /** Most recently used variant ids, newest first, at most 12. */
+  recentVariantIds: string[];
+}
+
+export interface Level {
+  id: string;
+  projectId: string;
+  name: string;
+  sortOrder: number;
+  paperSize: PaperSize;
+  orientation: Orientation;
+}
+
+export type Rotation = 0 | 90 | 180 | 270;
+
+/** Crop rectangle as fractions (0–1) of the rotated source page. */
+export interface CropRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export interface PlanBackground {
+  sourcePageId: string;
+  rotation: Rotation;
+  crop: CropRect;
+  /** Derived, rotated-and-cropped image file. */
+  fileId: string;
+  /** Pixel size of the derived image; defines the plan-unit aspect ratio. */
+  width: number;
+  height: number;
+}
+
+export interface Plan {
+  id: string;
+  projectId: string;
+  levelId: string;
+  type: PlanType;
+  background: PlanBackground;
+  document: PlanDocument;
+  /** Incremented on every saved document change; used for optimistic concurrency. */
+  revision: number;
+  updatedAt: string;
+}
+
+export interface SourceFile {
+  id: string;
+  projectId: string;
+  fileId: string;
+  name: string;
+  kind: 'pdf' | 'image';
+  pageCount: number;
+  sortOrder: number;
+  createdAt: string;
+}
+
+export interface SourcePage {
+  id: string;
+  projectId: string;
+  sourceFileId: string;
+  /** 0-based page index within the source file; images have a single page 0. */
+  pageIndex: number;
+  /** Rasterised page image. */
+  fileId: string;
+  thumbnailFileId: string;
+  width: number;
+  height: number;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Catalogue, settings, templates, files
+// ---------------------------------------------------------------------------------------------
+
+export interface Product {
+  id: string;
+  categoryId: CategoryId;
+  name: string;
+  hidden: boolean;
+  /** System products (auto-added drivers) never appear in the library and cannot be hidden or deleted. */
+  system: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Variant {
+  id: string;
+  productId: string;
+  name: string;
+  /** Customer-facing description used in the product description PDF. */
+  description: string;
+  imageFileId: string | null;
+  hidden: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CategoryStyleOverride {
+  color?: string;
+  badge?: string;
+  badgeStyle?: BadgeStyle;
+  size?: number;
+}
+
+export interface Showroom {
+  name: string;
+  address: string;
+}
+
+export interface Branding {
+  logoFileId: string | null;
+  whatsapp: string;
+  website: string;
+  showrooms: Showroom[];
+  contactWording: string;
+}
+
+export interface Settings {
+  branding: Branding;
+  categoryStyles: Partial<Record<CategoryId, CategoryStyleOverride>>;
+  favouriteVariantIds: string[];
+}
+
+export interface TemplateLevel {
+  name: string;
+  sortOrder: number;
+  paperSize: PaperSize;
+  orientation: Orientation;
+  plans: { type: PlanType; document: PlanDocument }[];
+}
+
+export interface TemplateStructure {
+  levels: TemplateLevel[];
+  /** Level entries are keyed by the template level's sortOrder as a string; re-keyed on instantiation. */
+  exportSettings: ExportSettings;
+  /** Fallback only: new projects re-snapshot from the live catalogue. */
+  catalogueSnapshot: Record<string, VariantSnapshot>;
+}
+
+export interface Template {
+  id: string;
+  name: string;
+  description: string;
+  sourceProjectId: string | null;
+  structure: TemplateStructure;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type FileKind =
+  | 'source'
+  | 'page'
+  | 'thumbnail'
+  | 'background'
+  | 'project-thumbnail'
+  | 'product-image'
+  | 'logo';
+
+export interface FileRecord {
+  id: string;
+  kind: FileKind;
+  mime: string;
+  width: number | null;
+  height: number | null;
+  bytes: number;
+  originalName: string | null;
+  createdAt: string;
+}
