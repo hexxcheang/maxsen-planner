@@ -5,3 +5,6 @@ export * from './icons.ts';
 export * from './types.ts';
 export * from './ids.ts';
 export * from './plan-document.ts';
+export * from './geometry/points.ts';
+export * from './geometry/catmull-rom.ts';
+export * from './geometry/path.ts';
