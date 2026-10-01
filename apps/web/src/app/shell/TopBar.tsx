@@ -14,10 +14,7 @@ export function TopBar({ leftRef, centerRef, rightRef }: TopBarProps) {
   return (
     <header className="relative z-[var(--z-topbar)] flex h-[var(--topbar-h)] shrink-0 items-center gap-4 border-b border-rule bg-surface px-4">
       <div className="flex min-w-0 flex-1 items-center gap-3">
-        <Link
-          to="/"
-          className="shrink-0 text-control font-semibold tracking-[-0.005em] text-ink max-[1180px]:sr-only"
-        >
+        <Link to="/" className="shrink-0 text-control font-semibold tracking-[-0.005em] text-ink">
           Maxsen Smart Home Planner
         </Link>
         <div ref={leftRef} className="flex min-w-0 items-center gap-2 empty:hidden" />

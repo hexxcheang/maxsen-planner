@@ -17,31 +17,35 @@ export const PROPERTY_TYPES: readonly PropertyType[] = [
   'Other',
 ];
 
-const dateTime = new Intl.DateTimeFormat('en-GB', {
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+const parts = new Intl.DateTimeFormat('en-GB', {
   timeZone: TIME_ZONE,
   day: '2-digit',
-  month: 'short',
+  month: 'numeric',
   year: 'numeric',
   hour: '2-digit',
   minute: '2-digit',
-  hour12: false,
+  hourCycle: 'h23',
 });
 
-const dateOnly = new Intl.DateTimeFormat('en-GB', {
-  timeZone: TIME_ZONE,
-  day: '2-digit',
-  month: 'short',
-  year: 'numeric',
-});
+function sgParts(iso: string) {
+  const out: Record<string, string> = {};
+  for (const p of parts.formatToParts(new Date(iso))) out[p.type] = p.value;
+  // Months are spelled out by hand: engines disagree on "Sep" versus "Sept".
+  return { ...out, monthName: MONTHS[Number(out.month) - 1] ?? '' };
+}
 
 /** "29 Sep 2026, 16:42" */
 export function formatDateTime(iso: string): string {
-  return dateTime.format(new Date(iso));
+  const p = sgParts(iso);
+  return `${p.day} ${p.monthName} ${p.year}, ${p.hour}:${p.minute}`;
 }
 
 /** "29 Sep 2026" */
 export function formatDate(iso: string): string {
-  return dateOnly.format(new Date(iso));
+  const p = sgParts(iso);
+  return `${p.day} ${p.monthName} ${p.year}`;
 }
 
 /** Relative within the last day ("12 minutes ago"), otherwise the full date and time. */
