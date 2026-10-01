@@ -12,3 +12,5 @@ export * from './totals/sort.ts';
 export * from './totals/compute-totals.ts';
 export * from './totals/adjustments.ts';
 export * from './exports/filenames.ts';
+export * from './render/styles.ts';
+export * from './render/scene.ts';
