@@ -18,6 +18,7 @@ interface CategoryGlyphProps {
   /** Draw the badge text; on by default when the glyph is large enough to read it. */
   showBadge?: boolean;
   className?: string;
+  /** Accessible name. Without it the glyph is decorative, as it always sits next to visible text. */
   title?: string;
 }
 
@@ -33,7 +34,7 @@ export function CategoryGlyph({
   const s = style ?? resolveCategoryStyle(categoryId, sample.DEFAULT_SETTINGS);
   const d = iconPath(s.shape);
   const badge = showBadge ?? size >= 22;
-  const label = title ?? s.name;
+  const a11y = title ? { role: 'img', 'aria-label': title } : { 'aria-hidden': true };
 
   if (isPathShape(s.shape)) {
     // Paths (LED strips, tracks) are shown as a short sample stroke with their head style.
@@ -50,14 +51,7 @@ export function CategoryGlyph({
         </>
       ) : null;
     return (
-      <svg
-        role="img"
-        aria-label={label}
-        viewBox="-0.5 -0.5 1 1"
-        width={size}
-        height={size}
-        className={className}
-      >
+      <svg {...a11y} viewBox="-0.5 -0.5 1 1" width={size} height={size} className={className}>
         <path
           d="M-0.44 0 H0.44"
           stroke={s.color}
@@ -74,14 +68,7 @@ export function CategoryGlyph({
   const p = badgePlacement(s.shape);
   const fontSize = 0.42 * p.scale * (s.badge.length > 2 ? 0.78 : 1);
   return (
-    <svg
-      role="img"
-      aria-label={label}
-      viewBox="-0.55 -0.55 1.1 1.1"
-      width={size}
-      height={size}
-      className={className}
-    >
+    <svg {...a11y} viewBox="-0.55 -0.55 1.1 1.1" width={size} height={size} className={className}>
       <path
         d={d}
         fill={filled ? s.color : '#FFFFFF'}

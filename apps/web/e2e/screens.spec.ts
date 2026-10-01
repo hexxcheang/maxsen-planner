@@ -18,6 +18,14 @@ test.describe('screens', () => {
     await shoot(page, testInfo, 'setup', '/projects/proj_sample_lim/setup');
   });
 
+  test('review', async ({ page }, testInfo) => {
+    await shoot(page, testInfo, 'review', '/projects/proj_sample_tan/review');
+  });
+
+  test('exports', async ({ page }, testInfo) => {
+    await shoot(page, testInfo, 'exports', '/projects/proj_sample_lim/exports');
+  });
+
   test('styleguide renders', async ({ page }, testInfo) => {
     await shoot(page, testInfo, 'styleguide', '/dev/styleguide');
   });
