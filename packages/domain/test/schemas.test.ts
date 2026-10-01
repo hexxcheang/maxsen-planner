@@ -46,7 +46,9 @@ const led = (metres: number | null) => ({
 describe('planDocumentSchema', () => {
   it('accepts an empty document and rejects schemaVersion 2', () => {
     assert.ok(planDocumentSchema.safeParse(createEmptyPlanDocument()).success);
-    assert.ok(!planDocumentSchema.safeParse({ ...createEmptyPlanDocument(), schemaVersion: 2 }).success);
+    assert.ok(
+      !planDocumentSchema.safeParse({ ...createEmptyPlanDocument(), schemaVersion: 2 }).success,
+    );
   });
 
   it('rejects unknown hidden categories', () => {

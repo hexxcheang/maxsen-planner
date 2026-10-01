@@ -138,7 +138,10 @@ describe('circlePoints and sampling', () => {
     const sampled = samplePath(pts, { closed: true, smooth: true });
     const len = pathLength(sampled, true);
     const circumference = 2 * Math.PI * 50;
-    assert.ok(Math.abs(len - circumference) / circumference < 0.01, `len ${len} vs ${circumference}`);
+    assert.ok(
+      Math.abs(len - circumference) / circumference < 0.01,
+      `len ${len} vs ${circumference}`,
+    );
   });
 
   it('samplePath of a straight polyline returns the same points', () => {

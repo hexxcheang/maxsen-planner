@@ -29,7 +29,10 @@ describe('sanitiseFilename', () => {
 
 describe('exportFilename', () => {
   it('patterns match the spec', () => {
-    assert.equal(exportFilename('Tan Residence', 'floor-plan'), 'Tan Residence - Marked Floor Plan.pdf');
+    assert.equal(
+      exportFilename('Tan Residence', 'floor-plan'),
+      'Tan Residence - Marked Floor Plan.pdf',
+    );
     assert.equal(
       exportFilename('Tan Residence', 'product-description'),
       'Tan Residence - Product Description.pdf',

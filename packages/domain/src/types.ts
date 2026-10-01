@@ -316,13 +316,7 @@ export interface Template {
 }
 
 export type FileKind =
-  | 'source'
-  | 'page'
-  | 'thumbnail'
-  | 'background'
-  | 'project-thumbnail'
-  | 'product-image'
-  | 'logo';
+  'source' | 'page' | 'thumbnail' | 'background' | 'project-thumbnail' | 'product-image' | 'logo';
 
 export interface FileRecord {
   id: string;

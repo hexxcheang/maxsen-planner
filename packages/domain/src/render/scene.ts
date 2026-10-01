@@ -5,7 +5,12 @@
  */
 import { CATEGORIES, type BadgeStyle, type CategoryId, type ElementKind } from '../categories.ts';
 import { badgePlacement, iconPath, type IconShape } from '../icons.ts';
-import { headPositions, pathMidpoint, polylineToSvgPath, smoothToSvgPath } from '../geometry/path.ts';
+import {
+  headPositions,
+  pathMidpoint,
+  polylineToSvgPath,
+  smoothToSvgPath,
+} from '../geometry/path.ts';
 import type { VariantResolver } from '../totals/compute-totals.ts';
 import type { PlanDocument, Pt, Settings } from '../types.ts';
 import { resolveCategoryStyle } from './styles.ts';
@@ -143,7 +148,18 @@ export function buildScene(doc: PlanDocument, ctx: SceneContext, opts: SceneOpti
   for (const el of elements) {
     if (el.kind === 'note') {
       if (!opts.showNotes) continue;
-      items.push({ type: 'note', elementId: el.id, z: el.z, x: el.x, y: el.y, text: el.text, fontSize: el.fontSize, bold: el.bold, color: el.color, highlight: el.highlight });
+      items.push({
+        type: 'note',
+        elementId: el.id,
+        z: el.z,
+        x: el.x,
+        y: el.y,
+        text: el.text,
+        fontSize: el.fontSize,
+        bold: el.bold,
+        color: el.color,
+        highlight: el.highlight,
+      });
       continue;
     }
 
@@ -177,7 +193,12 @@ export function buildScene(doc: PlanDocument, ctx: SceneContext, opts: SceneOpti
         pathD: iconPath(style.shape),
       };
       if (opts.showLabels && el.label.trim().length > 0) {
-        marker.label = { text: el.label, x: el.x, y: el.y + style.size * LABEL_OFFSET, fontSize: style.size * LABEL_FONT };
+        marker.label = {
+          text: el.label,
+          x: el.x,
+          y: el.y + style.size * LABEL_OFFSET,
+          fontSize: style.size * LABEL_FONT,
+        };
       }
       items.push(marker);
       continue;
@@ -201,7 +222,12 @@ export function buildScene(doc: PlanDocument, ctx: SceneContext, opts: SceneOpti
       color: style.color,
       heads: isLed
         ? []
-        : headPositions(el.points, el.headCount).map((h) => ({ x: h.point.x, y: h.point.y, angle: h.angle, size: style.size * HEAD_FACTOR })),
+        : headPositions(el.points, el.headCount).map((h) => ({
+            x: h.point.x,
+            y: h.point.y,
+            angle: h.angle,
+            size: style.size * HEAD_FACTOR,
+          })),
     };
     const wantLabel = isLed ? opts.showLedLengths : opts.showTrackLabels;
     if (wantLabel && el.showLabel) {
@@ -218,7 +244,15 @@ export function buildScene(doc: PlanDocument, ctx: SceneContext, opts: SceneOpti
 
   const legend: SceneLegendEntry[] = CATEGORIES.filter((c) => present.has(c.id)).map((c) => {
     const style = resolveCategoryStyle(c.id, ctx.settings);
-    return { categoryId: c.id, name: c.name, shape: c.shape, color: style.color, badge: style.badge, badgeStyle: style.badgeStyle, kind: c.kind };
+    return {
+      categoryId: c.id,
+      name: c.name,
+      shape: c.shape,
+      color: style.color,
+      badge: style.badge,
+      badgeStyle: style.badgeStyle,
+      kind: c.kind,
+    };
   });
 
   return { width: ctx.width, height: ctx.height, items, legend };

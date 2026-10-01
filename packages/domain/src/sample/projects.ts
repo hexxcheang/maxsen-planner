@@ -37,7 +37,12 @@ class DocBuilder {
   private readonly elements: PlanElement[] = [];
   constructor(private readonly prefix: string) {}
 
-  marker(variantId: string, x: number, y: number, opts: { rotation?: number; label?: string } = {}): this {
+  marker(
+    variantId: string,
+    x: number,
+    y: number,
+    opts: { rotation?: number; label?: string } = {},
+  ): this {
     const el: PointMarker = {
       kind: 'marker',
       id: this.id(),
@@ -51,7 +56,12 @@ class DocBuilder {
     return this;
   }
 
-  strip(variantId: string, pts: [number, number][], metres: number | null, opts: { closed?: boolean; smooth?: boolean } = {}): this {
+  strip(
+    variantId: string,
+    pts: [number, number][],
+    metres: number | null,
+    opts: { closed?: boolean; smooth?: boolean } = {},
+  ): this {
     const el: LedStripPath = {
       kind: 'led-strip',
       id: this.id(),
@@ -73,7 +83,10 @@ class DocBuilder {
       id: this.id(),
       z: this.elements.length,
       variantId,
-      points: circlePoints(P(cx, cy), r1(radius)).map((p) => ({ x: Math.round(p.x * 10) / 10, y: Math.round(p.y * 10) / 10 })),
+      points: circlePoints(P(cx, cy), r1(radius)).map((p) => ({
+        x: Math.round(p.x * 10) / 10,
+        y: Math.round(p.y * 10) / 10,
+      })),
       closed: true,
       smooth: true,
       metres,
@@ -97,7 +110,12 @@ class DocBuilder {
     return this;
   }
 
-  note(x: number, y: number, text: string, opts: Partial<Pick<TextNote, 'fontSize' | 'bold' | 'color' | 'highlight'>> = {}): this {
+  note(
+    x: number,
+    y: number,
+    text: string,
+    opts: Partial<Pick<TextNote, 'fontSize' | 'bold' | 'color' | 'highlight'>> = {},
+  ): this {
     const el: TextNote = {
       kind: 'note',
       id: this.id(),
@@ -114,7 +132,11 @@ class DocBuilder {
   }
 
   build(): PlanDocument {
-    return { schemaVersion: 1, elements: this.elements, view: { hiddenCategories: [], legendVisible: true } };
+    return {
+      schemaVersion: 1,
+      elements: this.elements,
+      view: { hiddenCategories: [], legendVisible: true },
+    };
   }
 
   private id(): string {
@@ -149,14 +171,39 @@ const tanSmartHome = new DocBuilder('tan_sh')
   .marker('var_indoor_cam', 698, 384)
   .marker('var_motion_sensor', 800, 500)
   .marker('var_smart_plug', 660, 860)
-  .note(118, 950, 'Main door: retain existing frame. Lock supplied by MyDigitalLock.', { highlight: '#FFF3B0' })
+  .note(118, 950, 'Main door: retain existing frame. Lock supplied by MyDigitalLock.', {
+    highlight: '#FFF3B0',
+  })
   .build();
 
 const tanLighting = new DocBuilder('tan_lt')
-  .strip('var_lumi_cove_3000', [[130, 384], [696, 384], [696, 876]], 4.5)
+  .strip(
+    'var_lumi_cove_3000',
+    [
+      [130, 384],
+      [696, 384],
+      [696, 876],
+    ],
+    4.5,
+  )
   .loop('var_lumi_cove_4000', 1010, 300, 110, 6.2)
-  .track('var_luna_track_black', [[400, 540], [600, 540]], 3)
-  .track('var_luna_magnetic_black', [[300, 130], [540, 130], [540, 330]], 5)
+  .track(
+    'var_luna_track_black',
+    [
+      [400, 540],
+      [600, 540],
+    ],
+    3,
+  )
+  .track(
+    'var_luna_magnetic_black',
+    [
+      [300, 130],
+      [540, 130],
+      [540, 330],
+    ],
+    5,
+  )
   .marker('var_luna_dl_3000', 220, 480)
   .marker('var_luna_dl_3000', 420, 480)
   .marker('var_luna_dl_3000', 620, 480)
@@ -215,10 +262,39 @@ const limL1SmartHome = new DocBuilder('lim1_sh')
   .build();
 
 const limL1Lighting = new DocBuilder('lim1_lt')
-  .strip('var_lumi_cove_3000', [[520, 280], [960, 280], [960, 600]], 5.5)
-  .strip('var_lumi_cob_3000', [[600, 700], [960, 700]], 3)
-  .track('var_luna_track_white', [[1020, 330], [1260, 330]], 4)
-  .track('var_luna_magnetic_black', [[140, 520], [460, 520]], 3)
+  .strip(
+    'var_lumi_cove_3000',
+    [
+      [520, 280],
+      [960, 280],
+      [960, 600],
+    ],
+    5.5,
+  )
+  .strip(
+    'var_lumi_cob_3000',
+    [
+      [600, 700],
+      [960, 700],
+    ],
+    3,
+  )
+  .track(
+    'var_luna_track_white',
+    [
+      [1020, 330],
+      [1260, 330],
+    ],
+    4,
+  )
+  .track(
+    'var_luna_magnetic_black',
+    [
+      [140, 520],
+      [460, 520],
+    ],
+    3,
+  )
   .marker('var_luna_dl_3000', 620, 360)
   .marker('var_luna_dl_3000', 860, 360)
   .marker('var_luna_dl_3000', 620, 540)
@@ -269,8 +345,23 @@ const limL2SmartHome = new DocBuilder('lim2_sh')
 
 const limL2Lighting = new DocBuilder('lim2_lt')
   .loop('var_lumi_cove_3000', 1040, 360, 110, 7.5)
-  .strip('var_lumi_cob_3000', [[600, 430], [760, 430]], 2.4)
-  .track('var_luna_magnetic_black', [[960, 650], [1280, 650], [1280, 880]], 6)
+  .strip(
+    'var_lumi_cob_3000',
+    [
+      [600, 430],
+      [760, 430],
+    ],
+    2.4,
+  )
+  .track(
+    'var_luna_magnetic_black',
+    [
+      [960, 650],
+      [1280, 650],
+      [1280, 880],
+    ],
+    6,
+  )
   .marker('var_luna_dl_3000', 200, 320)
   .marker('var_luna_dl_3000', 460, 320)
   .marker('var_luna_dl_3000', 200, 560)
@@ -289,7 +380,14 @@ const limL2Lighting = new DocBuilder('lim2_lt')
 // Attic rooms: Roof Terrace 100–700 × 100–900 · Attic Lounge 700–1300 × 100–540 · Store 860–1300 × 540–900
 
 const limAtticLighting = new DocBuilder('lim3_lt')
-  .strip('var_lumi_cove_3000', [[720, 120], [1280, 120]], 4)
+  .strip(
+    'var_lumi_cove_3000',
+    [
+      [720, 120],
+      [1280, 120],
+    ],
+    4,
+  )
   .marker('var_luna_dl_3000', 820, 300)
   .marker('var_luna_dl_3000', 1000, 300)
   .marker('var_luna_dl_3000', 1180, 300)
@@ -330,51 +428,243 @@ const marinaSmartHome = new DocBuilder('mar_sh')
 // --- entities ---------------------------------------------------------------------------------
 
 export const SAMPLE_LEVELS: Level[] = [
-  { id: 'lvl_tan_1', projectId: 'proj_sample_tan', name: 'Level 1', sortOrder: 1, paperSize: 'A3', orientation: 'landscape' },
-  { id: 'lvl_lim_1', projectId: 'proj_sample_lim', name: 'Level 1', sortOrder: 1, paperSize: 'A3', orientation: 'landscape' },
-  { id: 'lvl_lim_2', projectId: 'proj_sample_lim', name: 'Level 2', sortOrder: 2, paperSize: 'A3', orientation: 'landscape' },
-  { id: 'lvl_lim_3', projectId: 'proj_sample_lim', name: 'Attic', sortOrder: 3, paperSize: 'A4', orientation: 'portrait' },
-  { id: 'lvl_mar_1', projectId: 'proj_sample_marina', name: 'Level 1', sortOrder: 1, paperSize: 'A4', orientation: 'landscape' },
+  {
+    id: 'lvl_tan_1',
+    projectId: 'proj_sample_tan',
+    name: 'Level 1',
+    sortOrder: 1,
+    paperSize: 'A3',
+    orientation: 'landscape',
+  },
+  {
+    id: 'lvl_lim_1',
+    projectId: 'proj_sample_lim',
+    name: 'Level 1',
+    sortOrder: 1,
+    paperSize: 'A3',
+    orientation: 'landscape',
+  },
+  {
+    id: 'lvl_lim_2',
+    projectId: 'proj_sample_lim',
+    name: 'Level 2',
+    sortOrder: 2,
+    paperSize: 'A3',
+    orientation: 'landscape',
+  },
+  {
+    id: 'lvl_lim_3',
+    projectId: 'proj_sample_lim',
+    name: 'Attic',
+    sortOrder: 3,
+    paperSize: 'A4',
+    orientation: 'portrait',
+  },
+  {
+    id: 'lvl_mar_1',
+    projectId: 'proj_sample_marina',
+    name: 'Level 1',
+    sortOrder: 1,
+    paperSize: 'A4',
+    orientation: 'landscape',
+  },
 ];
 
 export const SAMPLE_SOURCE_FILES: SourceFile[] = [
-  { id: 'src_tan_pdf', projectId: 'proj_sample_tan', fileId: 'file_sample_plan_hdb', name: 'Tan_Tampines_4room_FloorPlan.pdf', kind: 'pdf', pageCount: 1, sortOrder: 1, createdAt: '2026-09-14T03:05:00.000Z' },
-  { id: 'src_lim_pdf', projectId: 'proj_sample_lim', fileId: 'file_sample_plan_landed_l1', name: 'Lim_ChartwellDr_Drawings.pdf', kind: 'pdf', pageCount: 3, sortOrder: 1, createdAt: '2026-09-26T07:40:00.000Z' },
-  { id: 'src_mar_png', projectId: 'proj_sample_marina', fileId: 'file_sample_plan_condo', name: 'MarinaOne_TypeB2.png', kind: 'image', pageCount: 1, sortOrder: 1, createdAt: '2026-08-03T01:20:00.000Z' },
+  {
+    id: 'src_tan_pdf',
+    projectId: 'proj_sample_tan',
+    fileId: 'file_sample_plan_hdb',
+    name: 'Tan_Tampines_4room_FloorPlan.pdf',
+    kind: 'pdf',
+    pageCount: 1,
+    sortOrder: 1,
+    createdAt: '2026-09-14T03:05:00.000Z',
+  },
+  {
+    id: 'src_lim_pdf',
+    projectId: 'proj_sample_lim',
+    fileId: 'file_sample_plan_landed_l1',
+    name: 'Lim_ChartwellDr_Drawings.pdf',
+    kind: 'pdf',
+    pageCount: 3,
+    sortOrder: 1,
+    createdAt: '2026-09-26T07:40:00.000Z',
+  },
+  {
+    id: 'src_mar_png',
+    projectId: 'proj_sample_marina',
+    fileId: 'file_sample_plan_condo',
+    name: 'MarinaOne_TypeB2.png',
+    kind: 'image',
+    pageCount: 1,
+    sortOrder: 1,
+    createdAt: '2026-08-03T01:20:00.000Z',
+  },
 ];
 
 export const SAMPLE_SOURCE_PAGES: SourcePage[] = [
-  { id: 'page_tan_1', projectId: 'proj_sample_tan', sourceFileId: 'src_tan_pdf', pageIndex: 0, fileId: 'file_sample_plan_hdb', thumbnailFileId: 'file_sample_plan_hdb', ...BG },
-  { id: 'page_lim_1', projectId: 'proj_sample_lim', sourceFileId: 'src_lim_pdf', pageIndex: 0, fileId: 'file_sample_plan_landed_l1', thumbnailFileId: 'file_sample_plan_landed_l1', ...BG },
-  { id: 'page_lim_2', projectId: 'proj_sample_lim', sourceFileId: 'src_lim_pdf', pageIndex: 1, fileId: 'file_sample_plan_landed_l2', thumbnailFileId: 'file_sample_plan_landed_l2', ...BG },
-  { id: 'page_lim_3', projectId: 'proj_sample_lim', sourceFileId: 'src_lim_pdf', pageIndex: 2, fileId: 'file_sample_plan_landed_attic', thumbnailFileId: 'file_sample_plan_landed_attic', ...BG },
-  { id: 'page_mar_1', projectId: 'proj_sample_marina', sourceFileId: 'src_mar_png', pageIndex: 0, fileId: 'file_sample_plan_condo', thumbnailFileId: 'file_sample_plan_condo', ...BG },
+  {
+    id: 'page_tan_1',
+    projectId: 'proj_sample_tan',
+    sourceFileId: 'src_tan_pdf',
+    pageIndex: 0,
+    fileId: 'file_sample_plan_hdb',
+    thumbnailFileId: 'file_sample_plan_hdb',
+    ...BG,
+  },
+  {
+    id: 'page_lim_1',
+    projectId: 'proj_sample_lim',
+    sourceFileId: 'src_lim_pdf',
+    pageIndex: 0,
+    fileId: 'file_sample_plan_landed_l1',
+    thumbnailFileId: 'file_sample_plan_landed_l1',
+    ...BG,
+  },
+  {
+    id: 'page_lim_2',
+    projectId: 'proj_sample_lim',
+    sourceFileId: 'src_lim_pdf',
+    pageIndex: 1,
+    fileId: 'file_sample_plan_landed_l2',
+    thumbnailFileId: 'file_sample_plan_landed_l2',
+    ...BG,
+  },
+  {
+    id: 'page_lim_3',
+    projectId: 'proj_sample_lim',
+    sourceFileId: 'src_lim_pdf',
+    pageIndex: 2,
+    fileId: 'file_sample_plan_landed_attic',
+    thumbnailFileId: 'file_sample_plan_landed_attic',
+    ...BG,
+  },
+  {
+    id: 'page_mar_1',
+    projectId: 'proj_sample_marina',
+    sourceFileId: 'src_mar_png',
+    pageIndex: 0,
+    fileId: 'file_sample_plan_condo',
+    thumbnailFileId: 'file_sample_plan_condo',
+    ...BG,
+  },
 ];
 
-const plan = (id: string, projectId: string, levelId: string, type: PlanType, pageId: string, fileId: string, document: PlanDocument, updatedAt: string): Plan => ({
+const plan = (
+  id: string,
+  projectId: string,
+  levelId: string,
+  type: PlanType,
+  pageId: string,
+  fileId: string,
+  document: PlanDocument,
+  updatedAt: string,
+): Plan => ({
   id,
   projectId,
   levelId,
   type,
-  background: { sourcePageId: pageId, rotation: 0, crop: { x: 0, y: 0, w: 1, h: 1 }, fileId, ...BG },
+  background: {
+    sourcePageId: pageId,
+    rotation: 0,
+    crop: { x: 0, y: 0, w: 1, h: 1 },
+    fileId,
+    ...BG,
+  },
   document,
   revision: 1,
   updatedAt,
 });
 
 export const SAMPLE_PLANS: Plan[] = [
-  plan('plan_tan_1_sh', 'proj_sample_tan', 'lvl_tan_1', 'smart-home', 'page_tan_1', 'file_sample_plan_hdb', tanSmartHome, '2026-09-29T08:42:00.000Z'),
-  plan('plan_tan_1_lt', 'proj_sample_tan', 'lvl_tan_1', 'lighting', 'page_tan_1', 'file_sample_plan_hdb', tanLighting, '2026-09-29T08:42:00.000Z'),
-  plan('plan_lim_1_sh', 'proj_sample_lim', 'lvl_lim_1', 'smart-home', 'page_lim_1', 'file_sample_plan_landed_l1', limL1SmartHome, '2026-09-30T01:15:00.000Z'),
-  plan('plan_lim_1_lt', 'proj_sample_lim', 'lvl_lim_1', 'lighting', 'page_lim_1', 'file_sample_plan_landed_l1', limL1Lighting, '2026-09-30T01:15:00.000Z'),
-  plan('plan_lim_2_sh', 'proj_sample_lim', 'lvl_lim_2', 'smart-home', 'page_lim_2', 'file_sample_plan_landed_l2', limL2SmartHome, '2026-09-30T01:15:00.000Z'),
-  plan('plan_lim_2_lt', 'proj_sample_lim', 'lvl_lim_2', 'lighting', 'page_lim_2', 'file_sample_plan_landed_l2', limL2Lighting, '2026-09-30T01:15:00.000Z'),
-  plan('plan_lim_3_lt', 'proj_sample_lim', 'lvl_lim_3', 'lighting', 'page_lim_3', 'file_sample_plan_landed_attic', limAtticLighting, '2026-09-30T01:15:00.000Z'),
-  plan('plan_mar_1_sh', 'proj_sample_marina', 'lvl_mar_1', 'smart-home', 'page_mar_1', 'file_sample_plan_condo', marinaSmartHome, '2026-08-21T03:05:00.000Z'),
+  plan(
+    'plan_tan_1_sh',
+    'proj_sample_tan',
+    'lvl_tan_1',
+    'smart-home',
+    'page_tan_1',
+    'file_sample_plan_hdb',
+    tanSmartHome,
+    '2026-09-29T08:42:00.000Z',
+  ),
+  plan(
+    'plan_tan_1_lt',
+    'proj_sample_tan',
+    'lvl_tan_1',
+    'lighting',
+    'page_tan_1',
+    'file_sample_plan_hdb',
+    tanLighting,
+    '2026-09-29T08:42:00.000Z',
+  ),
+  plan(
+    'plan_lim_1_sh',
+    'proj_sample_lim',
+    'lvl_lim_1',
+    'smart-home',
+    'page_lim_1',
+    'file_sample_plan_landed_l1',
+    limL1SmartHome,
+    '2026-09-30T01:15:00.000Z',
+  ),
+  plan(
+    'plan_lim_1_lt',
+    'proj_sample_lim',
+    'lvl_lim_1',
+    'lighting',
+    'page_lim_1',
+    'file_sample_plan_landed_l1',
+    limL1Lighting,
+    '2026-09-30T01:15:00.000Z',
+  ),
+  plan(
+    'plan_lim_2_sh',
+    'proj_sample_lim',
+    'lvl_lim_2',
+    'smart-home',
+    'page_lim_2',
+    'file_sample_plan_landed_l2',
+    limL2SmartHome,
+    '2026-09-30T01:15:00.000Z',
+  ),
+  plan(
+    'plan_lim_2_lt',
+    'proj_sample_lim',
+    'lvl_lim_2',
+    'lighting',
+    'page_lim_2',
+    'file_sample_plan_landed_l2',
+    limL2Lighting,
+    '2026-09-30T01:15:00.000Z',
+  ),
+  plan(
+    'plan_lim_3_lt',
+    'proj_sample_lim',
+    'lvl_lim_3',
+    'lighting',
+    'page_lim_3',
+    'file_sample_plan_landed_attic',
+    limAtticLighting,
+    '2026-09-30T01:15:00.000Z',
+  ),
+  plan(
+    'plan_mar_1_sh',
+    'proj_sample_marina',
+    'lvl_mar_1',
+    'smart-home',
+    'page_mar_1',
+    'file_sample_plan_condo',
+    marinaSmartHome,
+    '2026-08-21T03:05:00.000Z',
+  ),
 ];
 
 /** Snapshot of every variant a set of documents uses (plus the auto-added drivers when relevant). */
-export function buildSnapshot(documents: PlanDocument[], capturedAt = SNAPSHOT_AT): Record<string, VariantSnapshot> {
+export function buildSnapshot(
+  documents: PlanDocument[],
+  capturedAt = SNAPSHOT_AT,
+): Record<string, VariantSnapshot> {
   const ids = new Set<string>();
   for (const doc of documents) {
     for (const el of doc.elements) {
@@ -406,7 +696,11 @@ export function buildSnapshot(documents: PlanDocument[], capturedAt = SNAPSHOT_A
 const documentsOf = (projectId: string): PlanDocument[] =>
   SAMPLE_PLANS.filter((p) => p.projectId === projectId).map((p) => p.document);
 
-const adjustment = (quantity: number, calculatedAtAdjustment: number, adjustedAt: string): QuantityAdjustment => ({
+const adjustment = (
+  quantity: number,
+  calculatedAtAdjustment: number,
+  adjustedAt: string,
+): QuantityAdjustment => ({
   quantity,
   calculatedAtAdjustment,
   adjustedAt,
@@ -433,7 +727,13 @@ export const SAMPLE_PROJECTS: Project[] = [
       'variant:var_lumi_cove_3000': adjustment(5, 4, '2026-09-27T09:30:00.000Z'),
     },
     exportSettings: defaultExportSettings(['lvl_tan_1']),
-    recentVariantIds: ['var_luna_spot_black', 'var_dining_pendant', 'var_luna_dl_3000', 'var_lumi_cove_4000', 'var_nova_pro_2g_black'],
+    recentVariantIds: [
+      'var_luna_spot_black',
+      'var_dining_pendant',
+      'var_luna_dl_3000',
+      'var_lumi_cove_4000',
+      'var_nova_pro_2g_black',
+    ],
   },
   {
     id: 'proj_sample_lim',
@@ -450,7 +750,12 @@ export const SAMPLE_PROJECTS: Project[] = [
     catalogueSnapshot: buildSnapshot(documentsOf('proj_sample_lim'), '2026-09-26T07:55:00.000Z'),
     quantityAdjustments: {},
     exportSettings: defaultExportSettings(['lvl_lim_1', 'lvl_lim_2', 'lvl_lim_3']),
-    recentVariantIds: ['var_lusano_2g', 'var_ir_aircon', 'var_luna_spot_white', 'var_lumi_cove_3000'],
+    recentVariantIds: [
+      'var_lusano_2g',
+      'var_ir_aircon',
+      'var_luna_spot_white',
+      'var_lumi_cove_3000',
+    ],
   },
   {
     id: 'proj_sample_marina',
@@ -472,7 +777,9 @@ export const SAMPLE_PROJECTS: Project[] = [
 ];
 
 /** Resolver for totals/scenes: the project's snapshot first, then the live sample catalogue. */
-export function sampleResolver(project: Project): (variantId: string) => VariantSnapshot | undefined {
+export function sampleResolver(
+  project: Project,
+): (variantId: string) => VariantSnapshot | undefined {
   return (variantId) => {
     const snap = project.catalogueSnapshot[variantId];
     if (snap) return snap;

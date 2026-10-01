@@ -6,7 +6,13 @@ interface SampleFile extends FileRecord {
   url: string;
 }
 
-const svg = (id: string, kind: FileRecord['kind'], url: string, width: number, height: number): SampleFile => ({
+const svg = (
+  id: string,
+  kind: FileRecord['kind'],
+  url: string,
+  width: number,
+  height: number,
+): SampleFile => ({
   id,
   kind,
   mime: 'image/svg+xml',
@@ -19,9 +25,29 @@ const svg = (id: string, kind: FileRecord['kind'], url: string, width: number, h
 });
 
 const PRODUCT_IMAGES = [
-  'switch-1gang', 'switch-2gang', 'switch-3gang', 'switch-4gang', 'switch-prestige', 'panel', 'curtain',
-  'aircon', 'gateway', 'sensor', 'camera', 'router', 'lock', 'downlight', 'surface', 'track', 'magnetic',
-  'strip', 'pendant', 'spotlight', 'driver', 'plug', 'dimmer',
+  'switch-1gang',
+  'switch-2gang',
+  'switch-3gang',
+  'switch-4gang',
+  'switch-prestige',
+  'panel',
+  'curtain',
+  'aircon',
+  'gateway',
+  'sensor',
+  'camera',
+  'router',
+  'lock',
+  'downlight',
+  'surface',
+  'track',
+  'magnetic',
+  'strip',
+  'pendant',
+  'spotlight',
+  'driver',
+  'plug',
+  'dimmer',
 ];
 
 const FILES: SampleFile[] = [
@@ -31,7 +57,9 @@ const FILES: SampleFile[] = [
   svg('file_sample_plan_landed_l1', 'page', '/sample/floorplan-landed-l1.svg', 1400, 1000),
   svg('file_sample_plan_landed_l2', 'page', '/sample/floorplan-landed-l2.svg', 1400, 1000),
   svg('file_sample_plan_landed_attic', 'page', '/sample/floorplan-landed-attic.svg', 1400, 1000),
-  ...PRODUCT_IMAGES.map((n) => svg(`file_sample_img_${n}`, 'product-image', `/sample/product/product-${n}.svg`, 240, 240)),
+  ...PRODUCT_IMAGES.map((n) =>
+    svg(`file_sample_img_${n}`, 'product-image', `/sample/product/product-${n}.svg`, 240, 240),
+  ),
 ];
 
 export const SAMPLE_FILES: FileRecord[] = FILES.map(({ url: _url, ...record }) => record);

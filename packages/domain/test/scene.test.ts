@@ -147,7 +147,9 @@ describe('buildScene', () => {
   });
 
   it('legend lists present categories in fixed order and ignores notes', () => {
-    const s = scene(doc([note('n', 0), led('c', 1, 1), marker('a', 'sw', 2), marker('a2', 'sw', 3)]));
+    const s = scene(
+      doc([note('n', 0), led('c', 1, 1), marker('a', 'sw', 2), marker('a2', 'sw', 3)]),
+    );
     assert.deepEqual(
       s.legend.map((l) => l.categoryId),
       ['smart-switches', 'led-strips'],
@@ -171,7 +173,15 @@ describe('buildScene', () => {
   });
 
   it('led label text shows entered metres and the track label uses head count', () => {
-    const s = scene(doc([led('l1', 0, 4.5), led('l2', 1, 6.25), led('l3', 2, null), track('t', 3, 'tr', 3), track('m', 4, 'mt', 5)]));
+    const s = scene(
+      doc([
+        led('l1', 0, 4.5),
+        led('l2', 1, 6.25),
+        led('l3', 2, null),
+        track('t', 3, 'tr', 3),
+        track('m', 4, 'mt', 5),
+      ]),
+    );
     const texts = s.items.map((i) => (i.type === 'path' ? i.label?.text : undefined));
     assert.deepEqual(texts, [
       '4.5m LED Strip',
@@ -205,7 +215,9 @@ describe('buildScene', () => {
   });
 
   it('elements are emitted in z order', () => {
-    const s = scene(doc([note('n', 5), marker('a', 'sw', 1), led('c', 3, 1), marker('b', 'se', 0)]));
+    const s = scene(
+      doc([note('n', 5), marker('a', 'sw', 1), led('c', 3, 1), marker('b', 'se', 0)]),
+    );
     assert.deepEqual(
       s.items.map((i) => i.elementId),
       ['b', 'a', 'c', 'n'],

@@ -18,7 +18,9 @@ const categoryIds = CATEGORIES.map((c) => c.id) as [CategoryId, ...CategoryId[]]
 
 export const categoryIdSchema = z.enum(categoryIds);
 export const planTypeSchema = z.enum(['smart-home', 'lighting']);
-export const hexColorSchema = z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Use a hex colour like #A8873A');
+export const hexColorSchema = z
+  .string()
+  .regex(/^#[0-9A-Fa-f]{6}$/, 'Use a hex colour like #A8873A');
 
 const coord = z.number().finite();
 const ptSchema = z.object({ x: coord, y: coord });

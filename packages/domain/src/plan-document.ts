@@ -24,7 +24,8 @@ export function migratePlanDocument(raw: unknown): PlanDocument {
     throw new PlanDocumentError('Plan document is not an object');
   }
   const version = (raw as { schemaVersion?: unknown }).schemaVersion;
-  if (typeof version !== 'number') throw new PlanDocumentError('Plan document has no schemaVersion');
+  if (typeof version !== 'number')
+    throw new PlanDocumentError('Plan document has no schemaVersion');
   if (version > PLAN_DOCUMENT_SCHEMA_VERSION) {
     throw new PlanDocumentError(
       `Plan document version ${version} is newer than this app supports (${PLAN_DOCUMENT_SCHEMA_VERSION})`,

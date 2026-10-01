@@ -63,7 +63,9 @@ const LIGHT = '#c9c9c9';
 const roomSvg = (r: Room): string => {
   const cx = r.lx ?? r.x + r.w / 2;
   const cy = r.ly ?? r.y + r.h / 2;
-  const sub = r.sub ? `<text x="${cx}" y="${cy + 24}" font-size="18" fill="#a0a0a0" text-anchor="middle" font-family="Helvetica, Arial, sans-serif">${r.sub}</text>` : '';
+  const sub = r.sub
+    ? `<text x="${cx}" y="${cy + 24}" font-size="18" fill="#a0a0a0" text-anchor="middle" font-family="Helvetica, Arial, sans-serif">${r.sub}</text>`
+    : '';
   return `<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" fill="none" stroke="${INK}" stroke-width="${WALL}" stroke-linejoin="miter"/>
 <text x="${cx}" y="${cy + (r.sub ? 0 : 8)}" font-size="26" fill="${GREY}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" letter-spacing="1">${r.label}</text>${sub}`;
 };
@@ -119,7 +121,9 @@ const titleBlock = (d: Drawing): string => `
 <text y="-30" font-size="12" text-anchor="middle" fill="${INK}" stroke="none" font-family="Helvetica, Arial, sans-serif">N</text>
 </g>`;
 
-const render = (d: Drawing): string => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 1000" width="1400" height="1000">
+const render = (
+  d: Drawing,
+): string => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 1000" width="1400" height="1000">
 <rect width="1400" height="1000" fill="#ffffff"/>
 ${(d.furniture ?? []).map(furnitureSvg).join('\n')}
 ${d.rooms.map(roomSvg).join('\n')}
@@ -337,9 +341,13 @@ const switchPlate = (gangs: number, tone = CHAR): string => {
   const rockers: string[] = [];
   const w = 120 / gangs;
   for (let i = 0; i < gangs; i++) {
-    rockers.push(`<rect x="${60 + i * w + 8}" y="78" width="${w - 16}" height="84" rx="6" fill="${IVORY}" opacity="0.92"/><circle cx="${60 + i * w + w / 2}" cy="140" r="4" fill="${BRASS}"/>`);
+    rockers.push(
+      `<rect x="${60 + i * w + 8}" y="78" width="${w - 16}" height="84" rx="6" fill="${IVORY}" opacity="0.92"/><circle cx="${60 + i * w + w / 2}" cy="140" r="4" fill="${BRASS}"/>`,
+    );
   }
-  return art(`<rect x="48" y="62" width="144" height="116" rx="10" fill="${tone}"/>${rockers.join('')}`);
+  return art(
+    `<rect x="48" y="62" width="144" height="116" rx="10" fill="${tone}"/>${rockers.join('')}`,
+  );
 };
 
 const products: Record<string, string> = {
@@ -348,24 +356,60 @@ const products: Record<string, string> = {
   'product-switch-3gang.svg': switchPlate(3),
   'product-switch-4gang.svg': switchPlate(4),
   'product-switch-prestige.svg': switchPlate(2, BRASS),
-  'product-panel.svg': art(`<rect x="36" y="64" width="168" height="112" rx="12" fill="${CHAR}"/><rect x="48" y="76" width="144" height="88" rx="6" fill="#3a3632"/><rect x="60" y="92" width="52" height="28" rx="4" fill="${BRASS}"/><rect x="128" y="92" width="52" height="28" rx="4" fill="#5a554f"/><rect x="60" y="128" width="120" height="20" rx="4" fill="#5a554f"/>`),
-  'product-curtain.svg': art(`<rect x="30" y="60" width="180" height="10" rx="5" fill="${CHAR}"/><path d="M50 70 q10 60 0 110 M80 70 q10 60 0 110 M110 70 q10 60 0 110 M140 70 q10 60 0 110 M170 70 q10 60 0 110" stroke="${BRASS}" stroke-width="6" fill="none" stroke-linecap="round"/><rect x="186" y="58" width="24" height="14" rx="4" fill="${BRASS}"/>`),
-  'product-aircon.svg': art(`<rect x="52" y="70" width="136" height="100" rx="14" fill="${CHAR}"/><rect x="68" y="86" width="104" height="36" rx="6" fill="#3a3632"/><text x="120" y="112" font-size="22" fill="${BRASS}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-weight="700">24°</text><rect x="68" y="134" width="30" height="18" rx="4" fill="${BRASS}"/><rect x="106" y="134" width="30" height="18" rx="4" fill="#5a554f"/><rect x="144" y="134" width="28" height="18" rx="4" fill="#5a554f"/>`),
-  'product-gateway.svg': art(`<rect x="52" y="90" width="136" height="70" rx="12" fill="${CHAR}"/><circle cx="80" cy="125" r="6" fill="${BRASS}"/><circle cx="100" cy="125" r="6" fill="#5a554f"/><path d="M120 70 a40 40 0 0 1 56 0 M132 82 a24 24 0 0 1 32 0" stroke="${BRASS}" stroke-width="6" fill="none" stroke-linecap="round"/>`),
-  'product-sensor.svg': art(`<circle cx="120" cy="120" r="56" fill="${CHAR}"/><circle cx="120" cy="120" r="34" fill="none" stroke="${BRASS}" stroke-width="6"/><circle cx="120" cy="120" r="12" fill="${BRASS}"/>`),
-  'product-camera.svg': art(`<path d="M60 130 a60 60 0 0 1 120 0 Z" fill="${CHAR}"/><rect x="50" y="130" width="140" height="18" rx="6" fill="${CHAR}"/><circle cx="120" cy="104" r="18" fill="${BRASS}"/><circle cx="120" cy="104" r="7" fill="${CHAR}"/>`),
-  'product-router.svg': art(`<rect x="48" y="110" width="144" height="56" rx="10" fill="${CHAR}"/><rect x="70" y="60" width="8" height="50" rx="4" fill="${CHAR}"/><rect x="162" y="60" width="8" height="50" rx="4" fill="${CHAR}"/><circle cx="76" cy="138" r="5" fill="${BRASS}"/><circle cx="96" cy="138" r="5" fill="${BRASS}"/><circle cx="116" cy="138" r="5" fill="#5a554f"/>`),
-  'product-lock.svg': art(`<rect x="72" y="52" width="96" height="136" rx="18" fill="${CHAR}"/><circle cx="120" cy="100" r="22" fill="none" stroke="${BRASS}" stroke-width="6"/><rect x="104" y="138" width="32" height="10" rx="5" fill="${BRASS}"/><rect x="104" y="156" width="32" height="10" rx="5" fill="#5a554f"/>`),
-  'product-downlight.svg': art(`<circle cx="120" cy="120" r="64" fill="${CHAR}"/><circle cx="120" cy="120" r="44" fill="${IVORY}"/><circle cx="120" cy="120" r="30" fill="${BRASS}" opacity="0.9"/>`),
-  'product-surface.svg': art(`<rect x="56" y="56" width="128" height="128" rx="24" fill="${CHAR}"/><rect x="76" y="76" width="88" height="88" rx="16" fill="${IVORY}"/><rect x="92" y="92" width="56" height="56" rx="10" fill="${BRASS}" opacity="0.9"/>`),
-  'product-track.svg': art(`<rect x="30" y="112" width="180" height="16" rx="4" fill="${CHAR}"/><g fill="${CHAR}"><rect x="56" y="128" width="26" height="40" rx="6"/><rect x="107" y="128" width="26" height="40" rx="6"/><rect x="158" y="128" width="26" height="40" rx="6"/></g><g fill="${BRASS}"><rect x="60" y="164" width="18" height="6" rx="3"/><rect x="111" y="164" width="18" height="6" rx="3"/><rect x="162" y="164" width="18" height="6" rx="3"/></g>`),
-  'product-magnetic.svg': art(`<rect x="30" y="112" width="180" height="16" rx="2" fill="${CHAR}"/><g fill="${CHAR}"><circle cx="70" cy="146" r="16"/><circle cx="120" cy="146" r="16"/><circle cx="170" cy="146" r="16"/></g><g fill="${BRASS}"><circle cx="70" cy="146" r="6"/><circle cx="120" cy="146" r="6"/><circle cx="170" cy="146" r="6"/></g>`),
-  'product-strip.svg': art(`<path d="M40 150 H200 M40 150 V90 H120" stroke="${CHAR}" stroke-width="18" fill="none" stroke-linejoin="round" stroke-linecap="round"/><path d="M40 150 H200 M40 150 V90 H120" stroke="${BRASS}" stroke-width="6" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="2 12"/>`),
-  'product-pendant.svg': art(`<line x1="120" y1="40" x2="120" y2="110" stroke="${CHAR}" stroke-width="4"/><path d="M60 170 a60 60 0 0 1 120 0 Z" fill="${CHAR}"/><rect x="60" y="168" width="120" height="8" fill="${BRASS}"/>`),
-  'product-spotlight.svg': art(`<rect x="100" y="40" width="40" height="30" rx="6" fill="${CHAR}"/><path d="M90 70 L150 70 L170 170 L70 170 Z" fill="${CHAR}"/><ellipse cx="120" cy="170" rx="50" ry="14" fill="${BRASS}"/>`),
-  'product-driver.svg': art(`<rect x="40" y="90" width="160" height="60" rx="8" fill="${CHAR}"/><line x1="20" y1="120" x2="40" y2="120" stroke="${BRASS}" stroke-width="6"/><line x1="200" y1="120" x2="220" y2="120" stroke="${BRASS}" stroke-width="6"/><text x="120" y="126" font-size="16" fill="${IVORY}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif">DRIVER</text>`),
-  'product-plug.svg': art(`<rect x="60" y="60" width="120" height="120" rx="20" fill="${CHAR}"/><rect x="92" y="92" width="14" height="36" rx="4" fill="${IVORY}"/><rect x="134" y="92" width="14" height="36" rx="4" fill="${IVORY}"/><rect x="108" y="140" width="24" height="14" rx="4" fill="${BRASS}"/>`),
-  'product-dimmer.svg': art(`<rect x="48" y="62" width="144" height="116" rx="10" fill="${CHAR}"/><circle cx="120" cy="120" r="34" fill="${IVORY}"/><line x1="120" y1="120" x2="140" y2="100" stroke="${BRASS}" stroke-width="6" stroke-linecap="round"/>`),
+  'product-panel.svg': art(
+    `<rect x="36" y="64" width="168" height="112" rx="12" fill="${CHAR}"/><rect x="48" y="76" width="144" height="88" rx="6" fill="#3a3632"/><rect x="60" y="92" width="52" height="28" rx="4" fill="${BRASS}"/><rect x="128" y="92" width="52" height="28" rx="4" fill="#5a554f"/><rect x="60" y="128" width="120" height="20" rx="4" fill="#5a554f"/>`,
+  ),
+  'product-curtain.svg': art(
+    `<rect x="30" y="60" width="180" height="10" rx="5" fill="${CHAR}"/><path d="M50 70 q10 60 0 110 M80 70 q10 60 0 110 M110 70 q10 60 0 110 M140 70 q10 60 0 110 M170 70 q10 60 0 110" stroke="${BRASS}" stroke-width="6" fill="none" stroke-linecap="round"/><rect x="186" y="58" width="24" height="14" rx="4" fill="${BRASS}"/>`,
+  ),
+  'product-aircon.svg': art(
+    `<rect x="52" y="70" width="136" height="100" rx="14" fill="${CHAR}"/><rect x="68" y="86" width="104" height="36" rx="6" fill="#3a3632"/><text x="120" y="112" font-size="22" fill="${BRASS}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-weight="700">24°</text><rect x="68" y="134" width="30" height="18" rx="4" fill="${BRASS}"/><rect x="106" y="134" width="30" height="18" rx="4" fill="#5a554f"/><rect x="144" y="134" width="28" height="18" rx="4" fill="#5a554f"/>`,
+  ),
+  'product-gateway.svg': art(
+    `<rect x="52" y="90" width="136" height="70" rx="12" fill="${CHAR}"/><circle cx="80" cy="125" r="6" fill="${BRASS}"/><circle cx="100" cy="125" r="6" fill="#5a554f"/><path d="M120 70 a40 40 0 0 1 56 0 M132 82 a24 24 0 0 1 32 0" stroke="${BRASS}" stroke-width="6" fill="none" stroke-linecap="round"/>`,
+  ),
+  'product-sensor.svg': art(
+    `<circle cx="120" cy="120" r="56" fill="${CHAR}"/><circle cx="120" cy="120" r="34" fill="none" stroke="${BRASS}" stroke-width="6"/><circle cx="120" cy="120" r="12" fill="${BRASS}"/>`,
+  ),
+  'product-camera.svg': art(
+    `<path d="M60 130 a60 60 0 0 1 120 0 Z" fill="${CHAR}"/><rect x="50" y="130" width="140" height="18" rx="6" fill="${CHAR}"/><circle cx="120" cy="104" r="18" fill="${BRASS}"/><circle cx="120" cy="104" r="7" fill="${CHAR}"/>`,
+  ),
+  'product-router.svg': art(
+    `<rect x="48" y="110" width="144" height="56" rx="10" fill="${CHAR}"/><rect x="70" y="60" width="8" height="50" rx="4" fill="${CHAR}"/><rect x="162" y="60" width="8" height="50" rx="4" fill="${CHAR}"/><circle cx="76" cy="138" r="5" fill="${BRASS}"/><circle cx="96" cy="138" r="5" fill="${BRASS}"/><circle cx="116" cy="138" r="5" fill="#5a554f"/>`,
+  ),
+  'product-lock.svg': art(
+    `<rect x="72" y="52" width="96" height="136" rx="18" fill="${CHAR}"/><circle cx="120" cy="100" r="22" fill="none" stroke="${BRASS}" stroke-width="6"/><rect x="104" y="138" width="32" height="10" rx="5" fill="${BRASS}"/><rect x="104" y="156" width="32" height="10" rx="5" fill="#5a554f"/>`,
+  ),
+  'product-downlight.svg': art(
+    `<circle cx="120" cy="120" r="64" fill="${CHAR}"/><circle cx="120" cy="120" r="44" fill="${IVORY}"/><circle cx="120" cy="120" r="30" fill="${BRASS}" opacity="0.9"/>`,
+  ),
+  'product-surface.svg': art(
+    `<rect x="56" y="56" width="128" height="128" rx="24" fill="${CHAR}"/><rect x="76" y="76" width="88" height="88" rx="16" fill="${IVORY}"/><rect x="92" y="92" width="56" height="56" rx="10" fill="${BRASS}" opacity="0.9"/>`,
+  ),
+  'product-track.svg': art(
+    `<rect x="30" y="112" width="180" height="16" rx="4" fill="${CHAR}"/><g fill="${CHAR}"><rect x="56" y="128" width="26" height="40" rx="6"/><rect x="107" y="128" width="26" height="40" rx="6"/><rect x="158" y="128" width="26" height="40" rx="6"/></g><g fill="${BRASS}"><rect x="60" y="164" width="18" height="6" rx="3"/><rect x="111" y="164" width="18" height="6" rx="3"/><rect x="162" y="164" width="18" height="6" rx="3"/></g>`,
+  ),
+  'product-magnetic.svg': art(
+    `<rect x="30" y="112" width="180" height="16" rx="2" fill="${CHAR}"/><g fill="${CHAR}"><circle cx="70" cy="146" r="16"/><circle cx="120" cy="146" r="16"/><circle cx="170" cy="146" r="16"/></g><g fill="${BRASS}"><circle cx="70" cy="146" r="6"/><circle cx="120" cy="146" r="6"/><circle cx="170" cy="146" r="6"/></g>`,
+  ),
+  'product-strip.svg': art(
+    `<path d="M40 150 H200 M40 150 V90 H120" stroke="${CHAR}" stroke-width="18" fill="none" stroke-linejoin="round" stroke-linecap="round"/><path d="M40 150 H200 M40 150 V90 H120" stroke="${BRASS}" stroke-width="6" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="2 12"/>`,
+  ),
+  'product-pendant.svg': art(
+    `<line x1="120" y1="40" x2="120" y2="110" stroke="${CHAR}" stroke-width="4"/><path d="M60 170 a60 60 0 0 1 120 0 Z" fill="${CHAR}"/><rect x="60" y="168" width="120" height="8" fill="${BRASS}"/>`,
+  ),
+  'product-spotlight.svg': art(
+    `<rect x="100" y="40" width="40" height="30" rx="6" fill="${CHAR}"/><path d="M90 70 L150 70 L170 170 L70 170 Z" fill="${CHAR}"/><ellipse cx="120" cy="170" rx="50" ry="14" fill="${BRASS}"/>`,
+  ),
+  'product-driver.svg': art(
+    `<rect x="40" y="90" width="160" height="60" rx="8" fill="${CHAR}"/><line x1="20" y1="120" x2="40" y2="120" stroke="${BRASS}" stroke-width="6"/><line x1="200" y1="120" x2="220" y2="120" stroke="${BRASS}" stroke-width="6"/><text x="120" y="126" font-size="16" fill="${IVORY}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif">DRIVER</text>`,
+  ),
+  'product-plug.svg': art(
+    `<rect x="60" y="60" width="120" height="120" rx="20" fill="${CHAR}"/><rect x="92" y="92" width="14" height="36" rx="4" fill="${IVORY}"/><rect x="134" y="92" width="14" height="36" rx="4" fill="${IVORY}"/><rect x="108" y="140" width="24" height="14" rx="4" fill="${BRASS}"/>`,
+  ),
+  'product-dimmer.svg': art(
+    `<rect x="48" y="62" width="144" height="116" rx="10" fill="${CHAR}"/><circle cx="120" cy="120" r="34" fill="${IVORY}"/><line x1="120" y1="120" x2="140" y2="100" stroke="${BRASS}" stroke-width="6" stroke-linecap="round"/>`,
+  ),
 };
 
 const logo = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 96" width="360" height="96">
