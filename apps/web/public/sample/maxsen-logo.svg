@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 96" width="360" height="96">
 <text x="0" y="62" font-family="Instrument Sans, Helvetica, Arial, sans-serif" font-size="56" font-weight="700" letter-spacing="6" fill="#2B2824">MAXSEN</text>
-<rect x="2" y="76" width="236" height="3" fill="#A8873A"/>
-<text x="246" y="82" font-family="Instrument Sans, Helvetica, Arial, sans-serif" font-size="13" letter-spacing="2" fill="#A8873A">SMART SOLUTIONS</text>
+<rect x="2" y="74" width="236" height="2" fill="#A8873A"/>
+<text x="2" y="93" font-family="Instrument Sans, Helvetica, Arial, sans-serif" font-size="12" letter-spacing="3.2" fill="#A8873A">SMART SOLUTIONS</text>
 </svg>

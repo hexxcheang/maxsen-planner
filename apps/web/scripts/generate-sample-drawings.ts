@@ -414,8 +414,8 @@ const products: Record<string, string> = {
 
 const logo = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 96" width="360" height="96">
 <text x="0" y="62" font-family="Instrument Sans, Helvetica, Arial, sans-serif" font-size="56" font-weight="700" letter-spacing="6" fill="${CHAR}">MAXSEN</text>
-<rect x="2" y="76" width="236" height="3" fill="${BRASS}"/>
-<text x="246" y="82" font-family="Instrument Sans, Helvetica, Arial, sans-serif" font-size="13" letter-spacing="2" fill="${BRASS}">SMART SOLUTIONS</text>
+<rect x="2" y="74" width="236" height="2" fill="${BRASS}"/>
+<text x="2" y="93" font-family="Instrument Sans, Helvetica, Arial, sans-serif" font-size="12" letter-spacing="3.2" fill="${BRASS}">SMART SOLUTIONS</text>
 </svg>
 `;
 
