@@ -3,15 +3,6 @@ import { projectDetailsSchema, type ProjectDetails, type ProjectStatus } from '@
 import { Field, Input, SegmentedControl, Select } from '@/components/ui';
 import { PROPERTY_TYPES, STATUS_LABELS } from '@/lib/format';
 
-export const EMPTY_DETAILS: ProjectDetails = {
-  title: '',
-  customerName: '',
-  customerContact: '',
-  propertyAddress: '',
-  propertyType: null,
-  status: 'draft',
-};
-
 interface ProjectDetailsFormProps {
   id: string;
   initial: ProjectDetails;

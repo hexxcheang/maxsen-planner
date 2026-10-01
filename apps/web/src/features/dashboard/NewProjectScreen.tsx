@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { FilePlus2, LayoutTemplate } from 'lucide-react';
 import { Button, buttonClass, PageHeader } from '@/components/ui';
 import { Page } from '@/components/Page';
 import { cn } from '@/lib/cn';
 import { useActions, useTemplates } from '@/lib/data/hooks';
-import { EMPTY_DETAILS, ProjectDetailsForm } from '@/features/project/ProjectDetailsForm';
+import { ProjectDetailsForm } from '@/features/project/ProjectDetailsForm';
+import { EMPTY_DETAILS } from '@/features/project/empty-details';
 
 type Start = { kind: 'blank' } | { kind: 'template'; id: string };
 
@@ -27,7 +28,7 @@ export function NewProjectScreen() {
     start: Start;
     title: string;
     body: string;
-    icon: React.ReactNode;
+    icon: ReactNode;
   }[] = [
     {
       key: 'blank',
@@ -38,7 +39,7 @@ export function NewProjectScreen() {
     },
     ...templates.map((t) => ({
       key: t.id,
-      start: { kind: 'template', id: t.id } as Start,
+      start: { kind: 'template' as const, id: t.id },
       title: t.name,
       body: t.description,
       icon: <LayoutTemplate />,

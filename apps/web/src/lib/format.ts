@@ -29,11 +29,25 @@ const parts = new Intl.DateTimeFormat('en-GB', {
   hourCycle: 'h23',
 });
 
-function sgParts(iso: string) {
+interface SgParts {
+  day: string;
+  monthName: string;
+  year: string;
+  hour: string;
+  minute: string;
+}
+
+function sgParts(iso: string): SgParts {
   const out: Record<string, string> = {};
   for (const p of parts.formatToParts(new Date(iso))) out[p.type] = p.value;
   // Months are spelled out by hand: engines disagree on "Sep" versus "Sept".
-  return { ...out, monthName: MONTHS[Number(out.month) - 1] ?? '' };
+  return {
+    day: out.day ?? '',
+    monthName: MONTHS[Number(out.month) - 1] ?? '',
+    year: out.year ?? '',
+    hour: out.hour ?? '',
+    minute: out.minute ?? '',
+  };
 }
 
 /** "29 Sep 2026, 16:42" */
