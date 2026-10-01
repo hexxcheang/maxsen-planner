@@ -61,37 +61,37 @@ const SPECS: ProductSpec[] = [
     variants: [
       [
         'var_nova_pro_1g_black',
-        '1-gang · Black',
+        '1-gang, Black',
         'Metal-framed premium smart switch with soft-touch keys and Zigbee mesh reliability.',
         IMG('switch-1gang'),
       ],
       [
         'var_nova_pro_2g_black',
-        '2-gang · Black',
+        '2-gang, Black',
         'Two-circuit metal-framed smart switch with soft-touch keys and scene shortcuts.',
         IMG('switch-2gang'),
       ],
       [
         'var_nova_pro_3g_black',
-        '3-gang · Black',
+        '3-gang, Black',
         'Three-circuit metal-framed smart switch with soft-touch keys and scene shortcuts.',
         IMG('switch-3gang'),
       ],
       [
         'var_nova_pro_4g_black',
-        '4-gang · Black',
+        '4-gang, Black',
         'Four-circuit metal-framed smart switch for rooms with many lighting circuits.',
         IMG('switch-4gang'),
       ],
       [
         'var_nova_pro_1g_champagne',
-        '1-gang · Champagne',
+        '1-gang, Champagne',
         'Metal-framed premium smart switch in a warm champagne finish.',
         IMG('switch-1gang'),
       ],
       [
         'var_nova_pro_2g_champagne',
-        '2-gang · Champagne',
+        '2-gang, Champagne',
         'Two-circuit metal-framed smart switch in a warm champagne finish.',
         IMG('switch-2gang'),
       ],

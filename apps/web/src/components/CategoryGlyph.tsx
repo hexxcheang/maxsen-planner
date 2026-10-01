@@ -1,5 +1,6 @@
 import {
   badgePlacement,
+  badgeTextColor,
   iconPath,
   isPathShape,
   resolveCategoryStyle,
@@ -98,7 +99,7 @@ export function CategoryGlyph({
           fontSize={fontSize}
           fontWeight={600}
           fontFamily="var(--font-sans)"
-          fill={filled ? '#FFFFFF' : s.color}
+          fill={filled ? badgeTextColor(s.color) : s.color}
         >
           {s.badge}
         </text>

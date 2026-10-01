@@ -13,7 +13,7 @@ import {
 } from '../geometry/path.ts';
 import type { VariantResolver } from '../totals/compute-totals.ts';
 import type { PlanDocument, Pt, Settings } from '../types.ts';
-import { resolveCategoryStyle } from './styles.ts';
+import { badgeTextColor, resolveCategoryStyle } from './styles.ts';
 
 export interface SceneOptions {
   showLabels: boolean;
@@ -32,6 +32,8 @@ export interface SceneLabel {
 
 export interface SceneBadge {
   text: string;
+  /** Text colour: readable on the fill for filled badges, the category colour for outline ones. */
+  color: string;
   /** Offset from the icon centre in plan units, before rotation. */
   dx: number;
   dy: number;
@@ -186,6 +188,7 @@ export function buildScene(doc: PlanDocument, ctx: SceneContext, opts: SceneOpti
         badgeStyle: style.badgeStyle,
         badge: {
           text: style.badge,
+          color: style.badgeStyle === 'filled' ? badgeTextColor(style.color) : style.color,
           dx: placement.x * style.size,
           dy: placement.y * style.size,
           fontSize: style.size * BADGE_FONT * placement.scale * badgeScale,

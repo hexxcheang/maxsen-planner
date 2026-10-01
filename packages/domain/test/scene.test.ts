@@ -238,3 +238,17 @@ describe('buildScene', () => {
     assert.deepEqual(scene(doc([note('n', 0)]), { showNotes: false }).items, []);
   });
 });
+
+describe('badgeTextColor', () => {
+  it('uses white on dark fills and ink on light fills, at least 4.5:1 for every default', async () => {
+    const { badgeTextColor, contrastRatio } = await import('../src/render/styles.ts');
+    const { CATEGORIES } = await import('../src/categories.ts');
+    assert.equal(badgeTextColor('#2F5FB3'), '#FFFFFF');
+    assert.equal(badgeTextColor('#D28A00'), '#1F1D1A');
+    for (const c of CATEGORIES) {
+      if (c.kind !== 'point') continue;
+      const ratio = contrastRatio(c.defaults.color, badgeTextColor(c.defaults.color));
+      assert.ok(ratio >= 4.5, `${c.id} badge contrast ${ratio.toFixed(2)}`);
+    }
+  });
+});

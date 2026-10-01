@@ -1,0 +1,207 @@
+import type { ReactNode } from 'react';
+import {
+  Circle,
+  Eye,
+  Hand,
+  ListTree,
+  Maximize,
+  Minus,
+  MousePointer2,
+  Plus,
+  Redo2,
+  Spline,
+  TextCursorInput,
+  Undo2,
+  Waypoints,
+} from 'lucide-react';
+import {
+  categoriesForPlan,
+  type CategoryId,
+  type PlanType,
+  type Settings,
+  resolveCategoryStyle,
+} from '@maxsen/domain';
+import { CategoryGlyph } from '@/components/CategoryGlyph';
+import { Checkbox, IconButton, LATER_PHASE, Popover, Tooltip } from '@/components/ui';
+import type { PlannerTool } from './store/plannerStore';
+
+interface ToolbarProps {
+  tool: PlannerTool;
+  onTool: (tool: PlannerTool) => void;
+  zoom: number;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onFit: () => void;
+  legendVisible: boolean;
+  onLegend: (visible: boolean) => void;
+  planType: PlanType;
+  hidden: CategoryId[];
+  onHidden: (hidden: CategoryId[]) => void;
+  settings: Settings;
+  disabled: boolean;
+}
+
+const Sep = () => <span aria-hidden className="mx-1 h-5 w-px bg-rule" />;
+
+export function Toolbar(p: ToolbarProps) {
+  const cats = categoriesForPlan(p.planType);
+  const group = (label: string, children: ReactNode) => (
+    <div role="group" aria-label={label} className="flex items-center gap-0.5">
+      {children}
+    </div>
+  );
+  return (
+    <div
+      role="toolbar"
+      aria-label="Plan tools"
+      className="absolute bottom-4 left-1/2 z-[var(--z-toolbar)] flex -translate-x-1/2 items-center rounded-popover border border-rule bg-surface p-1 shadow-float"
+    >
+      {group(
+        'Tools',
+        <>
+          <IconButton
+            size="sm"
+            label="Select (V)"
+            icon={<MousePointer2 />}
+            active={p.tool === 'select'}
+            onClick={() => p.onTool('select')}
+          />
+          <IconButton
+            size="sm"
+            label="Pan (H or hold Space)"
+            icon={<Hand />}
+            active={p.tool === 'pan'}
+            onClick={() => p.onTool('pan')}
+          />
+          <IconButton
+            size="sm"
+            label={
+              p.planType === 'lighting' ? 'Draw LED strip' : 'Draw LED strip (Lighting Plan only)'
+            }
+            icon={<Spline />}
+            disabledReason={LATER_PHASE}
+          />
+          <IconButton
+            size="sm"
+            label="Draw track"
+            icon={<Waypoints />}
+            disabledReason={LATER_PHASE}
+          />
+          <IconButton
+            size="sm"
+            label="Circle LED loop"
+            icon={<Circle />}
+            disabledReason={LATER_PHASE}
+          />
+          <IconButton
+            size="sm"
+            label="Add text note"
+            icon={<TextCursorInput />}
+            disabledReason={LATER_PHASE}
+          />
+        </>,
+      )}
+      <Sep />
+      {group(
+        'History',
+        <>
+          <IconButton size="sm" label="Undo" icon={<Undo2 />} disabledReason={LATER_PHASE} />
+          <IconButton size="sm" label="Redo" icon={<Redo2 />} disabledReason={LATER_PHASE} />
+        </>,
+      )}
+      <Sep />
+      {group(
+        'Zoom',
+        <>
+          <IconButton
+            size="sm"
+            label="Zoom out"
+            icon={<Minus />}
+            onClick={p.onZoomOut}
+            disabled={p.disabled}
+          />
+          <Tooltip content="Reset zoom">
+            <button
+              type="button"
+              onClick={p.onFit}
+              disabled={p.disabled}
+              aria-label={`Zoom ${Math.round(p.zoom * 100)}%, reset`}
+              className="tnum h-[var(--control-h-compact)] w-12 rounded-control text-meta text-ink-2 hover:bg-desk/70 hover:text-ink"
+            >
+              {Math.round(p.zoom * 100)}%
+            </button>
+          </Tooltip>
+          <IconButton
+            size="sm"
+            label="Zoom in"
+            icon={<Plus />}
+            onClick={p.onZoomIn}
+            disabled={p.disabled}
+          />
+          <IconButton
+            size="sm"
+            label="Fit to screen"
+            icon={<Maximize />}
+            onClick={p.onFit}
+            disabled={p.disabled}
+          />
+        </>,
+      )}
+      <Sep />
+      {group(
+        'View',
+        <>
+          <IconButton
+            size="sm"
+            label={p.legendVisible ? 'Hide legend' : 'Show legend'}
+            icon={<ListTree />}
+            active={p.legendVisible}
+            onClick={() => p.onLegend(!p.legendVisible)}
+            disabled={p.disabled}
+          />
+          <Popover
+            side="top"
+            align="end"
+            label="Category visibility"
+            trigger={
+              <IconButton
+                size="sm"
+                label="Show or hide categories"
+                icon={<Eye />}
+                active={p.hidden.length > 0}
+                disabled={p.disabled}
+              />
+            }
+          >
+            <div className="flex w-64 flex-col gap-2">
+              <p className="text-control font-semibold text-ink">Show on this plan</p>
+              <p className="text-meta text-ink-2">Hiding a category never changes the totals.</p>
+              <div className="flex flex-col gap-1.5 pt-1">
+                {cats.map((c) => (
+                  <Checkbox
+                    key={c.id}
+                    checked={!p.hidden.includes(c.id)}
+                    onCheckedChange={(on) =>
+                      p.onHidden(on ? p.hidden.filter((h) => h !== c.id) : [...p.hidden, c.id])
+                    }
+                    label={
+                      <span className="flex items-center gap-2">
+                        <CategoryGlyph
+                          categoryId={c.id}
+                          style={resolveCategoryStyle(c.id, p.settings)}
+                          size={14}
+                          showBadge={false}
+                        />
+                        {c.name}
+                      </span>
+                    }
+                  />
+                ))}
+              </div>
+            </div>
+          </Popover>
+        </>,
+      )}
+    </div>
+  );
+}
