@@ -1,0 +1,86 @@
+/*
+ * Maxsen Smart Home Planner — design tokens.
+ * Decided in docs/superpowers/plans/2026-10-01-phase-a-foundation-design-system-static-ux.md
+ * ("Design tokens"). The planner chrome is a drafting desk: paper-toned, flat, hairline-ruled,
+ * with a single brushed-brass accent. Category colour is the only vivid colour, and only on plans.
+ */
+:root {
+  /* Surfaces */
+  --paper: #f6f5f2;
+  --surface: #ffffff;
+  --desk: #e9e7e2;
+
+  /* Ink */
+  --ink: #1f1d1a;
+  --ink-2: #5e5a53;
+  --ink-3: #8e8980;
+
+  /* Rules */
+  --rule: #e3e0d9;
+  --rule-2: #cbc6bc;
+
+  /* Accent */
+  --brass: #a8873a;
+  --brass-2: #876b29;
+  --brass-tint: #f4eedf;
+
+  /* Semantic */
+  --warn: #b7791f;
+  --warn-tint: #fbf3e3;
+  --danger: #b4433a;
+  --danger-tint: #fbecea;
+  --ok: #3e7a4f;
+
+  /* Type */
+  --font-sans: 'Instrument Sans Variable', 'Instrument Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --text-caption: 11px;
+  --leading-caption: 16px;
+  --text-meta: 12px;
+  --leading-meta: 16px;
+  --text-control: 13px;
+  --leading-control: 20px;
+  --text-body: 14px;
+  --leading-body: 22px;
+  --text-section: 16px;
+  --leading-section: 24px;
+  --text-title: 20px;
+  --leading-title: 28px;
+  --text-display: 28px;
+  --leading-display: 34px;
+
+  /* Shape and layout */
+  --radius-control: 4px;
+  --radius-popover: 6px;
+  --radius-chip: 2px;
+  --control-h: 32px;
+  --control-h-compact: 28px;
+  --gutter: 32px;
+  --content-max: 1120px;
+  --rail-w: 56px;
+  --topbar-h: 52px;
+  --library-w: 280px;
+  --inspector-w: 320px;
+
+  /* Elevation (floating toolbar, popovers, dialogs only) */
+  --shadow-float: 0 4px 16px rgba(31, 29, 26, 0.1);
+
+  /* Motion */
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --dur: 120ms;
+  --dur-panel: 160ms;
+
+  /* Layers */
+  --z-rail: 20;
+  --z-topbar: 20;
+  --z-panel-overlay: 30;
+  --z-toolbar: 25;
+  --z-popover: 40;
+  --z-dialog: 50;
+  --z-toast: 60;
+}
+
+@media (max-width: 1100px) {
+  :root {
+    --gutter: 20px;
+  }
+}

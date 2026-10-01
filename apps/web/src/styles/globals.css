@@ -1,0 +1,103 @@
+@import 'tailwindcss';
+@import './tokens.css';
+@import '@fontsource-variable/instrument-sans';
+
+@theme {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-desk: var(--desk);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-rule: var(--rule);
+  --color-rule-2: var(--rule-2);
+  --color-brass: var(--brass);
+  --color-brass-2: var(--brass-2);
+  --color-brass-tint: var(--brass-tint);
+  --color-warn: var(--warn);
+  --color-warn-tint: var(--warn-tint);
+  --color-danger: var(--danger);
+  --color-danger-tint: var(--danger-tint);
+  --color-ok: var(--ok);
+
+  --font-sans: var(--font-sans);
+
+  --text-caption: var(--text-caption);
+  --text-caption--line-height: var(--leading-caption);
+  --text-meta: var(--text-meta);
+  --text-meta--line-height: var(--leading-meta);
+  --text-control: var(--text-control);
+  --text-control--line-height: var(--leading-control);
+  --text-body: var(--text-body);
+  --text-body--line-height: var(--leading-body);
+  --text-section: var(--text-section);
+  --text-section--line-height: var(--leading-section);
+  --text-section--font-weight: 600;
+  --text-title: var(--text-title);
+  --text-title--line-height: var(--leading-title);
+  --text-title--font-weight: 600;
+  --text-title--letter-spacing: -0.01em;
+  --text-display: var(--text-display);
+  --text-display--line-height: var(--leading-display);
+  --text-display--font-weight: 600;
+  --text-display--letter-spacing: -0.015em;
+
+  --radius-control: var(--radius-control);
+  --radius-popover: var(--radius-popover);
+  --radius-chip: var(--radius-chip);
+
+  --shadow-float: var(--shadow-float);
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: var(--leading-body);
+    color: var(--ink);
+    background: var(--paper);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    color-scheme: light;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    overscroll-behavior: none;
+  }
+
+  /* Every interactive control shows the same brass focus ring, keyboard only. */
+  :focus-visible {
+    outline: 2px solid var(--brass);
+    outline-offset: 2px;
+    border-radius: var(--radius-control);
+  }
+
+  ::selection {
+    background: var(--brass-tint);
+  }
+
+  /* Quantities, counts and coordinates line up in tables. */
+  .tnum,
+  td.numeric,
+  input[type='number'] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--rule-2) transparent;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
