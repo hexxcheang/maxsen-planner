@@ -199,4 +199,71 @@ describe('magicPlan', () => {
       assert.ok(!r.warnings.some((w) => /entrance/i.test(w)), `${file}: ${r.warnings.join('; ')}`);
     }
   });
+
+  it('merges switches that would share a spot into one plate with more gangs', () => {
+    const l2 = sampleAnalysisFor('file_sample_plan_landed_l2')!;
+    const r = run(ALL, l2);
+    const sw = placed(r, 'smart-switches').map((p) => marker(r, p.elementId));
+    for (const [i, a] of sw.entries()) {
+      for (const b of sw.slice(i + 1))
+        assert.ok(Math.hypot(a.x - b.x, a.y - b.y) > 15, 'no stacked switches');
+    }
+    const master = l2.rooms.find((x) => x.type === 'master-bedroom')!;
+    const balcony = l2.rooms.find((x) => x.type === 'balcony')!;
+    const shared = placed(r, 'smart-switches').find((p) => p.roomId === master.id)!;
+    // Master (downlights + cove) plus the balcony light: three gangs on one plate.
+    assert.equal(marker(r, shared.elementId).variantId, 'smart-switches:3g');
+    assert.equal(
+      placed(r, 'smart-switches').some((p) => p.roomId === balcony.id),
+      false,
+    );
+  });
+
+  it('switches an open-plan living room where you walk in, not from a bedroom door', () => {
+    const condo = sampleAnalysisFor('file_sample_plan_condo')!;
+    const r = run(ALL, condo);
+    const living = condo.rooms.find((x) => x.type === 'living-dining')!;
+    const sw = placed(r, 'smart-switches')
+      .filter((p) => p.roomId === living.id)
+      .map((p) => marker(r, p.elementId));
+    assert.equal(sw.length, 1);
+    // Living spans 100–800 × 220–660; the foyer opening is along its bottom edge near x 500–800.
+    assert.ok(inRect(sw[0]!, 500, 560, 300, 100), `near the foyer (${sw[0]!.x}, ${sw[0]!.y})`);
+  });
+
+  it('switches a balcony without a door from the room next to it', () => {
+    const condo = sampleAnalysisFor('file_sample_plan_condo')!;
+    const r = run(ALL, condo);
+    const balcony = condo.rooms.find((x) => x.type === 'balcony')!;
+    const sw = placed(r, 'smart-switches').filter(
+      (p) => p.roomId === balcony.id || p.roomIds?.includes(balcony.id),
+    );
+    assert.equal(sw.length, 1);
+    assert.ok(!inRect(marker(r, sw[0]!.elementId), 100, 100, 700, 120), 'not out on the balcony');
+  });
+
+  it('still plans switches when no lighting categories are ticked', () => {
+    const r = run(['smart-switches']);
+    assert.ok(placed(r, 'smart-switches').length >= 8);
+    assert.equal(r.lighting.length, 0);
+  });
+
+  it('never puts Wi-Fi nodes on balconies or outdoors', () => {
+    for (const file of [
+      'file_sample_plan_hdb',
+      'file_sample_plan_condo',
+      'file_sample_plan_landed_l1',
+      'file_sample_plan_landed_l2',
+    ]) {
+      const a = sampleAnalysisFor(file)!;
+      const r = run(ALL, a);
+      for (const p of placed(r, 'network-devices')) {
+        const type = a.rooms.find((x) => x.id === p.roomId)?.type;
+        assert.ok(
+          !['balcony', 'outdoor', 'garage', 'bathroom'].includes(type ?? ''),
+          `${file}: ${type}`,
+        );
+      }
+    }
+  });
 });

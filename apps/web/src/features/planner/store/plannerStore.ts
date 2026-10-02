@@ -70,6 +70,8 @@ export interface PlannerState {
   duplicateSelection: (offset: number) => string | null;
   reorder: (mode: 'front' | 'forward' | 'backward' | 'back') => void;
   setView: (patch: Partial<PlanViewState>) => void;
+  /** Replaces the whole document as one undoable step (Magic Plan). */
+  applyDocument: (doc: PlanDocument) => void;
   undo: () => void;
   redo: () => void;
 
@@ -274,6 +276,14 @@ export function createPlannerStore() {
           result.forEach((e, i) => (e.z = i));
         });
       },
+
+      applyDocument: (doc) =>
+        set((s) => ({
+          document: { ...doc, view: s.document.view },
+          past: [...s.past, s.document].slice(-HISTORY_LIMIT),
+          future: [],
+          selection: [],
+        })),
 
       setView: (patch) =>
         set((s) => ({ document: { ...s.document, view: { ...s.document.view, ...patch } } })),

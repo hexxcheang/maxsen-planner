@@ -1,9 +1,17 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { useStore } from 'zustand';
-import { BookOpen, ChevronLeft, ChevronRight, Layers, PanelRight, Sigma } from 'lucide-react';
+import {
+  BookOpen,
+  ChevronLeft,
+  ChevronRight,
+  Layers,
+  PanelRight,
+  Sigma,
+  Sparkles,
+} from 'lucide-react';
 import { buildScene, categoryById, type PlanType } from '@maxsen/domain';
-import { buttonClass, IconButton } from '@/components/ui';
+import { Button, buttonClass, IconButton, useToast } from '@/components/ui';
 import { cn } from '@/lib/cn';
 import { fileUrl } from '@/lib/files';
 import { useElementSize, useMediaQuery } from '@/lib/useElementSize';
@@ -28,6 +36,8 @@ import { createPlannerStore, type Armed } from './store/plannerStore';
 import { PlannerContext } from './planner-context';
 import { VARIANT_DRAG_TYPE } from './library/VariantTile';
 import { LevelSwitcher } from './LevelSwitcher';
+import { MagicPlanDialog, type MagicPlanOutcome } from './magic/MagicPlanDialog';
+import { mergeMagic } from './magic/apply';
 import { SaveState } from './SaveState';
 import { Toolbar } from './Toolbar';
 
@@ -113,6 +123,12 @@ export function PlannerScreen() {
       : (project.lastOpened?.planType ?? 'smart-home');
   const level = levels.find((l) => l.id === levelId);
   const plan = plans.find((p) => p.levelId === levelId && p.type === planType);
+  const levelPlans = {
+    'smart-home': plans.find((p) => p.levelId === levelId && p.type === 'smart-home'),
+    lighting: plans.find((p) => p.levelId === levelId && p.type === 'lighting'),
+  };
+  const [magicOpen, setMagicOpen] = useState(false);
+  const { toast } = useToast();
 
   const [store] = useState(createPlannerStore);
   const document = useStore(store, (s) => s.document);
@@ -149,6 +165,36 @@ export function PlannerScreen() {
   );
 
   const recordUse = (variantId: string) => actions.recordVariantUse(project.id, variantId);
+
+  /** Puts Magic Plan's devices on the level's Smart Home and Lighting plans. */
+  const applyMagic = ({ result, categories, replace }: MagicPlanOutcome) => {
+    const variants = new Set<string>();
+    for (const el of [...result.smartHome, ...result.lighting])
+      if (el.kind !== 'note') variants.add(el.variantId);
+    for (const v of variants) recordUse(v);
+    const counts: string[] = [];
+    for (const type of ['smart-home', 'lighting'] as const) {
+      const target = levelPlans[type];
+      const added = type === 'smart-home' ? result.smartHome : result.lighting;
+      if (!target) continue;
+      const current = target.id === plan?.id;
+      const merged = mergeMagic(current ? store.getState().document : target.document, added, {
+        replace,
+        categories,
+        resolve,
+      });
+      if (current) store.getState().applyDocument(merged);
+      else actions.setPlanDocument(target.id, merged);
+      if (added.length)
+        counts.push(
+          `${added.length} on the ${type === 'smart-home' ? 'Smart Home' : 'Lighting'} Plan`,
+        );
+    }
+    toast({
+      title: `Magic Plan placed ${result.placements.length} items`,
+      body: `${counts.join(' and ')}. Undo (Ctrl+Z) takes them off the plan you’re viewing.`,
+    });
+  };
   const productById = useMemo(
     () => new Map(catalogue.products.map((p) => [p.id, p])),
     [catalogue.products],
@@ -416,6 +462,26 @@ export function PlannerScreen() {
               levelId={levelId}
               planType={planType}
               onChange={switchTo}
+            />
+          )}
+          {level && (levelPlans['smart-home'] || levelPlans.lighting) && (
+            <div className="absolute top-3 right-3 z-[var(--z-toolbar)] rounded-popover shadow-float">
+              <Button
+                variant="primary"
+                icon={<Sparkles className="size-4" />}
+                onClick={() => setMagicOpen(true)}
+              >
+                Magic Plan
+              </Button>
+            </div>
+          )}
+          {level && (
+            <MagicPlanDialog
+              open={magicOpen}
+              onOpenChange={setMagicOpen}
+              level={level}
+              plans={levelPlans}
+              onApply={applyMagic}
             />
           )}
           <Toolbar

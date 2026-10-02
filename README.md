@@ -48,6 +48,21 @@ states; `/dev/styleguide` (dev server only) shows every UI primitive and categor
 7. **Admin:** catalogue editing with product images, branding with logo upload, icon styles, favourites,
    and _Your data_ (restore samples or erase everything).
 
+**Magic Plan:** in the Plan tab, _Magic Plan_ reads the level's drawing (rooms, doors and which way they
+swing, windows, scale) and places devices by fixed planning rules: switches beside the handle side of each
+door (bathrooms and balconies switched from outside, two-way switches where walkways meet), downlight grids,
+surface lights in service spaces, LED coves and kitchen strips, a dining pendant, track lights only in long
+narrow spaces, control panels at the entrance and master bedroom, curtains at living and bedroom windows,
+router, gateway and mesh nodes. Tick or untick categories before it runs; review the counts; one Undo
+removes the result. The sample drawings work straight away. For your own uploaded drawings it uses Claude
+(vision) on the app's server, which needs an Anthropic API key:
+
+1. Create a key at https://console.anthropic.com/settings/keys (this is billed to your Anthropic account;
+   reading one drawing usually costs well under US$1).
+2. In the `maxsen-planner` folder, copy `.env.example` to a new file named `.env` and paste the key after
+   `ANTHROPIC_API_KEY=`. The `.env` file is never uploaded to GitHub.
+3. Restart the app (Control + C, then `pnpm dev`). The Terminal shows `Magic Plan: ready`.
+
 **Where data lives:** this browser only (localStorage for projects and settings, IndexedDB for uploaded
 files). Another device or browser starts from the sample data. Shared storage, the API and real passcode
 checks are Phase B.

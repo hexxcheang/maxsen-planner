@@ -62,6 +62,8 @@ export interface Placement {
   roomId: string | null;
   /** True when the element belongs on the Lighting Plan. */
   lighting: boolean;
+  /** For switch plates that control more than one room: every room switched. */
+  roomIds?: string[];
 }
 
 export interface MagicPlanResult {
@@ -166,10 +168,21 @@ export function magicPlan({ analysis, sheet, categories, pick }: MagicPlanInput)
   const smartHome: PlanElement[] = [];
   const lighting: PlanElement[] = [];
   const placements: Placement[] = [];
-  const emit = (el: PlanElement, categoryId: CategoryId, roomId: string | null) => {
+  const emit = (
+    el: PlanElement,
+    categoryId: CategoryId,
+    roomId: string | null,
+    roomIds?: string[],
+  ) => {
     const isLighting = categoryById(categoryId).planType === 'lighting';
     (isLighting ? lighting : smartHome).push(el);
-    placements.push({ elementId: el.id, categoryId, roomId, lighting: isLighting });
+    placements.push({
+      elementId: el.id,
+      categoryId,
+      roomId,
+      lighting: isLighting,
+      ...(roomIds && roomIds.length > 1 ? { roomIds } : {}),
+    });
   };
   const missing = new Set<CategoryId>();
   const markerAt = (
@@ -231,10 +244,11 @@ export function magicPlan({ analysis, sheet, categories, pick }: MagicPlanInput)
   const inside = (d: Door) =>
     d.sides.map((s) => (s ? byId.get(s) : undefined)).find((r) => r && r.type !== 'outdoor');
   const entranceRoom = entrance ? inside(entrance) : undefined;
-  if (!entrance)
+  if (!entrance) {
     warnings.push(
-      'No main entrance was found, so entrance devices were placed in the main living space.',
+      'No front door on this drawing (normal for upper floors), so the control panel went in the main living space.',
     );
+  }
 
   for (const room of rooms) {
     if (room.type === 'outdoor') continue;
@@ -412,44 +426,26 @@ export function magicPlan({ analysis, sheet, categories, pick }: MagicPlanInput)
     !r || WALKWAYS.includes(r.type) || LIVING.includes(r.type) || r.type === 'outdoor';
   const gangsFor = (room: Room) => Math.max(1, Math.min(4, circuits.get(room.id)?.size ?? 1));
 
+  // Switch plates are collected first so two rooms switched from the same spot share one plate
+  // (e.g. a balcony light on the master bedroom's switch) instead of stacking.
+  const plates: { at: Pt; gangs: number; roomIds: string[] }[] = [];
+  const addPlate = (at: Pt, gangs: number, roomId: string) => {
+    const near = plates.find((p) => dist(p.at, at) < m(0.3));
+    if (near) {
+      near.gangs = Math.min(4, near.gangs + gangs);
+      near.roomIds.push(roomId);
+    } else plates.push({ at, gangs, roomIds: [roomId] });
+  };
+
   const switchAnchors = new Map<string, { door: Door; side: Room }>();
   const placeSwitch = (room: Room, door: Door, side: Room, gangs: number) => {
     const at = besideLatch(door, side);
     if (!at) return false;
-    if (want.has('smart-switches')) markerAt('smart-switches', at, room.id, { gangs });
+    addPlate(at, gangs, room.id);
     if (!switchAnchors.has(room.id)) switchAnchors.set(room.id, { door, side });
     return true;
   };
 
-  for (const room of rooms) {
-    if (room.type === 'outdoor') continue;
-    const ds = doorsOf(room);
-    if (ds.length === 0) continue;
-
-    if (SWITCHED_FROM_OUTSIDE.includes(room.type)) {
-      // Switch on the wall outside the door, in the room you approach from.
-      const door = ds[0]!;
-      const side = other(door, room);
-      if (side && side.type !== 'outdoor') placeSwitch(room, door, side, gangsFor(room));
-      continue;
-    }
-
-    if (WALKWAYS.includes(room.type)) {
-      // Two-way switching where the walkway meets other walkways, living spaces or the entrance.
-      const ends = ds.filter((d) => walkable(other(d, room)));
-      const chosen = ends.length ? ends : [ds[0]!];
-      for (const d of chosen) placeSwitch(room, d, room, 1);
-      continue;
-    }
-
-    // Primary door: the main entrance, else the door from a walkway or living space, else any.
-    const primary =
-      ds.find((d) => d.isMainEntrance) ?? ds.find((d) => walkable(other(d, room))) ?? ds[0]!;
-    placeSwitch(room, primary, room, gangsFor(room));
-  }
-
-  // Open-plan rooms with no door of their own (e.g. an open kitchen): switch on the wall nearest
-  // the entrance or the home's centre.
   const homeCentre = (() => {
     const indoor = rooms.filter((r) => r.type !== 'outdoor');
     return {
@@ -457,9 +453,13 @@ export function magicPlan({ analysis, sheet, categories, pick }: MagicPlanInput)
       y: indoor.reduce((s, r) => s + centre(r.rect).y, 0) / indoor.length,
     };
   })();
-  for (const room of rooms) {
-    if (room.type === 'outdoor' || switchAnchors.has(room.id) || doorsOf(room).length > 0) continue;
-    if (!circuits.has(room.id) || !want.has('smart-switches')) continue;
+
+  /**
+   * For rooms without a usable door (open-plan kitchens and living rooms, doorless balconies): the
+   * wall point nearest the entrance or the home's centre, stepped into the next room for spaces
+   * that are switched from outside.
+   */
+  const openPlanSwitch = (room: Room) => {
     const target = entrance?.hingeU ?? homeCentre;
     const r = room.rect;
     const inset = m(0.15);
@@ -467,7 +467,68 @@ export function magicPlan({ analysis, sheet, categories, pick }: MagicPlanInput)
       x: Math.min(r.x + r.w - inset, Math.max(r.x + inset, target.x)),
       y: Math.min(r.y + r.h - inset, Math.max(r.y + inset, target.y)),
     };
-    if (owner(p)?.id === room.id) markerAt('smart-switches', p, room.id, { gangs: gangsFor(room) });
+    if (SWITCHED_FROM_OUTSIDE.includes(room.type)) {
+      const step = add(p, unit(p, target), m(0.3));
+      const next = owner(step);
+      if (next && next.id !== room.id && next.type !== 'outdoor')
+        addPlate(step, gangsFor(room), room.id);
+    } else if (owner(p)?.id === room.id) addPlate(p, gangsFor(room), room.id);
+  };
+
+  // When lights are being planned, rooms that got none need no switch; otherwise switch every room.
+  const planningLights = categories.some((c) => categoryById(c).planType === 'lighting');
+  for (const room of rooms) {
+    if (room.type === 'outdoor' || (planningLights && !circuits.has(room.id))) continue;
+    const ds = doorsOf(room);
+
+    if (SWITCHED_FROM_OUTSIDE.includes(room.type)) {
+      // Switch on the wall outside the door, in the room you approach from.
+      const door = ds[0];
+      const side = door && other(door, room);
+      if (door && side && side.type !== 'outdoor') placeSwitch(room, door, side, gangsFor(room));
+      else openPlanSwitch(room);
+      continue;
+    }
+
+    if (ds.length && WALKWAYS.includes(room.type)) {
+      // Two-way switching where the walkway meets other walkways, living spaces or the entrance.
+      const ends = ds.filter((d) => walkable(other(d, room)));
+      for (const d of ends.length ? ends : [ds[0]!]) placeSwitch(room, d, room, 1);
+      continue;
+    }
+
+    // The door you normally walk in through: the main entrance, else one from a walkway or living
+    // space. A living room reached through an opening is switched at that opening, not from a
+    // bedroom door.
+    const walkIn = ds.find((d) => d.isMainEntrance) ?? ds.find((d) => walkable(other(d, room)));
+    if (walkIn) placeSwitch(room, walkIn, room, gangsFor(room));
+    else if (ds.length && !LIVING.includes(room.type))
+      placeSwitch(room, ds[0]!, room, gangsFor(room));
+    else openPlanSwitch(room);
+  }
+
+  if (want.has('smart-switches')) {
+    for (const plate of plates) {
+      const variantId = pick('smart-switches', { gangs: plate.gangs });
+      if (!variantId) {
+        missing.add('smart-switches');
+        break;
+      }
+      const at = clamp(plate.at);
+      const el: PlanElement = {
+        kind: 'marker',
+        id: newId('el'),
+        z: 0,
+        variantId,
+        ...at,
+        rotation: 0,
+        label: '',
+      };
+      // Credit the plate to the room it sits in when that is one of the rooms it switches.
+      const home = owner(plate.at)?.id;
+      const roomId = plate.roomIds.find((id) => id === home) ?? plate.roomIds[0]!;
+      emit(el, 'smart-switches', roomId, plate.roomIds);
+    }
   }
 
   // --- entrance, panels, controllers -----------------------------------------------------------
@@ -545,7 +606,9 @@ export function magicPlan({ analysis, sheet, categories, pick }: MagicPlanInput)
       const nodes = Math.max(0, Math.ceil(indoorArea / 70) - 1);
       const aps: Pt[] = [at];
       const candidates = rooms.filter(
-        (x) => !['outdoor', 'bathroom', 'store', 'utility'].includes(x.type) && x.id !== hub.id,
+        (x) =>
+          !['outdoor', 'balcony', 'garage', 'bathroom', 'store', 'utility'].includes(x.type) &&
+          x.id !== hub.id,
       );
       for (let i = 0; i < nodes && candidates.length; i++) {
         candidates.sort(

@@ -56,6 +56,8 @@ test.describe('MVP editing', () => {
     await expect.poll(() => totalFor(page, 'Control Panels')).toBe('2');
 
     await page.reload();
+    // Wait for the planner to render before looking for the (collapsed on iPad) details panel.
+    await expect(page.getByTestId('plan-canvas')).toHaveAttribute('data-scale', '1.00');
     await openDetails(page);
     await expect.poll(() => totalFor(page, 'Control Panels')).toBe('2');
   });
