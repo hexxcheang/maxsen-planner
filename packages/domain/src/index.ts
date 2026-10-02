@@ -19,3 +19,5 @@ export * as sample from './sample/index.ts';
 export * from './magic/analysis.ts';
 export * from './magic/magic-plan.ts';
 export * from './magic/variant-picker.ts';
+export * from './magic/room-types.ts';
+export * from './magic/vision/index.ts';

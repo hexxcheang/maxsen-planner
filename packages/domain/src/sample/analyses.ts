@@ -4,34 +4,18 @@
  */
 import type { FloorAnalysis, RoomType } from '../magic/analysis.ts';
 import { SAMPLE_DRAWINGS, type Drawing } from './drawings.ts';
+import { roomTypeFromName } from '../magic/room-types.ts';
 
 const W = 1400;
 const H = 1000;
 
-const TYPE_BY_LABEL: [RegExp, RoomType][] = [
-  [/^living \/ dining/i, 'living-dining'],
-  [/^living/i, 'living'],
-  [/^dining/i, 'dining'],
-  [/family|lounge/i, 'family'],
-  [/kitchen/i, 'kitchen'],
-  [/^master/i, 'master-bedroom'],
-  [/bedroom|guest room/i, 'bedroom'],
-  [/bath|powder/i, 'bathroom'],
-  [/study/i, 'study'],
-  [/foyer/i, 'foyer'],
-  [/stair/i, 'staircase'],
-  [/balcony/i, 'balcony'],
-  [/terrace|garden|porch/i, 'outdoor'],
-  [/service|yard/i, 'utility'],
-  [/shelter|store|walk-in/i, 'store'],
-];
-
 function roomType(label: string): RoomType {
   if (label.trim() === '') return 'corridor';
-  return TYPE_BY_LABEL.find(([re]) => re.test(label))?.[1] ?? 'other';
+  return roomTypeFromName(label) ?? 'other';
 }
 
-function analyse(d: Drawing): FloorAnalysis {
+/** The exact analysis of a sample drawing, from the geometry it is drawn with. */
+export function analyseSampleDrawing(d: Drawing): FloorAnalysis {
   const rooms = d.rooms.map((r, i) => ({
     id: `r${i + 1}`,
     name: r.label.trim() === '' ? 'Corridor' : r.label,
@@ -106,7 +90,9 @@ const FILE_IDS: Record<string, string> = {
   'floorplan-landed-attic.svg': 'file_sample_plan_landed_attic',
 };
 
-const BY_FILE = new Map(SAMPLE_DRAWINGS.map((d) => [FILE_IDS[d.file] ?? d.file, analyse(d)]));
+const BY_FILE = new Map(
+  SAMPLE_DRAWINGS.map((d) => [FILE_IDS[d.file] ?? d.file, analyseSampleDrawing(d)]),
+);
 
 /** The built-in analysis of a sample background drawing, if it is one. */
 export function sampleAnalysisFor(fileId: string): FloorAnalysis | undefined {
