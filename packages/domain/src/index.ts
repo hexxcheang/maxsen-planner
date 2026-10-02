@@ -16,3 +16,6 @@ export * from './exports/filenames.ts';
 export * from './render/styles.ts';
 export * from './render/scene.ts';
 export * as sample from './sample/index.ts';
+export * from './magic/analysis.ts';
+export * from './magic/magic-plan.ts';
+export * from './magic/variant-picker.ts';
