@@ -375,17 +375,3 @@ describe('ceiling fans', () => {
     assert.equal(pickFan('ceiling-fans', { fanInches: 52 }), 'var_breeze_fan_52');
   });
 });
-
-describe('cleanLabel', () => {
-  it('repairs common misreadings of room labels', async () => {
-    const { cleanLabel } = await import('../src/magic/room-types.ts');
-    assert.deepEqual(cleanLabel('aster Bedroom'), { text: 'Master Bedroom', changed: true });
-    assert.equal(cleanLabel('ath 2').text, 'Bath 2');
-    assert.equal(cleanLabel('Bedroo').text, 'Bedroom');
-    assert.equal(cleanLabel('“walkin').text, 'Walk-in');
-    assert.equal(cleanLabel('Car Pprch').text, 'Car Porch');
-    assert.deepEqual(cleanLabel('Kitchen'), { text: 'Kitchen', changed: false });
-    assert.equal(cleanLabel('A-101').text, 'A-101');
-    assert.equal(cleanLabel('service').text, 'Service');
-  });
-});

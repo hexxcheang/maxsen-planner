@@ -21,4 +21,3 @@ export * from './magic/magic-plan.ts';
 export * from './magic/variant-picker.ts';
 export * from './magic/room-types.ts';
 export * from './magic/vision/index.ts';
-export * from './magic/edit-analysis.ts';

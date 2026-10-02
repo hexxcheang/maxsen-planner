@@ -77,13 +77,13 @@ Tick or untick categories before it runs; review the counts; one Undo
 removes the result. The sample drawings work straight away.
 
 Uploaded drawings are read **on this computer** by default; nothing is sent anywhere. Magic Plan finds the
-thick wall lines, closes the door and window gaps to get the rooms, tells doors from windows by the swing
-arc or glazing drawn in each gap, and works out the scale from the door widths. Room names come from the
-PDF's own text, or for scans and photos from on-device text recognition (served by the app itself, no
-internet needed). If anything looks unsure (a room with no name, a name that was hard to read, no front
-door found) it shows what it read over the drawing so you can rename, retype or remove rooms and flip or
-remove doors before it plans. It reads clean architectural plans with solid walls best; hand sketches and
-very busy drawings may need more checking.
+thick wall lines, closes the door and window gaps to get the rooms, finds the openings between rooms and
+the windows on outside walls, and works out the scale from the door widths. It doesn't try to tell which
+room is which: each room is planned by its size and shape. Long narrow rooms are planned as corridors
+and tiny ones as stores. Small rooms are planned like bathrooms and switched from outside. The largest
+room is planned as the living area, with a cove and a fan, and the rest like bedrooms, with a fan,
+downlights and curtains. Move or delete anything that doesn't suit a room once it's placed. Magic Plan
+reads clean architectural plans with solid walls best.
 
 **Optional: reading with Claude.** For unusual or hand-drawn plans you can let Claude (vision) read the
 drawing instead, on the app's server. This needs an Anthropic API key; once set up, choose _With Claude_ in

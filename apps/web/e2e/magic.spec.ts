@@ -45,7 +45,7 @@ test.describe('Magic Plan', () => {
     });
   });
 
-  test('reads an uploaded drawing on this computer, asks to check, then plans', async ({
+  test('reads an uploaded drawing on this computer and plans it by room size', async ({
     page,
   }, testInfo) => {
     test.setTimeout(120_000);
@@ -53,7 +53,7 @@ test.describe('Magic Plan', () => {
       route.fulfill({ json: { configured: false } }),
     );
     // A real drawing as a customer would send it: the sample 4-room plan as a PNG scan.
-    await uploadAndOpen(page, drawHdbPng);
+    await uploadAndOpen(page, drawHdbPng, { lighting: true });
 
     await page.getByRole('button', { name: 'Magic Plan' }).click();
     const dialog = page.getByRole('dialog', { name: 'Magic Plan' });
@@ -61,31 +61,21 @@ test.describe('Magic Plan', () => {
     await expect(dialog.getByRole('radio', { name: 'With Claude' })).toBeDisabled();
     await dialog.getByRole('button', { name: 'Create Magic Plan' }).click();
 
-    // The corridor has no label on the drawing, so Magic Plan stops to have the rooms checked.
-    await expect(dialog.getByText(/had no name on the drawing/)).toBeVisible({ timeout: 60_000 });
-    const rooms = dialog.getByRole('list', { name: 'Rooms' });
-    await expect(rooms.getByRole('listitem')).toHaveCount(10);
-    const names = await rooms
-      .getByRole('textbox')
-      .evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value));
-    expect(names).toEqual(
-      expect.arrayContaining(['Kitchen', 'Master Bedroom', 'Corridor', 'Bedroom 2', 'Bedroom 3']),
-    );
-    await page.screenshot({
-      path: `test-results/screens/magic-check-${testInfo.project.name}.png`,
-    });
-
-    await rooms.getByRole('textbox', { name: 'Room 1 name' }).fill('Service Yard');
-    await expect(dialog.getByRole('radio', { name: /Doors/ })).toHaveCount(0);
-
-    await dialog.getByRole('button', { name: 'Plan these rooms' }).click();
-    await expect(dialog.getByText(/Found 10 rooms/)).toBeVisible();
-    await expect(dialog.getByText(/Service Yard/)).toBeVisible();
+    // Straight to the summary: rooms aren't named or classified, so there is nothing to check.
+    await expect(dialog.getByText(/Found 10 rooms/)).toBeVisible({ timeout: 60_000 });
+    await expect(dialog.getByText(/planned by its size and shape/)).toBeVisible();
+    await expect(dialog.getByRole('list', { name: 'Rooms' })).toHaveCount(0);
+    await expect(dialog.getByRole('cell', { name: /Ceiling Fans/ })).toBeVisible();
     await dialog.getByRole('button', { name: /Place \d+ items/ }).click();
     await expect(page.getByText(/Magic Plan placed \d+ items/)).toBeVisible();
     await page.waitForTimeout(400);
     await page.screenshot({
       path: `test-results/screens/magic-local-${testInfo.project.name}.png`,
+    });
+    await page.getByRole('radio', { name: 'Lighting' }).click();
+    await page.waitForTimeout(400);
+    await page.screenshot({
+      path: `test-results/screens/magic-local-lighting-${testInfo.project.name}.png`,
     });
   });
 
@@ -189,15 +179,28 @@ async function createProjectWithUpload(page: Page, drawPng: () => Promise<string
   });
 }
 
-/** Creates a blank project, uploads a PNG drawn in the page, and opens it as the Smart Home Plan. */
-async function uploadAndOpen(page: Page, drawPng: () => Promise<string>) {
+/**
+ * Creates a blank project, uploads a PNG drawn in the page, uses it for the Smart Home Plan (and
+ * the Lighting Plan when asked) and opens the Smart Home Plan.
+ */
+async function uploadAndOpen(
+  page: Page,
+  drawPng: () => Promise<string>,
+  { lighting = false }: { lighting?: boolean } = {},
+) {
   await createProjectWithUpload(page, drawPng);
-  const card = page.getByRole('region', { name: 'Smart Home Plan' });
-  await card.getByRole('button', { name: 'Choose a drawing' }).click();
+  for (const name of lighting ? ['Lighting Plan', 'Smart Home Plan'] : ['Smart Home Plan']) {
+    const card = page.getByRole('region', { name });
+    await card.getByRole('button', { name: 'Choose a drawing' }).click();
+    await page
+      .getByRole('dialog')
+      .getByRole('radio', { name: /plan.png, page 1/ })
+      .click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Use this drawing' }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+  }
   await page
-    .getByRole('dialog')
-    .getByRole('radio', { name: /plan.png, page 1/ })
+    .getByRole('region', { name: 'Smart Home Plan' })
+    .getByRole('link', { name: 'Open in planner' })
     .click();
-  await page.getByRole('dialog').getByRole('button', { name: 'Use this drawing' }).click();
-  await card.getByRole('link', { name: 'Open in planner' }).click();
 }

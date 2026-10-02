@@ -1,28 +1,11 @@
 /**
  * Reads a floor-plan image on this computer, without a vision model: finds the walls, closes the
- * door and window gaps to get the rooms, tells doors from windows by the swing arc or glazing drawn
- * in each gap, and names rooms from the drawing's text labels. Anything it isn't sure of is listed
- * in `issues` so the app can ask the user to check before planning.
+ * door and window gaps to get the rooms, and finds the openings between rooms and the windows on
+ * outside walls. Rooms are not named or classified; Magic Plan plans each by its size and shape.
  */
-import type {
-  AnalysisDoor,
-  AnalysisRoom,
-  AnalysisWindow,
-  FloorAnalysis,
-  RoomType,
-} from '../analysis.ts';
-import { cleanLabel, roomTypeFromName } from '../room-types.ts';
-import { components, type Component, type GrayImage } from './image.ts';
+import type { AnalysisDoor, AnalysisRoom, AnalysisWindow, FloorAnalysis } from '../analysis.ts';
+import { components, type GrayImage } from './image.ts';
 import { closeGaps, findGaps, findWalls, MAX_OPEN_GAP, type Gap, type Walls } from './walls.ts';
-
-/** A piece of text on the drawing, positioned by its centre as fractions of the image size. */
-export interface DrawingLabel {
-  text: string;
-  x: number;
-  y: number;
-  /** OCR confidence 0–100; absent for text taken from the file itself. */
-  confidence?: number;
-}
 
 export interface FloorReading {
   analysis: FloorAnalysis;
@@ -42,10 +25,7 @@ interface Swing {
   side: -1 | 1;
 }
 
-export function readFloorPlan(
-  img: GrayImage,
-  opts: { labels?: DrawingLabel[] } = {},
-): FloorReading {
+export function readFloorPlan(img: GrayImage): FloorReading {
   const walls = findWalls(img);
   const { width: w, height: h, thickness: t } = walls;
 
@@ -84,12 +64,6 @@ export function readFloorPlan(
   }
   kept.sort((a, b) => a.y0 - b.y0 || a.x0 - b.x0);
   const roomIdOf = new Map<number, string>(kept.map((c, i) => [c.label, `r${i + 1}`]));
-  const roomAt = (x: number, y: number): string | null => {
-    const xi = Math.round(x);
-    const yi = Math.round(y);
-    if (xi < 0 || yi < 0 || xi >= w || yi >= h) return null;
-    return roomIdOf.get(regionOf[yi * w + xi]!) ?? null;
-  };
   /** The room (or null for outside) found walking away from a gap's centre on one side. */
   const sideRoom = (g: Gap, side: -1 | 1): string | null => {
     const mid = (g.lo + g.hi) / 2;
@@ -106,7 +80,7 @@ export function readFloorPlan(
 
   const rooms: AnalysisRoom[] = kept.map((c, i) => ({
     id: `r${i + 1}`,
-    name: '',
+    name: `Room ${i + 1}`,
     type: 'other',
     x: c.x0 / w,
     y: c.y0 / h,
@@ -123,25 +97,6 @@ export function readFloorPlan(
     .sort((p, q) => p - q);
   const median = doorSizes.length ? doorSizes[Math.floor(doorSizes.length / 2)]! : null;
   const imageWidthMetres = median ? Math.round((w / (median / DOOR_METRES)) * 10) / 10 : null;
-  const pxPerMetre = median ? median / DOOR_METRES : null;
-
-  const { unnamed, unsure } = nameRooms(rooms, opts.labels ?? [], (fx, fy) => {
-    // A label sitting on a wall or fitting belongs to the nearest room around it.
-    for (let r = 0; r <= 3 * t; r += Math.max(1, Math.floor(t / 2))) {
-      for (const [dx, dy] of [
-        [0, 0],
-        [r, 0],
-        [-r, 0],
-        [0, r],
-        [0, -r],
-      ] as const) {
-        const id = roomAt(fx * w + dx, fy * h + dy);
-        if (id) return id;
-      }
-    }
-    return null;
-  });
-  guessTypes(rooms, unnamed, kept, pxPerMetre);
 
   const pt = (g: Gap, along: number) =>
     g.axis === 'h'
@@ -169,11 +124,8 @@ export function readFloorPlan(
       });
     } else {
       // Glazing only counts on an outside wall; elsewhere it's a stray line through an opening.
-      const typeOf = (id: string | null) => rooms.find((r) => r.id === id)?.type;
-      const open = (id: string | null) =>
-        id === null || ['outdoor', 'balcony', 'garage'].includes(typeOf(id) ?? '');
-      if (!open(a) && !open(b)) continue;
-      const inside = [a, b].find((id) => id && typeOf(id) !== 'outdoor') ?? a ?? b;
+      if (a !== null && b !== null) continue;
+      const inside = a ?? b;
       windows.push({
         id: `w${windows.length + 1}`,
         start: pt(g, g.lo),
@@ -183,23 +135,12 @@ export function readFloorPlan(
     }
   }
 
-  const entrance = pickEntrance(doors, rooms);
+  const entrance = pickEntrance(doors, kept);
   if (entrance) entrance.isMainEntrance = true;
 
   const issues: string[] = [];
   if (rooms.length < 2)
     issues.push('Only found 1 room. Check that the drawing shows the walls clearly.');
-  if (unnamed.size > 0) {
-    issues.push(
-      unnamed.size === 1
-        ? '1 room had no name on the drawing, so it was named by its size and shape.'
-        : `${unnamed.size} rooms had no name on the drawing, so they were named by their size and shape.`,
-    );
-  }
-  if (unsure.size > 0) {
-    const names = rooms.filter((r) => unsure.has(r.id)).map((r) => r.name);
-    issues.push(`Some room names were hard to read (${names.join(', ')}).`);
-  }
   if (imageWidthMetres === null)
     issues.push('Couldn’t work out the drawing’s scale, so sizes are estimated.');
 
@@ -207,6 +148,18 @@ export function readFloorPlan(
 }
 
 const length = (g: Gap) => g.hi - g.lo + 1;
+
+/** The front door: of the openings to the outside, the one into the largest room. */
+function pickEntrance(
+  doors: AnalysisDoor[],
+  regions: { area: number }[],
+): AnalysisDoor | undefined {
+  const area = (d: AnalysisDoor) => {
+    const id = d.sides.find((x) => x !== null);
+    return id ? (regions[Number(id.slice(1)) - 1]?.area ?? 0) : 0;
+  };
+  return doors.filter((d) => d.sides.includes(null)).sort((a, b) => area(b) - area(a))[0];
+}
 
 /** A gap with a door swing drawn in it, glazing (a window), or neither (a plain opening). */
 interface Classified {
@@ -262,135 +215,4 @@ function doorSwing(walls: Walls, g: Gap): Swing | null {
     }
   }
   return best && best.score >= 1.2 ? best.swing : null;
-}
-
-/** Names rooms from the labels inside them. Returns the ids of rooms no label could name. */
-function nameRooms(
-  rooms: AnalysisRoom[],
-  labels: DrawingLabel[],
-  locate: (x: number, y: number) => string | null,
-): { unnamed: Set<string>; unsure: Set<string> } {
-  const byRoom = new Map<string, (DrawingLabel & { guessed: boolean })[]>();
-  for (const l of labels) {
-    let text = l.text.replace(/\s+/g, ' ').trim();
-    let guessed = false;
-    if (l.confidence !== undefined) {
-      // Read by OCR: repair near-misses and remember that the name is a best guess.
-      const cleaned = cleanLabel(text);
-      text = cleaned.text;
-      guessed = cleaned.changed || l.confidence < 85;
-    }
-    text = text.replace(/[\s/&+-]+$/, '').trim();
-    if (!/[a-z].*[a-z]/i.test(text) || text.length > 32) continue;
-    const id = locate(l.x, l.y);
-    if (!id) continue;
-    byRoom.set(id, [...(byRoom.get(id) ?? []), { ...l, text, guessed }]);
-  }
-  const unnamed = new Set<string>();
-  const unsure = new Set<string>();
-  for (const room of rooms) {
-    const found = (byRoom.get(room.id) ?? []).sort((a, b) => a.y - b.y || a.x - b.x);
-    const typed = found.filter((l) => roomTypeFromName(l.text));
-    if (typed.length === 0) {
-      unnamed.add(room.id);
-      const plain = found
-        .filter((l) => l.text.length <= 24)
-        .sort((a, b) => a.text.length - b.text.length)[0];
-      if (plain) room.name = plain.text;
-      continue;
-    }
-    if (typed.some((l) => l.guessed)) unsure.add(room.id);
-    const types = new Set(typed.map((l) => roomTypeFromName(l.text)!));
-    const names = [...new Set(typed.map((l) => l.text))];
-    if (types.has('living') && types.has('dining')) {
-      room.name = names.join(' / ');
-      room.type = 'living-dining';
-    } else {
-      room.name = names.join(' ');
-      room.type = roomTypeFromName(room.name) ?? roomTypeFromName(typed[0]!.text)!;
-    }
-  }
-  return { unnamed, unsure };
-}
-
-const NAMES: Partial<Record<RoomType, string>> = {
-  'living-dining': 'Living / Dining',
-  'master-bedroom': 'Master Bedroom',
-  bathroom: 'Bath',
-  corridor: 'Corridor',
-  bedroom: 'Bedroom',
-  store: 'Store',
-};
-
-/**
- * Types (and, if still nameless, names) rooms no label described, from size and shape: the
- * largest is the living area, long thin ones are corridors, small ones baths or stores, the rest
- * bedrooms with the largest of those the master.
- */
-function guessTypes(
-  rooms: AnalysisRoom[],
-  unnamed: Set<string>,
-  regions: Component[],
-  pxPerMetre: number | null,
-) {
-  const guess = rooms.filter((r) => unnamed.has(r.id));
-  if (guess.length === 0) return;
-  const region = new Map(rooms.map((r, i) => [r.id, regions[i]!]));
-  const area = (r: AnalysisRoom) => region.get(r.id)!.area;
-  const total = rooms.reduce((s, r) => s + area(r), 0);
-  const largest = [...rooms].sort((a, b) => area(b) - area(a))[0]!;
-  const hasLiving = rooms.some((r) => !unnamed.has(r.id) && /living/.test(r.type));
-  const bedrooms: AnalysisRoom[] = [];
-  for (const r of guess) {
-    const c = region.get(r.id)!;
-    const bw = c.x1 - c.x0 + 1;
-    const bh = c.y1 - c.y0 + 1;
-    const aspect = Math.max(bw, bh) / Math.min(bw, bh);
-    const narrow = pxPerMetre ? Math.min(bw, bh) / pxPerMetre <= 1.8 : aspect >= 2.6;
-    const share = area(r) / total;
-    if (r === largest && !hasLiving) r.type = 'living-dining';
-    else if (narrow && aspect >= 2 && share < 0.12) r.type = 'corridor';
-    else if (share < 0.035) r.type = aspect >= 1.8 ? 'store' : 'bathroom';
-    else if (share < 0.05) r.type = 'bathroom';
-    else {
-      r.type = 'bedroom';
-      bedrooms.push(r);
-    }
-  }
-  const hasMaster = rooms.some((r) => r.type === 'master-bedroom');
-  if (!hasMaster && bedrooms.length > 1) {
-    bedrooms.sort((a, b) => area(b) - area(a))[0]!.type = 'master-bedroom';
-  }
-  const count = new Map<RoomType, number>();
-  for (const r of guess) {
-    if (r.name) continue;
-    const n = (count.get(r.type) ?? 0) + 1;
-    count.set(r.type, n);
-    const base = NAMES[r.type] ?? 'Room';
-    const numbered = r.type === 'bedroom' || r.type === 'bathroom' || r.type === 'store';
-    r.name = numbered ? `${base} ${n}` : base;
-  }
-}
-
-/**
- * The front door: a door from outside into the foyer, else into a living area, else any door from
- * the true outside (not a terrace or garden) into a shared room.
- */
-function pickEntrance(doors: AnalysisDoor[], rooms: AnalysisRoom[]): AnalysisDoor | undefined {
-  const typeOf = (id: string | null) => rooms.find((r) => r.id === id)?.type;
-  const outside = (id: string | null) =>
-    id === null || typeOf(id) === 'outdoor' || typeOf(id) === 'garage';
-  const inner = (d: AnalysisDoor) => d.sides.find((s) => !outside(s)) ?? null;
-  const external = doors.filter((d) => d.sides.some(outside) && inner(d));
-  return (
-    external.find((d) => typeOf(inner(d)) === 'foyer') ??
-    external.find((d) => /living/.test(typeOf(inner(d)) ?? '')) ??
-    external.find(
-      (d) =>
-        d.sides.includes(null) &&
-        !['bedroom', 'master-bedroom', 'bathroom', 'utility', 'store', 'balcony'].includes(
-          typeOf(inner(d)) ?? '',
-        ),
-    )
-  );
 }

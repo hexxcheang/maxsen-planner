@@ -5,7 +5,6 @@
  */
 import type { Drawing } from '../../src/sample/drawings.ts';
 import type { GrayImage } from '../../src/magic/vision/image.ts';
-import type { DrawingLabel } from '../../src/magic/vision/read-floor-plan.ts';
 
 const WALL = 8;
 const INK = 26;
@@ -120,7 +119,6 @@ class Canvas {
 
 export interface Rendered {
   image: GrayImage;
-  labels: DrawingLabel[];
 }
 
 /** Paints a sample drawing at `scale` × its 1400 × 1000 design size. */
@@ -129,7 +127,6 @@ export function rasterize(d: Drawing, scale = 1): Rendered {
   const H = Math.round(1000 * scale);
   const c = new Canvas(W, H);
   const s = (n: number) => n * scale;
-  const labels: DrawingLabel[] = [];
 
   for (const f of d.furniture ?? []) c.strokeRect(s(f.x), s(f.y), s(f.w), s(f.h), s(2), LIGHT);
   for (const r of d.rooms) {
@@ -138,11 +135,9 @@ export function rasterize(d: Drawing, scale = 1): Rendered {
     const cy = r.ly ?? r.y + r.h / 2;
     if (r.label) {
       c.text(r.label, s(cx), s(cy + (r.sub ? 0 : 8)), s(26), GREY, s(2.5));
-      labels.push({ text: r.label, x: cx / 1400, y: (cy - (r.sub ? 9 : 1)) / 1000 });
     }
     if (r.sub) {
       c.text(r.sub, s(cx), s(cy + 24), s(18), LIGHT, s(2));
-      labels.push({ text: r.sub, x: cx / 1400, y: (cy + 17) / 1000 });
     }
   }
   for (const w of d.windows) {
@@ -200,9 +195,7 @@ export function rasterize(d: Drawing, scale = 1): Rendered {
   c.strokeRect(s(960), s(918), s(340), s(66), s(2), INK);
   c.line(s(960), s(950), s(1300), s(950), s(1), INK);
   c.text(d.title, s(1130), s(940), s(15), INK, s(2));
-  labels.push({ text: d.title, x: 1130 / 1400, y: 934 / 1000 });
   c.text('SAMPLE DRAWING — NOT TO SCALE', s(1060), s(972), s(12), GREY, s(1.5));
-  labels.push({ text: d.sheet, x: 1260 / 1400, y: 968 / 1000 });
   c.paint(
     s(1220),
     s(30),
@@ -219,7 +212,7 @@ export function rasterize(d: Drawing, scale = 1): Rendered {
   ].map(([x, y]) => [s(x!), s(y!)]);
   c.paint(s(1240), s(40), s(1260), s(72), INK, (px, py) => inPolygon(px, py, tri));
 
-  return { image: { width: W, height: H, data: c.data }, labels };
+  return { image: { width: W, height: H, data: c.data } };
 }
 
 function inPolygon(x: number, y: number, poly: [number, number][]): boolean {

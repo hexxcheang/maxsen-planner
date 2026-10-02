@@ -2,6 +2,9 @@
  * Magic Plan: places smart-home devices and lights on a plan from a floor analysis, using fixed
  * planning rules so results are predictable and explainable.
  *
+ * Rooms come with a type (from the built-in sample analyses or a vision model) or as 'other'
+ * (read on this computer, unnamed); 'other' rooms are planned by size and shape.
+ *
  * Rules in brief
  * - Switches: inside the room, on the wall beside the opening into it, at the end with more wall
  *   (doors are hung against the nearer side wall, so that is the handle side and the open door
@@ -178,6 +181,25 @@ export function magicPlan({ analysis, sheet, categories, pick }: MagicPlanInput)
     );
   }
   const m = (metres: number) => metres * u;
+
+  // Rooms read without a name are planned by size and shape alone: narrow ones as walkways, tiny
+  // ones as stores, small ones like bathrooms (switched from outside, a light or two), the largest
+  // as the living area and the rest like bedrooms (a fan, a downlight grid, curtains).
+  const unnamedIndoor = rooms.filter((r) => r.type === 'other');
+  const largestRoom = [...rooms]
+    .filter((r) => r.type !== 'outdoor')
+    .sort((a, b) => area(b) - area(a))[0];
+  for (const r of unnamedIndoor) r.type = planAs(r);
+  function planAs(r: Room): RoomType {
+    const areaM2 = area(r) / (u * u);
+    const short = Math.min(r.rect.w, r.rect.h);
+    const aspect = Math.max(r.rect.w, r.rect.h) / short;
+    if (short <= m(1.8) && aspect >= 2) return 'corridor';
+    if (areaM2 < 2.5) return 'store';
+    if (areaM2 < 6) return 'bathroom';
+    if (r === largestRoom && !rooms.some((x) => LIVING.includes(x.type))) return 'living';
+    return 'bedroom';
+  }
 
   /** The room a point belongs to: the smallest room outline containing it. */
   const owner = (p: Pt): Room | undefined => {

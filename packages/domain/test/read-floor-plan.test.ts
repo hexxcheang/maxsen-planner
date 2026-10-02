@@ -13,7 +13,6 @@ import { SAMPLE_DRAWINGS, hdb4room, type Drawing } from '../src/sample/drawings.
 import { analyseSampleDrawing } from '../src/sample/analyses.ts';
 import { magicPlan, MAGIC_CATEGORIES } from '../src/magic/magic-plan.ts';
 import type { AnalysisRoom, FloorAnalysis } from '../src/magic/analysis.ts';
-import { cropLabel, rotateLabel } from '../src/magic/vision/labels.ts';
 import { suggestCrop } from '../src/magic/vision/crop.ts';
 import { rasterize } from './helpers/raster.ts';
 
@@ -98,9 +97,22 @@ function matchRooms(found: FloorAnalysis, expected: FloorAnalysis) {
   return map;
 }
 
-function read(d: Drawing, scale = 1, withLabels = true) {
-  const { image, labels } = rasterize(d, scale);
-  return readFloorPlan(image, { labels: withLabels ? labels : [] });
+function read(d: Drawing, scale = 1) {
+  return readFloorPlan(rasterize(d, scale).image);
+}
+
+/** Windows on an outside wall of the sample (nothing drawn beyond them). */
+function outsideWindows(d: Drawing, expected: FloorAnalysis) {
+  const inAnyRoom = (x: number, y: number) =>
+    d.rooms.some((r) => x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h);
+  return expected.windows.filter((e) => {
+    const mx = ((e.start.x + e.end.x) / 2) * 1400;
+    const my = ((e.start.y + e.end.y) / 2) * 1000;
+    const horizontal = e.start.y === e.end.y;
+    return horizontal
+      ? !inAnyRoom(mx, my - 15) || !inAnyRoom(mx, my + 15)
+      : !inAnyRoom(mx - 15, my) || !inAnyRoom(mx + 15, my);
+  });
 }
 
 describe('readFloorPlan on the sample drawings', () => {
@@ -111,13 +123,10 @@ describe('readFloorPlan on the sample drawings', () => {
       const rooms = matchRooms(analysis, expected);
       const mapped = (id: string | null) => (id === null ? null : rooms.get(id)!);
 
-      it('finds every room, named and typed from its label', () => {
+      it('finds every room, numbered rather than named or classified', () => {
         assert.equal(analysis.rooms.length, expected.rooms.length);
-        for (const e of expected.rooms) {
-          const f = analysis.rooms.find((r) => r.id === rooms.get(e.id))!;
-          assert.equal(f.type, e.type, `${e.name}: ${f.type}`);
-          assert.ok(f.name.startsWith(e.name), `${e.name} read as ${f.name}`);
-        }
+        assert.equal(rooms.size, expected.rooms.length);
+        assert.ok(analysis.rooms.every((r, i) => r.type === 'other' && r.name === `Room ${i + 1}`));
       });
 
       it('finds the opening of every door and the rooms it joins', () => {
@@ -130,13 +139,21 @@ describe('readFloorPlan on the sample drawings', () => {
           );
           assert.ok(f, `door at ${JSON.stringify(e.hinge)} not found`);
           assert.deepEqual([...f.sides].sort(), e.sides.map(mapped).sort());
-          assert.equal(f.isMainEntrance, e.isMainEntrance);
         }
       });
 
-      it('finds every window and the room it lights', () => {
-        assert.equal(analysis.windows.length, expected.windows.length);
-        for (const e of expected.windows) {
+      it('takes a door to the outside as the main entrance', () => {
+        const entrance = analysis.doors.filter((x) => x.isMainEntrance);
+        assert.ok(entrance.length <= 1);
+        if (entrance[0]) assert.ok(entrance[0].sides.includes(null));
+        const front = expected.doors.find((x) => x.isMainEntrance && x.sides.includes(null));
+        if (front) assert.equal(entrance.length, 1);
+      });
+
+      it('finds every window on an outside wall and the room it lights', () => {
+        const outside = outsideWindows(d, expected);
+        assert.equal(analysis.windows.length, outside.length);
+        for (const e of outside) {
           const f = analysis.windows.find(
             (x) =>
               (near(x.start, e.start) && near(x.end, e.end)) ||
@@ -151,11 +168,8 @@ describe('readFloorPlan on the sample drawings', () => {
         assert.ok(analysis.imageWidthMetres! > 12 && analysis.imageWidthMetres! < 17);
       });
 
-      it('only raises issues for what the drawing leaves out', () => {
-        const unnamed = expected.rooms.filter(
-          (r) => !d.rooms[Number(r.id.slice(1)) - 1]!.label,
-        ).length;
-        assert.equal(issues.length, unnamed > 0 ? 1 : 0, issues.join('; '));
+      it('raises no issues on a clean drawing', () => {
+        assert.deepEqual(issues, []);
       });
     });
   }
@@ -166,19 +180,12 @@ describe('readFloorPlan on the sample drawings', () => {
       const expected = analyseSampleDrawing(hdb4room);
       matchRooms(analysis, expected);
       assert.equal(analysis.doors.length, expected.doors.length, `scale ${scale}`);
-      assert.equal(analysis.windows.length, expected.windows.length, `scale ${scale}`);
+      assert.equal(
+        analysis.windows.length,
+        outsideWindows(hdb4room, expected).length,
+        `scale ${scale}`,
+      );
     }
-  });
-
-  it('names rooms by size and shape when the drawing has no labels', () => {
-    const { analysis, issues } = read(hdb4room, 1, false);
-    const types = analysis.rooms.map((r) => r.type);
-    assert.equal(types.filter((t) => t === 'living-dining').length, 1);
-    assert.equal(types.filter((t) => t === 'master-bedroom').length, 1);
-    assert.ok(types.includes('bathroom'));
-    assert.ok(types.includes('corridor'));
-    assert.ok(analysis.rooms.every((r) => r.name.length > 0));
-    assert.match(issues.join(' '), /10 rooms had no name/);
   });
 
   it('gives Magic Plan enough to place switches and lights', () => {
@@ -191,21 +198,22 @@ describe('readFloorPlan on the sample drawings', () => {
     });
     assert.ok(result.placements.filter((p) => p.categoryId === 'smart-switches').length >= 8);
     assert.ok(result.placements.filter((p) => p.categoryId === 'downlights').length >= 10);
+    // Unnamed rooms are planned by size and shape: every room gets light, big rooms a fan.
+    const lightCats = ['downlights', 'surface-lights', 'track-lights', 'ceiling-fans'];
+    for (const room of analysis.rooms) {
+      assert.ok(
+        result.placements.some((p) => p.roomId === room.id && lightCats.includes(p.categoryId)),
+        `${room.name} has no light`,
+      );
+    }
+    assert.ok(result.placements.filter((p) => p.categoryId === 'ceiling-fans').length >= 3);
+    // The room names stay as read: nothing is labelled as a bedroom or bathroom.
+    assert.ok(analysis.rooms.every((r) => r.type === 'other'));
   });
 
   it('explains when a page has no rooms on it', () => {
     const blank: GrayImage = { width: 200, height: 100, data: new Uint8Array(20000).fill(255) };
     assert.throws(() => readFloorPlan(blank), FloorReadError);
-  });
-});
-
-describe('rotateLabel', () => {
-  it('follows the page when it is turned clockwise', () => {
-    const l = { text: 'Kitchen', x: 0.2, y: 0.1 };
-    assert.deepEqual(rotateLabel(l, 0), l);
-    assert.deepEqual(rotateLabel(l, 90), { text: 'Kitchen', x: 0.9, y: 0.2 });
-    assert.deepEqual(rotateLabel(l, 180), { text: 'Kitchen', x: 0.8, y: 0.9 });
-    assert.deepEqual(rotateLabel(l, 270), { text: 'Kitchen', x: 0.1, y: 0.8 });
   });
 });
 
@@ -223,12 +231,5 @@ describe('suggestCrop', () => {
   it('leaves a blank page alone', () => {
     const blank: GrayImage = { width: 200, height: 100, data: new Uint8Array(20000).fill(255) };
     assert.deepEqual(suggestCrop(blank), { x: 0, y: 0, w: 1, h: 1 });
-  });
-
-  it('maps labels onto the cropped page', () => {
-    const crop = { x: 0.1, y: 0.2, w: 0.5, h: 0.5 };
-    const l = cropLabel({ text: 'Kitchen', x: 0.35, y: 0.45 }, crop)!;
-    assert.ok(Math.abs(l.x - 0.5) < 1e-9 && Math.abs(l.y - 0.5) < 1e-9);
-    assert.equal(cropLabel({ text: 'Title', x: 0.9, y: 0.9 }, crop), null);
   });
 });

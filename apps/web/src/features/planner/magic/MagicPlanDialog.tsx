@@ -25,11 +25,9 @@ import {
   Switch,
   Textarea,
 } from '@/components/ui';
-import { useCatalogue, useSettings, useSourcePages } from '@/lib/data/hooks';
-import { fileUrl } from '@/lib/files';
+import { useCatalogue, useSettings } from '@/lib/data/hooks';
 import { analyseBackground, magicPlanConfigured, MagicPlanError } from './analysis-source';
-import { CheckStep } from './CheckStep';
-import { readPlanLocally, type ReadStage } from './local-reader';
+import { readPlanLocally } from './local-reader';
 
 export interface MagicPlanOutcome {
   result: MagicPlanResult;
@@ -49,19 +47,11 @@ type Method = 'local' | 'claude';
 
 type Step =
   | { kind: 'options'; error?: string }
-  | { kind: 'working'; stage: ReadStage | 'claude' | 'planning' }
-  | { kind: 'check'; analysis: FloorAnalysis; issues: string[] }
-  | {
-      kind: 'review';
-      analysis: FloorAnalysis;
-      result: MagicPlanResult;
-      /** What was read, when it can be checked again from the review. */
-      reading?: { issues: string[] };
-    };
+  | { kind: 'working'; stage: 'reading' | 'claude' | 'planning' }
+  | { kind: 'review'; analysis: FloorAnalysis; result: MagicPlanResult };
 
 const WORKING: Record<Extract<Step, { kind: 'working' }>['stage'], [string, string?]> = {
-  labels: ['Reading room names…', 'Using the PDF’s text, or reading the words on the drawing.'],
-  walls: ['Finding the rooms…'],
+  reading: ['Finding the rooms…', 'Reading the walls and openings on this computer.'],
   claude: [
     'Reading the drawing…',
     'Finding rooms, doors and windows. This can take up to a minute.',
@@ -90,7 +80,6 @@ export function MagicPlanDialog({ open, onOpenChange, level, plans, onApply }: P
   // The drawing Magic Plan reads: the Smart Home Plan's, else the Lighting Plan's.
   const source = plans['smart-home'] ?? plans.lighting;
   const builtIn = source ? Boolean(sample.sampleAnalysisFor(source.background.fileId)) : false;
-  const { data: uploads } = useSourcePages(source?.projectId);
 
   useEffect(() => {
     if (!open) return;
@@ -121,14 +110,15 @@ export function MagicPlanDialog({ open, onOpenChange, level, plans, onApply }: P
     [catalogue.products, catalogue.variants, settings.favouriteVariantIds],
   );
 
-  const plan = (analysis: FloorAnalysis, reading?: { issues: string[] }) => {
+  const plan = (analysis: FloorAnalysis, issues: string[] = []) => {
     if (!source) return;
     const sheet = {
       width: 1000,
       height: (1000 * source.background.height) / source.background.width,
     };
     const result = magicPlan({ analysis, sheet, categories: chosen, pick });
-    setStep({ kind: 'review', analysis, result, reading });
+    result.warnings.unshift(...issues);
+    setStep({ kind: 'review', analysis, result });
   };
 
   const run = async () => {
@@ -140,13 +130,9 @@ export function MagicPlanDialog({ open, onOpenChange, level, plans, onApply }: P
         plan(analysis);
         return;
       }
-      setStep({ kind: 'working', stage: 'labels' });
-      const { analysis, issues } = await readPlanLocally(source, uploads, (stage) =>
-        setStep({ kind: 'working', stage }),
-      );
-      // Only stop to check when the reading looks unsure.
-      if (issues.length > 0) setStep({ kind: 'check', analysis, issues });
-      else plan(analysis, { issues });
+      setStep({ kind: 'working', stage: 'reading' });
+      const { analysis, issues } = await readPlanLocally(source);
+      plan(analysis, issues);
     } catch (e) {
       console.error(e);
       setStep({
@@ -162,29 +148,8 @@ export function MagicPlanDialog({ open, onOpenChange, level, plans, onApply }: P
   const blocked = !builtIn && method === 'claude' && configured === false;
 
   const footer =
-    step.kind === 'check' ? (
+    step.kind === 'review' ? (
       <>
-        <Button onClick={() => setStep({ kind: 'options' })}>Back</Button>
-        <Button
-          variant="primary"
-          icon={<Sparkles className="size-4" />}
-          onClick={() => plan(step.analysis, { issues: step.issues })}
-        >
-          Plan these rooms
-        </Button>
-      </>
-    ) : step.kind === 'review' ? (
-      <>
-        {step.reading && (
-          <Button
-            className="mr-auto"
-            onClick={() =>
-              setStep({ kind: 'check', analysis: step.analysis, issues: step.reading!.issues })
-            }
-          >
-            Check rooms
-          </Button>
-        )}
         <Button onClick={() => setStep({ kind: 'options' })}>Back</Button>
         <Button
           variant="primary"
@@ -232,16 +197,6 @@ export function MagicPlanDialog({ open, onOpenChange, level, plans, onApply }: P
         </div>
       )}
 
-      {step.kind === 'check' && source && (
-        <CheckStep
-          analysis={step.analysis}
-          issues={step.issues}
-          imageUrl={fileUrl(source.background.fileId)}
-          aspect={source.background.width / source.background.height}
-          onChange={(analysis) => setStep({ ...step, analysis })}
-        />
-      )}
-
       {step.kind === 'options' && (
         <div className="flex flex-col gap-5">
           {step.error && (
@@ -258,7 +213,7 @@ export function MagicPlanDialog({ open, onOpenChange, level, plans, onApply }: P
               label="Read the drawing"
               hint={
                 method === 'local'
-                  ? 'Read on this computer. Nothing is uploaded; you’ll be asked to check anything it isn’t sure of.'
+                  ? 'Read on this computer; nothing is uploaded. Rooms are planned by their size and shape.'
                   : configured
                     ? 'Sent to Claude to read. Better with unusual or hand-drawn plans.'
                     : 'Claude needs an Anthropic API key in the project’s .env file (see the README), then restart the app.'
@@ -368,7 +323,16 @@ function Review({ analysis, result }: { analysis: FloorAnalysis; result: MagicPl
     <div className="flex flex-col gap-5">
       <div>
         <p className="text-control font-semibold text-ink">Found {analysis.rooms.length} rooms</p>
-        <p className="mt-1 text-meta text-ink-2">{analysis.rooms.map((r) => r.name).join(', ')}</p>
+        {analysis.rooms.some((r) => r.type !== 'other') ? (
+          <p className="mt-1 text-meta text-ink-2">
+            {analysis.rooms.map((r) => r.name).join(', ')}
+          </p>
+        ) : (
+          <p className="mt-1 text-meta text-ink-2">
+            Each room is planned by its size and shape. Move or delete anything that doesn’t suit
+            the room once it’s placed.
+          </p>
+        )}
       </div>
       <table className="w-full text-control">
         <thead>
