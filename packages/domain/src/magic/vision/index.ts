@@ -5,3 +5,4 @@ export {
   type DrawingLabel,
   type FloorReading,
 } from './read-floor-plan.ts';
+export { rotateLabel } from './labels.ts';

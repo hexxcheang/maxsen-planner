@@ -51,7 +51,9 @@ describe('uploads and plan assignment', () => {
     const st = s.getState();
     const src = st.sourceFiles.find((f) => f.id === fileId)!;
     expect(src.pageCount).toBe(2);
-    expect(st.sourcePages.filter((p) => p.sourceFileId === fileId).map((p) => p.pageIndex)).toEqual([0, 1]);
+    expect(st.sourcePages.filter((p) => p.sourceFileId === fileId).map((p) => p.pageIndex)).toEqual(
+      [0, 1],
+    );
   });
 
   it('assigns a drawing to a plan and sets the project thumbnail when missing', () => {
@@ -75,7 +77,11 @@ describe('uploads and plan assignment', () => {
     });
     const st = s.getState();
     const plan = st.plans.find((p) => p.id === planId)!;
-    expect(plan).toMatchObject({ levelId, type: 'lighting', background: { rotation: 90, fileId: 'file_bg' } });
+    expect(plan).toMatchObject({
+      levelId,
+      type: 'lighting',
+      background: { rotation: 90, fileId: 'file_bg' },
+    });
     expect(plan.document.elements).toEqual([]);
     expect(st.projects.find((p) => p.id === projectId)!.thumbnailFileId).toBe('file_bg');
   });
@@ -99,9 +105,14 @@ describe('planner writes', () => {
     expect(p.catalogueSnapshot.var_lumi_cob_3000?.productName).toBe('Lumi COB Strip');
     expect(p.catalogueSnapshot[SYSTEM_VARIANT_IDS.smartLedDriver]).toBeDefined();
     expect(p.recentVariantIds[0]).toBe('var_lumi_cob_3000');
-    const ids = s.getState().variants.slice(0, 15).map((v) => v.id);
+    const ids = s
+      .getState()
+      .variants.slice(0, 15)
+      .map((v) => v.id);
     for (const id of ids) s.actions.recordVariantUse('proj_sample_marina', id);
-    const recent = s.getState().projects.find((x) => x.id === 'proj_sample_marina')!.recentVariantIds;
+    const recent = s
+      .getState()
+      .projects.find((x) => x.id === 'proj_sample_marina')!.recentVariantIds;
     expect(recent).toHaveLength(12);
     expect(recent[0]).toBe(ids[14]);
   });
@@ -110,7 +121,8 @@ describe('planner writes', () => {
     const s = createSampleStore();
     s.actions.updateVariant('var_nova_s8', { name: 'Renamed' });
     s.actions.recordVariantUse('proj_sample_tan', 'var_nova_s8');
-    const snap = s.getState().projects.find((x) => x.id === 'proj_sample_tan')!.catalogueSnapshot.var_nova_s8;
+    const snap = s.getState().projects.find((x) => x.id === 'proj_sample_tan')!.catalogueSnapshot
+      .var_nova_s8;
     expect(snap?.variantName).not.toBe('Renamed');
   });
 });

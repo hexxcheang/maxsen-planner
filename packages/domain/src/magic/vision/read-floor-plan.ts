@@ -11,7 +11,7 @@ import type {
   FloorAnalysis,
   RoomType,
 } from '../analysis.ts';
-import { roomTypeFromName } from '../room-types.ts';
+import { cleanLabel, roomTypeFromName } from '../room-types.ts';
 import { components, type Component, type GrayImage } from './image.ts';
 import { closeGaps, findGaps, findWalls, MAX_OPEN_GAP, type Gap, type Walls } from './walls.ts';
 
@@ -20,6 +20,8 @@ export interface DrawingLabel {
   text: string;
   x: number;
   y: number;
+  /** OCR confidence 0–100; absent for text taken from the file itself. */
+  confidence?: number;
 }
 
 export interface FloorReading {
@@ -121,7 +123,7 @@ export function readFloorPlan(
   const imageWidthMetres = median ? Math.round((w / (median / DOOR_METRES)) * 10) / 10 : null;
   const pxPerMetre = median ? median / DOOR_METRES : null;
 
-  const unnamed = nameRooms(rooms, opts.labels ?? [], (fx, fy) => {
+  const { unnamed, unsure } = nameRooms(rooms, opts.labels ?? [], (fx, fy) => {
     // A label sitting on a wall or fitting belongs to the nearest room around it.
     for (let r = 0; r <= 3 * t; r += Math.max(1, Math.floor(t / 2))) {
       for (const [dx, dy] of [
@@ -193,6 +195,10 @@ export function readFloorPlan(
         ? '1 room had no name on the drawing, so it was named by its size and shape.'
         : `${unnamed.size} rooms had no name on the drawing, so they were named by their size and shape.`,
     );
+  }
+  if (unsure.size > 0) {
+    const names = rooms.filter((r) => unsure.has(r.id)).map((r) => r.name);
+    issues.push(`Some room names were hard to read (${names.join(', ')}).`);
   }
   if (rooms.length >= 2 && doors.length < Math.ceil(rooms.length / 2)) {
     issues.push(`Only found ${doors.length} doors for ${rooms.length} rooms; some may be missing.`);
@@ -267,16 +273,25 @@ function nameRooms(
   rooms: AnalysisRoom[],
   labels: DrawingLabel[],
   locate: (x: number, y: number) => string | null,
-): Set<string> {
-  const byRoom = new Map<string, DrawingLabel[]>();
+): { unnamed: Set<string>; unsure: Set<string> } {
+  const byRoom = new Map<string, (DrawingLabel & { guessed: boolean })[]>();
   for (const l of labels) {
-    const text = l.text.replace(/\s+/g, ' ').trim();
+    let text = l.text.replace(/\s+/g, ' ').trim();
+    let guessed = false;
+    if (l.confidence !== undefined) {
+      // Read by OCR: repair near-misses and remember that the name is a best guess.
+      const cleaned = cleanLabel(text);
+      text = cleaned.text;
+      guessed = cleaned.changed || l.confidence < 85;
+    }
+    text = text.replace(/[\s/&+-]+$/, '').trim();
     if (!/[a-z].*[a-z]/i.test(text) || text.length > 32) continue;
     const id = locate(l.x, l.y);
     if (!id) continue;
-    byRoom.set(id, [...(byRoom.get(id) ?? []), { ...l, text }]);
+    byRoom.set(id, [...(byRoom.get(id) ?? []), { ...l, text, guessed }]);
   }
   const unnamed = new Set<string>();
+  const unsure = new Set<string>();
   for (const room of rooms) {
     const found = (byRoom.get(room.id) ?? []).sort((a, b) => a.y - b.y || a.x - b.x);
     const typed = found.filter((l) => roomTypeFromName(l.text));
@@ -288,6 +303,7 @@ function nameRooms(
       if (plain) room.name = plain.text;
       continue;
     }
+    if (typed.some((l) => l.guessed)) unsure.add(room.id);
     const types = new Set(typed.map((l) => roomTypeFromName(l.text)!));
     const names = [...new Set(typed.map((l) => l.text))];
     if (types.has('living') && types.has('dining')) {
@@ -298,7 +314,7 @@ function nameRooms(
       room.type = roomTypeFromName(room.name) ?? roomTypeFromName(typed[0]!.text)!;
     }
   }
-  return unnamed;
+  return { unnamed, unsure };
 }
 
 const NAMES: Partial<Record<RoomType, string>> = {

@@ -54,8 +54,20 @@ door (bathrooms and balconies switched from outside, two-way switches where walk
 surface lights in service spaces, LED coves and kitchen strips, a dining pendant, track lights only in long
 narrow spaces, control panels at the entrance and master bedroom, curtains at living and bedroom windows,
 router, gateway and mesh nodes. Tick or untick categories before it runs; review the counts; one Undo
-removes the result. The sample drawings work straight away. For your own uploaded drawings it uses Claude
-(vision) on the app's server, which needs an Anthropic API key:
+removes the result. The sample drawings work straight away.
+
+Uploaded drawings are read **on this computer** by default; nothing is sent anywhere. Magic Plan finds the
+thick wall lines, closes the door and window gaps to get the rooms, tells doors from windows by the swing
+arc or glazing drawn in each gap, and works out the scale from the door widths. Room names come from the
+PDF's own text, or for scans and photos from on-device text recognition (served by the app itself, no
+internet needed). If anything looks unsure (a room with no name, a name that was hard to read, no front
+door found) it shows what it read over the drawing so you can rename, retype or remove rooms and flip or
+remove doors before it plans. It reads clean architectural plans with solid walls best; hand sketches and
+very busy drawings may need more checking.
+
+**Optional: reading with Claude.** For unusual or hand-drawn plans you can let Claude (vision) read the
+drawing instead, on the app's server. This needs an Anthropic API key; once set up, choose _With Claude_ in
+the Magic Plan window:
 
 1. Create a key at https://console.anthropic.com/settings/keys (this is billed to your Anthropic account;
    reading one drawing usually costs well under US$1).

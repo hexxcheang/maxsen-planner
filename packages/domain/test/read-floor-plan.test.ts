@@ -13,6 +13,7 @@ import { SAMPLE_DRAWINGS, hdb4room, type Drawing } from '../src/sample/drawings.
 import { analyseSampleDrawing } from '../src/sample/analyses.ts';
 import { magicPlan, MAGIC_CATEGORIES } from '../src/magic/magic-plan.ts';
 import type { AnalysisRoom, FloorAnalysis } from '../src/magic/analysis.ts';
+import { rotateLabel } from '../src/magic/vision/labels.ts';
 import { rasterize } from './helpers/raster.ts';
 
 describe('image primitives', () => {
@@ -191,5 +192,15 @@ describe('readFloorPlan on the sample drawings', () => {
   it('explains when a page has no rooms on it', () => {
     const blank: GrayImage = { width: 200, height: 100, data: new Uint8Array(20000).fill(255) };
     assert.throws(() => readFloorPlan(blank), FloorReadError);
+  });
+});
+
+describe('rotateLabel', () => {
+  it('follows the page when it is turned clockwise', () => {
+    const l = { text: 'Kitchen', x: 0.2, y: 0.1 };
+    assert.deepEqual(rotateLabel(l, 0), l);
+    assert.deepEqual(rotateLabel(l, 90), { text: 'Kitchen', x: 0.9, y: 0.2 });
+    assert.deepEqual(rotateLabel(l, 180), { text: 'Kitchen', x: 0.8, y: 0.9 });
+    assert.deepEqual(rotateLabel(l, 270), { text: 'Kitchen', x: 0.1, y: 0.8 });
   });
 });

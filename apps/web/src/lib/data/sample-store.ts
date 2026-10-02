@@ -148,7 +148,8 @@ function rekeyExportSettings(
   levelIds: string[],
 ): ExportSettings {
   const copy = structuredClone(source);
-  const levels: ExportSettings['floorPlan']['levels'] = defaultExportSettings(levelIds).floorPlan.levels;
+  const levels: ExportSettings['floorPlan']['levels'] =
+    defaultExportSettings(levelIds).floorPlan.levels;
   for (const [order, entry] of Object.entries(source.floorPlan.levels)) {
     const id = idBySortOrder.get(order);
     if (id) levels[id] = { ...entry };
@@ -500,7 +501,13 @@ export function createSampleStore(
           createdAt: now(),
         });
         input.pages.forEach((pg, i) =>
-          d.sourcePages.push({ id: newId('page'), projectId, sourceFileId: id, pageIndex: i, ...pg }),
+          d.sourcePages.push({
+            id: newId('page'),
+            projectId,
+            sourceFileId: id,
+            pageIndex: i,
+            ...pg,
+          }),
         );
         touchProject(d, projectId);
       });
@@ -512,7 +519,13 @@ export function createSampleStore(
       projectId: string,
       levelId: string,
       type: PlanType,
-      bg: { sourcePageId: string; rotation: Rotation; fileId: string; width: number; height: number },
+      bg: {
+        sourcePageId: string;
+        rotation: Rotation;
+        fileId: string;
+        width: number;
+        height: number;
+      },
     ): string {
       const id = newId('plan');
       update((d) => {
@@ -560,7 +573,10 @@ export function createSampleStore(
         const kind = categoryOfVariant(state, variantId);
         if (kind === 'led-strip') capture(SYSTEM_VARIANT_IDS.smartLedDriver);
         if (kind === 'track') capture(SYSTEM_VARIANT_IDS.trackDriver);
-        p.recentVariantIds = [variantId, ...p.recentVariantIds.filter((x) => x !== variantId)].slice(0, 12);
+        p.recentVariantIds = [
+          variantId,
+          ...p.recentVariantIds.filter((x) => x !== variantId),
+        ].slice(0, 12);
       });
     },
 
@@ -583,7 +599,6 @@ export function createSampleStore(
         d.templates = d.templates.filter((t) => t.id !== templateId);
       });
     },
-
   };
 
   return {
