@@ -1,8 +1,9 @@
 import { useState, type FormEvent } from 'react';
-import { Plus, Trash2, Upload } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { settingsSchema, type Branding } from '@maxsen/domain';
-import { Button, Field, IconButton, Input, LATER_PHASE, Textarea, useToast } from '@/components/ui';
+import { Button, Field, IconButton, Input, Textarea, useToast } from '@/components/ui';
 import { fileUrl } from '@/lib/files';
+import { ImagePicker } from '@/components/ImagePicker';
 import { useActions, useSettings } from '@/lib/data/hooks';
 
 export function BrandingSection() {
@@ -45,9 +46,10 @@ export function BrandingSection() {
             <span className="text-meta text-ink-3">No logo</span>
           )}
         </span>
-        <Button icon={<Upload className="size-4" />} disabledReason={LATER_PHASE}>
-          Replace logo
-        </Button>
+        <ImagePicker
+          label={draft.logoFileId ? 'Replace logo' : 'Upload logo'}
+          onPicked={(id) => set('logoFileId', id)}
+        />
       </div>
 
       <div>

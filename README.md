@@ -32,18 +32,27 @@ states; `/dev/styleguide` (dev server only) shows every UI primitive and categor
 
 ## Status
 
-**Phase A — foundation, design system and static UX: complete.** Every screen renders with realistic
-sample data through the same data hooks Phase B will back with the API:
+**Usable MVP (runs entirely in the browser).** On top of Phase A, the app now works end to end:
 
-- Passcode gate and admin unlock (sample passcodes above)
-- Projects dashboard with search and delete, new project from blank or template
-- Floor-plan setup: levels (rename, reorder, paper size and orientation), plan cards, plan deletion
-- Planner: Konva canvas rendering the shared scene model, zoom and pan, selection and marker drag,
-  device library, inspector, live project totals, legend and category visibility, level and plan switching
-- Review totals with export-quantity adjustments and change warnings
-- Exports centre with saved options and sanitised filename previews
-- Catalogue, templates and admin settings (branding, icon styles, favourites)
+1. **Sign in** with `maxsen`; unlock admin with `admin`.
+2. **New project** from blank or a template (templates copy levels and export settings).
+3. **Setup:** upload PDFs (each page is rendered in the browser) or JPG/PNG images, add and order levels,
+   set paper size and orientation, and choose a drawing for each Smart Home or Lighting plan, rotated upright.
+4. **Planner:** click a library item then click the plan (or drag it on) to place devices; draw LED strips
+   and tracks by clicking points (Shift for straight runs, double-click or Enter to finish); circle LED loops;
+   text notes. Edit everything in Details: variant, label, rotation, LED metres, head counts, note styling,
+   layer order, duplicate, delete. Undo/redo, Ctrl/Cmd+A, Delete, Esc. Live totals update as you go.
+5. **Review totals:** adjust export quantities; warnings if plans change afterwards.
+6. **Exports:** generate the marked floor plan PDF, the product description PDF and the quantity Excel
+   file, one at a time or all together, then download them.
+7. **Admin:** catalogue editing with product images, branding with logo upload, icon styles, favourites,
+   and _Your data_ (restore samples or erase everything).
 
-Controls that belong to later phases are visibly disabled with the tooltip "Available in a later phase"; see
-`docs/superpowers/notes/phase-a-review.md` for the full list and the screenshot review. Next: Phase B (data
-model, API, persistence, access).
+**Where data lives:** this browser only (localStorage for projects and settings, IndexedDB for uploaded
+files). Another device or browser starts from the sample data. Shared storage, the API and real passcode
+checks are Phase B.
+
+**Not yet:** dragging the crop rectangle (drawings are used full-page, rotation only), marquee selection,
+vertex editing of drawn paths, and saving a project as a template.
+
+See `docs/superpowers/notes/phase-a-review.md` for the Phase A review.

@@ -1,15 +1,21 @@
 import { useState, type FormEvent } from 'react';
 import { ImageUp } from 'lucide-react';
 import type { Variant } from '@maxsen/domain';
-import { Button, Dialog, Field, Input, LATER_PHASE, Switch, Textarea } from '@/components/ui';
+import { Button, Dialog, Field, Input, Switch, Textarea } from '@/components/ui';
 import { fileUrl } from '@/lib/files';
+import { ImagePicker } from '@/components/ImagePicker';
 
 interface Props {
   open: boolean;
   variant: Variant | null;
   productName: string;
   onOpenChange: (open: boolean) => void;
-  onSave: (input: { name: string; description: string; hidden: boolean }) => void;
+  onSave: (input: {
+    name: string;
+    description: string;
+    hidden: boolean;
+    imageFileId: string | null;
+  }) => void;
 }
 
 export function VariantEditorDialog({ open, variant, productName, onOpenChange, onSave }: Props) {
@@ -37,6 +43,7 @@ function VariantForm({ variant, onSave }: { variant: Variant | null; onSave: Pro
   const [name, setName] = useState(variant?.name ?? '');
   const [description, setDescription] = useState(variant?.description ?? '');
   const [hidden, setHidden] = useState(variant?.hidden ?? false);
+  const [imageFileId, setImageFileId] = useState<string | null>(variant?.imageFileId ?? null);
   const [error, setError] = useState<string | null>(null);
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -44,7 +51,7 @@ function VariantForm({ variant, onSave }: { variant: Variant | null; onSave: Pro
       setError('Enter a variant name');
       return;
     }
-    onSave({ name: name.trim(), description: description.trim(), hidden });
+    onSave({ name: name.trim(), description: description.trim(), hidden, imageFileId });
   };
   return (
     <form
@@ -55,15 +62,17 @@ function VariantForm({ variant, onSave }: { variant: Variant | null; onSave: Pro
     >
       <div className="flex flex-col gap-2">
         <span className="flex aspect-square items-center justify-center overflow-hidden rounded-chip border border-rule bg-paper">
-          {variant?.imageFileId ? (
-            <img src={fileUrl(variant.imageFileId)} alt="" className="size-full object-contain" />
+          {imageFileId ? (
+            <img src={fileUrl(imageFileId)} alt="" className="size-full object-contain" />
           ) : (
             <ImageUp aria-hidden className="size-6 text-ink-3" />
           )}
         </span>
-        <Button size="sm" disabledReason={LATER_PHASE}>
-          Upload image
-        </Button>
+        <ImagePicker
+          size="sm"
+          label={imageFileId ? 'Replace image' : 'Upload image'}
+          onPicked={setImageFileId}
+        />
       </div>
       <div className="flex flex-col gap-4">
         <Field label="Variant name" error={error}>

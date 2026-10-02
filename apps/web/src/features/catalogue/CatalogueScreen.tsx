@@ -282,10 +282,14 @@ export function CatalogueScreen() {
         onOpenChange={(o) => !o && setEditing(null)}
         onSave={(input) => {
           if (editing?.kind !== 'variant') return;
-          if (editing.variant) actions.updateVariant(editing.variant.id, input);
-          else {
-            const id = actions.addVariant(editing.product.id, input);
-            if (input.hidden) actions.updateVariant(id, { hidden: true });
+          const { imageFileId, ...fields } = input;
+          if (editing.variant) {
+            actions.updateVariant(editing.variant.id, fields);
+            actions.setVariantImage(editing.variant.id, imageFileId);
+          } else {
+            const id = actions.addVariant(editing.product.id, fields);
+            if (fields.hidden) actions.updateVariant(id, { hidden: true });
+            actions.setVariantImage(id, imageFileId);
             setExpanded((s) => new Set(s).add(editing.product.id));
           }
           setEditing(null);

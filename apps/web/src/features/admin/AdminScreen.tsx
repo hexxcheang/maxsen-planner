@@ -11,6 +11,7 @@ import {
 import { Page } from '@/components/Page';
 import { useAdmin } from '@/app/auth/auth-context';
 import { BrandingSection } from './BrandingSection';
+import { DataSection } from './DataSection';
 import { FavouritesSection } from './FavouritesSection';
 import { IconStylesSection } from './IconStylesSection';
 
@@ -53,6 +54,7 @@ export function AdminScreen() {
           <TabsTrigger value="branding">Branding</TabsTrigger>
           <TabsTrigger value="icons">Icon styles</TabsTrigger>
           <TabsTrigger value="favourites">Favourites</TabsTrigger>
+          <TabsTrigger value="data">Your data</TabsTrigger>
         </TabsList>
         <TabsContent value="branding">
           <BrandingSection />
@@ -62,6 +64,9 @@ export function AdminScreen() {
         </TabsContent>
         <TabsContent value="favourites">
           <FavouritesSection />
+        </TabsContent>
+        <TabsContent value="data">
+          <DataSection />
         </TabsContent>
       </Tabs>
     </Page>

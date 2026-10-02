@@ -35,11 +35,11 @@ describe('ExportsScreen', () => {
     expect(fp().hiddenCategories).toEqual([]);
   });
 
-  it('generate buttons are deferred with a reason', async () => {
+  it('offers generate buttons for each export and for all of them', async () => {
     render(<TestApp path="/projects/proj_sample_tan/exports" signedIn />);
-    expect(await screen.findByRole('button', { name: 'Generate all exports' })).toHaveAttribute(
+    expect(await screen.findByRole('button', { name: 'Generate all exports' })).not.toHaveAttribute(
       'aria-disabled',
-      'true',
     );
+    expect(screen.getAllByRole('button', { name: 'Generate' })).toHaveLength(3);
   });
 });

@@ -10,6 +10,11 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  // Pre-bundle the lazily imported export and PDF libraries at startup; otherwise Vite discovers
+  // them on first use and reloads the page mid-session.
+  optimizeDeps: {
+    include: ['pdfjs-dist', 'jspdf', 'exceljs'],
+  },
   server: {
     port: 5173,
     strictPort: true,
