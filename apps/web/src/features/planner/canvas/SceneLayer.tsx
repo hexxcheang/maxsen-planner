@@ -1,6 +1,6 @@
 import { Circle, Group, Label, Path, Rect, Tag, Text } from 'react-konva';
 import type Konva from 'konva';
-import type { Scene, SceneItem, SceneMarker, ScenePath } from '@maxsen/domain';
+import type { Pt, Scene, SceneItem, SceneMarker, ScenePath } from '@maxsen/domain';
 
 const FONT = "'Instrument Sans Variable', 'Instrument Sans', system-ui, sans-serif";
 const INK = '#1F1D1A';
@@ -12,16 +12,30 @@ interface SceneLayerProps {
   draggable: boolean;
   onPick: (elementId: string, e: PickEvent) => void;
   onDragEnd: (elementId: string, dx: number, dy: number) => void;
+  /**
+   * While a device is dragged: where it should be instead (snapped into line with others), or
+   * null to leave it under the pointer. `free` when Alt/Option is held.
+   */
+  onDragMove?: (elementId: string, at: Pt, free: boolean) => Pt | null;
 }
 
 type NodeProps = Omit<SceneLayerProps, 'scene'>;
 
 /** Drag handlers for a node whose resting position is (x, y): report the delta, then snap back. */
-function dragProps(id: string, x: number, y: number, { draggable, onPick, onDragEnd }: NodeProps) {
+function dragProps(
+  id: string,
+  x: number,
+  y: number,
+  { draggable, onPick, onDragEnd, onDragMove }: NodeProps,
+) {
   return {
     draggable,
     onMouseDown: (e: PickEvent) => onPick(id, e),
     onTouchStart: (e: PickEvent) => onPick(id, e),
+    onDragMove: (e: Konva.KonvaEventObject<DragEvent>) => {
+      const snapped = onDragMove?.(id, e.target.position(), e.evt.altKey);
+      if (snapped) e.target.position(snapped);
+    },
     onDragEnd: (e: Konva.KonvaEventObject<DragEvent>) => {
       const dx = e.target.x() - x;
       const dy = e.target.y() - y;

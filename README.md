@@ -47,6 +47,8 @@ states; `/dev/styleguide` (dev server only) shows every UI primitive and categor
    are drawn larger than switches. Edit everything in Details: variant, label, rotation, LED metres, head
    counts, note styling, layer order, duplicate, delete. Ctrl/Cmd+C copies the selection and Ctrl/Cmd+V
    pastes it beside the original (further along each time, on any level of the same plan type).
+   Downlights and surface lights snap into line with nearby lights as you place or drag them, and to
+   even spacing once two or more share a line (magenta guides show it; hold Alt/Option to place freely).
    Undo/redo, Ctrl/Cmd+A, Delete, Esc. Live totals update as you go.
 5. **Review totals:** adjust export quantities; warnings if plans change afterwards.
 6. **Exports:** generate the marked floor plan PDF, the product description PDF and the quantity Excel

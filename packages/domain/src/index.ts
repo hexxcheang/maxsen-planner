@@ -9,6 +9,7 @@ export * from './plan-document.ts';
 export * from './geometry/points.ts';
 export * from './geometry/catmull-rom.ts';
 export * from './geometry/path.ts';
+export * from './geometry/align.ts';
 export * from './totals/sort.ts';
 export * from './totals/compute-totals.ts';
 export * from './totals/adjustments.ts';

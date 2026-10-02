@@ -10,7 +10,7 @@ import {
   Sigma,
   Sparkles,
 } from 'lucide-react';
-import { buildScene, categoryById, type PlanType } from '@maxsen/domain';
+import { alignPoint, buildScene, categoryById, type PlanType } from '@maxsen/domain';
 import { Button, buttonClass, IconButton, useToast } from '@/components/ui';
 import { cn } from '@/lib/cn';
 import { fileUrl } from '@/lib/files';
@@ -26,6 +26,7 @@ import {
 import { TopBarSlot } from '@/app/shell/TopBarSlot';
 import { useCurrentProject } from '@/features/project/useProjectContext';
 import { PLAN_LABELS } from '@/features/setup/labels';
+import { ALIGNED_LIGHTS, lightSpots, SNAP_PX } from './canvas/align';
 import { PlanStage } from './canvas/PlanStage';
 import { LegendOverlay } from './canvas/LegendOverlay';
 import { useStageViewport } from './canvas/useStageViewport';
@@ -203,6 +204,12 @@ export function PlannerScreen() {
     const v = catalogue.variants.find((x) => x.id === variantId);
     const p = v && productById.get(v.productId);
     return p ? categoryById(p.categoryId).kind : 'point';
+  };
+  /** Lights that line up with each other as they're placed: downlights and surface lights. */
+  const alignsAsLight = (variantId: string) => {
+    const v = catalogue.variants.find((x) => x.id === variantId);
+    const p = v && productById.get(v.productId);
+    return p ? ALIGNED_LIGHTS.includes(p.categoryId) : false;
   };
   const nameOf = (variantId: string) => {
     const v = catalogue.variants.find((x) => x.id === variantId);
@@ -415,10 +422,16 @@ export function PlannerScreen() {
               e.preventDefault();
               const rect = e.currentTarget.getBoundingClientRect();
               recordUse(variantId);
-              store.getState().addMarker(variantId, {
+              const at = {
                 x: (e.clientX - rect.left - v.x) / v.scale,
                 y: (e.clientY - rect.top - v.y) / v.scale,
-              });
+              };
+              // A light dropped near others lines up with them (Alt/Option places it freely).
+              const snapped =
+                alignsAsLight(variantId) && !e.altKey
+                  ? alignPoint(at, lightSpots(scene), SNAP_PX / v.scale).at
+                  : at;
+              store.getState().addMarker(variantId, snapped);
             }}
           >
             {plan && size.width > 0 && (
@@ -440,6 +453,7 @@ export function PlannerScreen() {
                 draft={draft}
                 draftColor="#A8873A"
                 onPlace={place}
+                armedAligns={armed?.kind === 'marker' && alignsAsLight(armed.variantId)}
                 onFinishDraft={finishDraft}
                 onEditPoints={(id, points) => store.getState().updateElement(id, { points })}
               />

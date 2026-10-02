@@ -11,12 +11,15 @@ import {
   Text,
 } from 'react-konva';
 import type Konva from 'konva';
-import { snapToAxes, type Pt, type Scene } from '@maxsen/domain';
+import { alignPoint, snapToAxes, type AlignGuide, type Pt, type Scene } from '@maxsen/domain';
+import { ALIGNED_LIGHTS, lightSpots, SNAP_PX } from './align';
 import type { Armed, PlannerTool } from '../store/plannerStore';
 import type { StageViewport } from './useStageViewport';
 import { SceneLayer } from './SceneLayer';
 
 const BRASS = '#A8873A';
+/** Smart guides: a clear magenta, drawn hairline-thin so they never hide the plan. */
+const GUIDE = '#D6336C';
 
 function useHtmlImage(url: string | null) {
   const [img, setImg] = useState<HTMLImageElement | null>(null);
@@ -51,6 +54,8 @@ interface PlanStageProps {
   onFinishDraft: () => void;
   /** Moves or adds points of a selected LED strip or track (one undoable step). */
   onEditPoints?: (elementId: string, points: Pt[]) => void;
+  /** The armed device is a light that lines up with the others as it's placed. */
+  armedAligns?: boolean;
 }
 
 /** Most points an LED strip or track run can be given with the + handle. */
@@ -74,7 +79,10 @@ export function PlanStage({
   onPlace,
   onFinishDraft,
   onEditPoints,
+  armedAligns = false,
 }: PlanStageProps) {
+  /** Smart guides shown while a light is dragged or about to be placed. */
+  const [guides, setGuides] = useState<AlignGuide[]>([]);
   /** Points of the run being reshaped, while a handle is dragged. */
   const [reshaping, setReshaping] = useState<{ id: string; points: Pt[] } | null>(null);
   const [hover, setHover] = useState<Pt | null>(null);
@@ -123,6 +131,25 @@ export function PlanStage({
   const selected = new Set(selection);
   const selectedItems = scene.items.filter((i) => selected.has(i.elementId));
   const px = 1 / viewport.scale;
+  const lightIds = new Set(
+    scene.items.flatMap((i) =>
+      i.type === 'marker' && ALIGNED_LIGHTS.includes(i.categoryId) ? [i.elementId] : [],
+    ),
+  );
+  /** A light being dragged: snap it into line with the lights that aren't moving with it. */
+  const alignDrag = (id: string, at: Pt, free: boolean): Pt | null => {
+    if (free || !lightIds.has(id)) {
+      if (guides.length) setGuides([]);
+      return null;
+    }
+    const moving = new Set(selected.has(id) ? selection : [id]);
+    const r = alignPoint(at, lightSpots(scene, moving), SNAP_PX * px);
+    setGuides(r.guides);
+    return r.at;
+  };
+  /** Where an armed light would be placed at `p`. */
+  const placeAt = (p: Pt, free: boolean): { at: Pt; guides: AlignGuide[] } =>
+    armedAligns && !free ? alignPoint(p, lightSpots(scene), SNAP_PX * px) : { at: p, guides: [] };
   // One open LED strip or track selected: show its points as handles, plus a + to add a point.
   const editable =
     onEditPoints && tool === 'select' && !panning && !armed && selectedItems.length === 1
@@ -169,14 +196,20 @@ export function PlanStage({
       onMouseMove={(e) => {
         if (!armed) return;
         const p = e.target.getStage()?.getRelativePointerPosition();
-        if (p) setHover(p);
+        if (!p) return;
+        setHover(p);
+        if (armedAligns) setGuides(placeAt(p, e.evt.altKey).guides);
       }}
-      onMouseLeave={() => setHover(null)}
+      onMouseLeave={() => {
+        setHover(null);
+        if (armedAligns) setGuides([]);
+      }}
       onClick={(e) => {
         if (panning) return;
         if (armed) {
           const p = e.target.getStage()?.getRelativePointerPosition();
-          if (p) onPlace(p, e.evt.shiftKey);
+          if (p) onPlace(placeAt(p, e.evt.altKey).at, e.evt.shiftKey);
+          setGuides([]);
           return;
         }
         // Only a click on empty canvas (the background layer doesn't listen) clears the selection.
@@ -186,7 +219,7 @@ export function PlanStage({
         if (panning) return;
         if (armed) {
           const p = e.target.getStage()?.getRelativePointerPosition();
-          if (p) onPlace(p, false);
+          if (p) onPlace(placeAt(p, false).at, false);
           return;
         }
         if (e.target === e.target.getStage()) onSelect([], 'replace');
@@ -209,7 +242,11 @@ export function PlanStage({
           scene={scene}
           draggable={tool === 'select' && !panning && !armed}
           onPick={onPick}
-          onDragEnd={(id, dx, dy) => onMove(selected.has(id) ? selection : [id], dx, dy)}
+          onDragMove={alignDrag}
+          onDragEnd={(id, dx, dy) => {
+            setGuides([]);
+            onMove(selected.has(id) ? selection : [id], dx, dy);
+          }}
         />
       </Layer>
       <Layer listening={false}>
@@ -391,6 +428,63 @@ export function PlanStage({
               strokeWidth={1.5 * px}
             />
           ))}
+        </Layer>
+      )}
+      {guides.length > 0 && (
+        <Layer listening={false}>
+          {armedAligns && hover && (
+            <Circle
+              {...placeAt(hover, false).at}
+              radius={3.5 * px}
+              stroke={GUIDE}
+              strokeWidth={1.5 * px}
+            />
+          )}
+          {guides.map((g, i) => {
+            if (g.kind === 'line') {
+              return (
+                <Line
+                  key={i}
+                  points={[g.from.x, g.from.y, g.to.x, g.to.y]}
+                  stroke={GUIDE}
+                  strokeWidth={px}
+                  dash={[5 * px, 4 * px]}
+                />
+              );
+            }
+            // An equal gap: a solid span with end ticks and an "=" at its middle.
+            const horizontal = Math.abs(g.to.y - g.from.y) < Math.abs(g.to.x - g.from.x);
+            const off = 9 * px;
+            const t = 4 * px;
+            const a = horizontal
+              ? { x: g.from.x, y: g.from.y - off }
+              : { x: g.from.x - off, y: g.from.y };
+            const b = horizontal ? { x: g.to.x, y: g.to.y - off } : { x: g.to.x - off, y: g.to.y };
+            const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+            return (
+              <Group key={i}>
+                <Line points={[a.x, a.y, b.x, b.y]} stroke={GUIDE} strokeWidth={px} />
+                {[a, b].map((e, j) => (
+                  <Line
+                    key={j}
+                    points={
+                      horizontal ? [e.x, e.y - t, e.x, e.y + t] : [e.x - t, e.y, e.x + t, e.y]
+                    }
+                    stroke={GUIDE}
+                    strokeWidth={px}
+                  />
+                ))}
+                <Text
+                  text="="
+                  x={mid.x - 4 * px}
+                  y={mid.y - 13 * px}
+                  fontSize={11 * px}
+                  fontStyle="bold"
+                  fill={GUIDE}
+                />
+              </Group>
+            );
+          })}
         </Layer>
       )}
     </Stage>
