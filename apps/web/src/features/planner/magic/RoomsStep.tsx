@@ -1,9 +1,10 @@
 import { useRef, useState, type PointerEvent } from 'react';
-import { Check, DoorOpen, PanelTop, Sparkles, SquareDashed, Trash2, X } from 'lucide-react';
+import { Check, DoorOpen, PanelTop, Plus, Sparkles, SquareDashed, Trash2, X } from 'lucide-react';
 import {
   EXTRA_ROOMS,
   FLAT_PRESETS,
   newId,
+  partBoxes,
   type DrawnRoom,
   type DrawnWindow,
   type RoomLayout,
@@ -25,7 +26,8 @@ interface Props {
   readWindow?: (x: number, y: number) => Promise<DrawnWindow | null>;
 }
 
-type Mode = 'draw' | 'door';
+/** Outlining the room, tapping its door, adding another area to it, or done with it. */
+type Mode = 'draw' | 'door' | 'part' | 'done';
 
 /**
  * The pre-step of Magic Plan: say what kind of home it is, then outline each room on the drawing
@@ -114,7 +116,13 @@ export function RoomsStep({
     const h = Math.abs(box.y1 - box.y0);
     setBox(null);
     if (w < 0.02 || h < 0.02) return; // a stray tap, not a room
-    update(active.id, { x, y, w, h, door: null });
+    if (mode === 'part') {
+      // Another area joined on to the room (an L-shaped living room, say).
+      update(active.id, { parts: [...(active.parts ?? []), { x, y, w, h }] });
+      setMode(active.door ? 'done' : 'door');
+      return;
+    }
+    update(active.id, { x, y, w, h, door: null, parts: [] });
     setMode('door');
   };
 
@@ -158,7 +166,16 @@ export function RoomsStep({
         : 'Choose the type of home, or add rooms, then outline them on the drawing.'
       : mode === 'draw'
         ? `Drag a box over the ${active.name}.`
-        : `Tap where the ${active.name}’s door is (or skip if it has none).`;
+        : mode === 'part'
+          ? `Drag a box over the rest of the ${active.name}. It joins on to the room.`
+          : mode === 'done'
+            ? `The ${active.name} is outlined. Odd shape? Press + to add another area, or drag a new box to redraw it.`
+            : `Tap where the ${active.name}’s door is (or skip if it has none). Odd shape? Press + first.`;
+  /** Adds another area to the active room. */
+  const addPart = () => {
+    if (!active) return;
+    setMode('part');
+  };
   const pct = (n: number) => `${n * 100}%`;
   const live = box && {
     x: Math.min(box.x0, box.x1),
@@ -219,7 +236,7 @@ export function RoomsStep({
                   aria-label={`${r.name}: ${status}`}
                   aria-pressed={r.id === activeId}
                   className="flex min-w-0 flex-1 items-center gap-2 py-1 text-left text-control text-ink"
-                  onClick={() => select(r, 'draw')}
+                  onClick={() => select(r, drawn(r) ? 'done' : 'draw')}
                 >
                   {!drawn(r) ? (
                     <SquareDashed aria-hidden className="size-4 shrink-0 text-ink-3" />
@@ -229,6 +246,11 @@ export function RoomsStep({
                     <DoorOpen aria-hidden className="size-4 shrink-0 text-warn" />
                   )}
                   <span className="truncate">{r.name}</span>
+                  {(r.parts?.length ?? 0) > 0 && (
+                    <span className="shrink-0 text-meta text-ink-3">
+                      {(r.parts?.length ?? 0) + 1} areas
+                    </span>
+                  )}
                 </button>
                 {drawn(r) && (
                   <IconButton
@@ -343,6 +365,16 @@ export function RoomsStep({
               Skip
             </Button>
           )}
+          {!windowMode && active && mode === 'part' && (
+            <Button size="sm" onClick={() => setMode(active.door ? 'done' : 'door')}>
+              Cancel
+            </Button>
+          )}
+          {!windowMode && active && mode === 'done' && (
+            <Button size="sm" onClick={() => advance(layout.rooms, active.id)}>
+              Next room
+            </Button>
+          )}
         </div>
         <div className="flex items-center justify-center bg-desk p-3">
           <div
@@ -382,6 +414,20 @@ export function RoomsStep({
                       stroke="#876B29"
                       strokeWidth={on ? 3 : 1.5}
                     />
+                    {partBoxes(r).map((p, j) => (
+                      <rect
+                        key={j}
+                        data-testid="room-part"
+                        x={pct(p.x)}
+                        y={pct(p.y)}
+                        width={pct(p.w)}
+                        height={pct(p.h)}
+                        fill={on ? 'rgba(168,135,58,0.28)' : 'rgba(168,135,58,0.12)'}
+                        stroke="#876B29"
+                        strokeWidth={on ? 2 : 1}
+                        strokeDasharray="5 4"
+                      />
+                    ))}
                     <text
                       x={pct(r.x + r.w / 2)}
                       y={pct(r.y + r.h / 2)}
@@ -466,6 +512,39 @@ export function RoomsStep({
                 />
               )}
             </svg>
+            {!windowMode && active && drawn(active) && mode !== 'part' && mode !== 'draw' && (
+              <>
+                <button
+                  type="button"
+                  aria-label={`Add another area to the ${active.name}`}
+                  title="Add another area to this room"
+                  className="absolute z-10 flex size-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-brass text-white shadow-md hover:bg-brass-2 focus-visible:outline-2"
+                  style={{ left: pct(active.x + active.w), top: pct(active.y) }}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={addPart}
+                >
+                  <Plus aria-hidden className="size-4" />
+                </button>
+                {(active.parts ?? []).map((p, k) => (
+                  <button
+                    key={k}
+                    type="button"
+                    aria-label={`Remove area ${k + 2} of the ${active.name}`}
+                    title="Remove this area"
+                    className="absolute z-10 flex size-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-ink-2 text-white shadow-md hover:bg-danger focus-visible:outline-2"
+                    style={{ left: pct(p.x + p.w), top: pct(p.y + p.h) }}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={() =>
+                      update(active.id, {
+                        parts: (active.parts ?? []).filter((_, n) => n !== k),
+                      })
+                    }
+                  >
+                    <X aria-hidden className="size-3.5" />
+                  </button>
+                ))}
+              </>
+            )}
           </div>
         </div>
         <p className="text-meta text-ink-2">

@@ -92,6 +92,34 @@ test.describe('Magic Plan', () => {
     await outline('Bedroom 2', [880, 460, 420, 220], [882, 540]);
     await outline('Bedroom 3', [720, 680, 580, 220], [810, 682]);
     await outline('Living / Dining', [100, 360, 620, 540], [305, 898]);
+    // An odd-shaped room: select it again, press + and drag another area on to it, overlapping.
+    await dialog.getByRole('button', { name: /^Living \/ Dining:/ }).click();
+    await dialog.getByRole('button', { name: 'Add another area to the Living / Dining' }).click();
+    await expect(
+      dialog.getByText(/Drag a box over the rest of the Living \/ Dining/),
+    ).toBeVisible();
+    const p1 = P(700, 380);
+    const p2 = P(860, 640);
+    await page.mouse.move(p1.x, p1.y);
+    await page.mouse.down();
+    await page.mouse.move(p2.x, p2.y, { steps: 5 });
+    await page.mouse.up();
+    await expect(dialog.getByTestId('room-part')).toHaveCount(1);
+    await expect(dialog.getByRole('button', { name: /^Living \/ Dining:/ })).toContainText(
+      '2 areas',
+    );
+    await page.screenshot({
+      path: `test-results/screens/magic-room-part-${testInfo.project.name}.png`,
+    });
+    // Its door is kept; the area can be taken off again and put back.
+    await dialog.getByRole('button', { name: 'Remove area 2 of the Living / Dining' }).click();
+    await expect(dialog.getByTestId('room-part')).toHaveCount(0);
+    await dialog.getByRole('button', { name: 'Add another area to the Living / Dining' }).click();
+    await page.mouse.move(p1.x, p1.y);
+    await page.mouse.down();
+    await page.mouse.move(p2.x, p2.y, { steps: 5 });
+    await page.mouse.up();
+    await expect(dialog.getByTestId('room-part')).toHaveCount(1);
     await outline('Kitchen', [280, 100, 280, 260], [480, 358]);
     await outline('Master Toilet', [1140, 100, 160, 200], [1142, 255]);
     await outline('Common Toilet', [720, 100, 160, 200], [795, 298]);

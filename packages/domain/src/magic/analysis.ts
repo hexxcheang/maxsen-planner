@@ -43,6 +43,11 @@ export const floorAnalysisSchema = z.object({
         y: frac,
         w: z.number().positive().max(1.1),
         h: z.number().positive().max(1.1),
+        /**
+         * Set on an extra rectangle of an odd-shaped room (an L-shaped living room, say): the id of
+         * the room it belongs to. It's planned as part of that room, not as a room of its own.
+         */
+        partOf: z.string().optional(),
       }),
     )
     .min(1),

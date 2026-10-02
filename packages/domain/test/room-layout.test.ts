@@ -5,6 +5,7 @@ import {
   drawingWidthMetres,
   FLAT_PRESETS,
   layoutFromAnalysis,
+  partBoxes,
   type RoomLayout,
 } from '../src/magic/room-layout.ts';
 import { floorAnalysisSchema } from '../src/magic/analysis.ts';
@@ -292,5 +293,82 @@ describe('windows only on the outside', () => {
       pick: (c) => c,
     });
     assert.equal(r.placements.filter((p) => p.categoryId === 'curtains-blinds').length, 0);
+  });
+});
+
+describe('rooms of more than one rectangle', () => {
+  // An L-shaped living room: a box across the top and a part down the left, drawn overlapping it.
+  const living = {
+    id: 'a',
+    type: 'living' as const,
+    name: 'Living',
+    x: 0.1,
+    y: 0.1,
+    w: 0.4,
+    h: 0.3,
+    door: { x: 0.2, y: 0.8 },
+    parts: [{ x: 0.1, y: 0.35, w: 0.2, h: 0.45 }],
+  };
+  const layout: RoomLayout = {
+    presetId: 'custom',
+    floorAreaM2: 90,
+    rooms: [
+      living,
+      {
+        id: 'b',
+        type: 'bedroom',
+        name: 'Bedroom',
+        x: 0.5,
+        y: 0.1,
+        w: 0.4,
+        h: 0.4,
+        door: { x: 0.5, y: 0.3 },
+      },
+    ],
+  };
+  const analysis = analysisFromLayout(layout, 1);
+  const main = analysis.rooms.find((r) => r.name === 'Living' && !r.partOf)!;
+  const part = analysis.rooms.find((r) => r.partOf === main.id)!;
+  const r = magicPlan({
+    analysis,
+    sheet: { width: 1000, height: 1000 },
+    categories: MAGIC_CATEGORIES.map((c) => c.id),
+    pick: (c) => c,
+  });
+  const el = (id: string) => [...r.smartHome, ...r.lighting].find((e) => e.id === id)!;
+  const of = (cat: string) =>
+    r.placements.filter((p) => p.categoryId === cat && p.roomId === main.id);
+
+  it('trims a part to what it adds to the room', () => {
+    const [box, ...rest] = partBoxes(living);
+    assert.equal(rest.length, 0);
+    assert.ok(Math.abs(box!.y - 0.4) < 1e-9 && Math.abs(box!.h - 0.4) < 1e-9);
+    assert.ok(part && Math.abs(part.y - 0.4) < 1e-9);
+  });
+
+  it('snaps the door to the part it was tapped on, as the main entrance', () => {
+    const door = analysis.doors.find((d) => d.sides[0] === part.id)!;
+    assert.ok(door.isMainEntrance);
+    assert.ok(Math.abs(door.hinge.y - 0.8) < 1e-9);
+  });
+
+  it('plans the parts as one room: lights in each, one switch and one fan', () => {
+    assert.ok(!r.placements.some((p) => p.roomId === part.id), 'all credited to the room');
+    const lights = of('downlights').map((p) => el(p.elementId) as { x: number; y: number });
+    const inPart = lights.filter((p) => p.y > 400);
+    assert.ok(inPart.length >= 1 && lights.length - inPart.length >= 1, 'lights in both');
+    assert.ok(lights.length >= 4 && lights.length <= 12, `${lights.length} lights`);
+    assert.equal(of('smart-switches').length, 1);
+    assert.ok(of('ceiling-fans').length <= 1);
+  });
+
+  it('keeps LED strips off the seam between the parts', () => {
+    for (const p of of('led-strips')) {
+      const strip = el(p.elementId) as { points: { x: number; y: number }[] };
+      // A run along the seam would lie across it, near y = 400, over the part (x < 300).
+      const [a, b] = strip.points as [{ x: number; y: number }, { x: number; y: number }];
+      const alongSeam = Math.abs(a.y - 400) < 40 && Math.abs(b.y - 400) < 40;
+      assert.ok(!(alongSeam && Math.min(a.x, b.x) < 290), `strip on the seam: ${a.x}–${b.x}`);
+    }
   });
 });

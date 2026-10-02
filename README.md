@@ -83,6 +83,12 @@ Smart curtains go only at windows, and only in living rooms, bedrooms and the st
 family areas, kitchens or toilets). With no windows marked, no curtains are planned. A curtain room's window
 wall also gets its first LED strip as a curtain cove. Strips run close along the walls, 0.3 m in.
 
+Odd-shaped rooms (an L-shaped living room, a dining nook): after outlining a room, press the **+** on
+its corner and drag another box over the rest of it. The boxes can overlap; they join into one room.
+Press the **×** on an added area to take it off. A joined room is planned as one: lights spread over
+every area (the count is for its whole floor), one switch, one fan, and no LED strip across the seam
+between areas.
+
 Room sizes come from the floor area, shared among the listed rooms by their typical sizes, so outlining
 only some rooms doesn't inflate them.
 

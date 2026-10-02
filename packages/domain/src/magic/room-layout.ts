@@ -16,6 +16,19 @@ export interface DrawnRoom {
   h: number;
   /** Where the room's door is, as fractions of the drawing; null until tapped. */
   door: { x: number; y: number } | null;
+  /**
+   * More rectangles joined on to the room, for L-shaped and other odd-shaped spaces. They may
+   * overlap the room's box; only what they add counts.
+   */
+  parts?: Box[];
+}
+
+/** A rectangle as fractions (0–1) of the drawing's width and height. */
+export interface Box {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
 }
 
 export interface DrawnWindow {
@@ -159,13 +172,48 @@ const TYPICAL_M2: Partial<Record<RoomType, number>> = {
 };
 const typical = (t: RoomType) => TYPICAL_M2[t] ?? 6;
 
+/** `a` less the area it shares with `b`, as up to four rectangles. */
+function subtract(a: Box, b: Box): Box[] {
+  const x0 = Math.max(a.x, b.x);
+  const x1 = Math.min(a.x + a.w, b.x + b.w);
+  const y0 = Math.max(a.y, b.y);
+  const y1 = Math.min(a.y + a.h, b.y + b.h);
+  if (x0 >= x1 || y0 >= y1) return [a];
+  const out: Box[] = [];
+  if (y0 > a.y) out.push({ x: a.x, y: a.y, w: a.w, h: y0 - a.y });
+  if (y1 < a.y + a.h) out.push({ x: a.x, y: y1, w: a.w, h: a.y + a.h - y1 });
+  if (x0 > a.x) out.push({ x: a.x, y: y0, w: x0 - a.x, h: y1 - y0 });
+  if (x1 < a.x + a.w) out.push({ x: x1, y: y0, w: a.x + a.w - x1, h: y1 - y0 });
+  return out;
+}
+
+/**
+ * What a room's extra parts add to it: each part less the room's box and the parts before it, so
+ * nothing is counted twice. Slivers are dropped.
+ */
+export function partBoxes(room: DrawnRoom): Box[] {
+  const placed: Box[] = [room];
+  const out: Box[] = [];
+  for (const part of room.parts ?? []) {
+    let pieces = [part];
+    for (const q of placed) pieces = pieces.flatMap((p) => subtract(p, q));
+    pieces = pieces.filter((p) => p.w > 0.005 && p.h > 0.005);
+    out.push(...pieces);
+    placed.push(...pieces);
+  }
+  return out;
+}
+
+/** A room's floor, its box and its parts, as a fraction of the drawing. */
+const floorOf = (r: DrawnRoom) => r.w * r.h + partBoxes(r).reduce((s, p) => s + p.w * p.h, 0);
+
 /**
  * The drawing's width in metres. The home's floor area is shared out among its listed rooms by
  * their typical sizes, so outlining only some rooms doesn't make them look bigger than they are.
  */
 export function drawingWidthMetres(layout: RoomLayout, aspect: number): number | null {
   const outlined = layout.rooms.filter((r) => r.w > 0 && r.h > 0);
-  const drawn = outlined.reduce((s, r) => s + r.w * r.h, 0);
+  const drawn = outlined.reduce((s, r) => s + floorOf(r), 0);
   if (drawn <= 0 || layout.floorAreaM2 <= 0) return null;
   const share =
     outlined.reduce((s, r) => s + typical(r.type), 0) /
@@ -183,7 +231,7 @@ export function analysisFromLayout(all: RoomLayout, aspect: number): FloorAnalys
   // Rooms listed but not outlined yet are left out.
   const layout = { ...all, rooms: all.rooms.filter((r) => r.w > 0 && r.h > 0) };
   const widthM = drawingWidthMetres(all, aspect);
-  const rooms = layout.rooms.map((r, i) => ({
+  const rooms: FloorAnalysis['rooms'] = layout.rooms.map((r, i) => ({
     id: `r${i + 1}`,
     name: r.name,
     type: r.type,
@@ -192,11 +240,31 @@ export function analysisFromLayout(all: RoomLayout, aspect: number): FloorAnalys
     w: r.w,
     h: r.h,
   }));
+  // Extra parts of odd-shaped rooms, each planned as part of its room.
+  layout.rooms.forEach((r, i) =>
+    partBoxes(r).forEach((p, j) =>
+      rooms.push({
+        id: `r${i + 1}-${j + 1}`,
+        name: r.name,
+        type: r.type,
+        ...p,
+        partOf: `r${i + 1}`,
+      }),
+    ),
+  );
+  const groupOf = (id: string) => rooms.find((r) => r.id === id)?.partOf ?? id;
   const idOf = new Map(layout.rooms.map((r, i) => [r.id, `r${i + 1}`]));
-  /** The smallest drawn room containing a point, other than `except`. */
+  /** The smallest drawn room containing a point, other than `except` (or a part of it). */
   const roomAt = (x: number, y: number, except: string) =>
     rooms
-      .filter((r) => r.id !== except && x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h)
+      .filter(
+        (r) =>
+          groupOf(r.id) !== groupOf(except) &&
+          x >= r.x &&
+          x <= r.x + r.w &&
+          y >= r.y &&
+          y <= r.y + r.h,
+      )
       .sort((a, b) => a.w * a.h - b.w * b.h)[0]?.id ?? null;
 
   // Half a door and a step through it, as fractions along x and along y.
@@ -207,32 +275,54 @@ export function analysisFromLayout(all: RoomLayout, aspect: number): FloorAnalys
   const doors: AnalysisDoor[] = [];
   for (const drawn of layout.rooms) {
     if (!drawn.door) continue;
-    const id = idOf.get(drawn.id)!;
-    const { x, y, w, h } = drawn;
+    const main = idOf.get(drawn.id)!;
     const p = drawn.door;
-    // Snap the tap to the nearest wall of the room.
-    const edges = [
-      {
-        d: Math.abs(p.y - y) / aspect,
-        at: { x: clamp(p.x, x, x + w), y },
-        horizontal: true,
-        out: -1,
-      },
-      {
-        d: Math.abs(p.y - (y + h)) / aspect,
-        at: { x: clamp(p.x, x, x + w), y: y + h },
-        horizontal: true,
-        out: 1,
-      },
-      { d: Math.abs(p.x - x), at: { x, y: clamp(p.y, y, y + h) }, horizontal: false, out: -1 },
-      {
-        d: Math.abs(p.x - (x + w)),
-        at: { x: x + w, y: clamp(p.y, y, y + h) },
-        horizontal: false,
-        out: 1,
-      },
-    ].sort((a, b) => a.d - b.d);
+    // Snap the tap to the nearest wall of the room (or of one of its parts).
+    const edges = rooms
+      .filter((r) => r.id === main || r.partOf === main)
+      .flatMap(({ id, x, y, w, h }) => [
+        {
+          id,
+          box: { x, y, w, h },
+          d: Math.abs(p.y - y) / aspect,
+          at: { x: clamp(p.x, x, x + w), y },
+          horizontal: true,
+          out: -1,
+        },
+        {
+          id,
+          box: { x, y, w, h },
+          d: Math.abs(p.y - (y + h)) / aspect,
+          at: { x: clamp(p.x, x, x + w), y: y + h },
+          horizontal: true,
+          out: 1,
+        },
+        {
+          id,
+          box: { x, y, w, h },
+          d: Math.abs(p.x - x),
+          at: { x, y: clamp(p.y, y, y + h) },
+          horizontal: false,
+          out: -1,
+        },
+        {
+          id,
+          box: { x, y, w, h },
+          d: Math.abs(p.x - (x + w)),
+          at: { x: x + w, y: clamp(p.y, y, y + h) },
+          horizontal: false,
+          out: 1,
+        },
+      ])
+      .map((e) => {
+        // How far the tap is from that stretch of wall (along it as well as across).
+        const along = e.horizontal ? Math.abs(p.x - e.at.x) : Math.abs(p.y - e.at.y) / aspect;
+        return { ...e, d: Math.hypot(e.d, along) };
+      })
+      .sort((a, b) => a.d - b.d);
     const e = edges[0]!;
+    const { id } = e;
+    const { x, y, w, h } = e.box;
     const half = e.horizontal ? fx(DOOR_M / 2) : fy(DOOR_M / 2);
     const lo = e.horizontal
       ? clamp(e.at.x - half, x, x + w - 2 * half)
@@ -276,10 +366,11 @@ export function analysisFromLayout(all: RoomLayout, aspect: number): FloorAnalys
  */
 function windowsFor(
   windows: DrawnWindow[],
-  rooms: { id: string; type: RoomType; x: number; y: number; w: number; h: number }[],
+  rooms: FloorAnalysis['rooms'],
   aspect: number,
   metres: number,
 ): FloorAnalysis['windows'] {
+  const groupOf = (r: { id: string; partOf?: string | undefined }) => r.partOf ?? r.id;
   const near = 0.5 / metres; // half a metre, as a fraction of the drawing's width
   const beyond = 0.6 / metres;
   const outdoor = (r: { type: RoomType }) => ['outdoor', 'balcony'].includes(r.type);
@@ -318,7 +409,12 @@ function windowsFor(
         : wd.y1 + (wd.y2 - wd.y1) * f;
       return rooms.some(
         (r) =>
-          r !== room && !outdoor(r) && px > r.x && px < r.x + r.w && py > r.y && py < r.y + r.h,
+          groupOf(r) !== groupOf(room) &&
+          !outdoor(r) &&
+          px > r.x &&
+          px < r.x + r.w &&
+          py > r.y &&
+          py < r.y + r.h,
       );
     });
     if (looksIntoRoom) return;

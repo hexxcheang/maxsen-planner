@@ -309,14 +309,14 @@ function Review({ analysis, result }: { analysis: FloorAnalysis; result: MagicPl
   const counts = new Map<CategoryId, number>();
   for (const p of result.placements) counts.set(p.categoryId, (counts.get(p.categoryId) ?? 0) + 1);
   const rows = MAGIC_CATEGORIES.filter((c) => counts.has(c.id));
+  // Extra areas of odd-shaped rooms aren't rooms of their own.
+  const rooms = analysis.rooms.filter((r) => !r.partOf);
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <p className="text-control font-semibold text-ink">Found {analysis.rooms.length} rooms</p>
-        {analysis.rooms.some((r) => r.type !== 'other') ? (
-          <p className="mt-1 text-meta text-ink-2">
-            {analysis.rooms.map((r) => r.name).join(', ')}
-          </p>
+        <p className="text-control font-semibold text-ink">Found {rooms.length} rooms</p>
+        {rooms.some((r) => r.type !== 'other') ? (
+          <p className="mt-1 text-meta text-ink-2">{rooms.map((r) => r.name).join(', ')}</p>
         ) : (
           <p className="mt-1 text-meta text-ink-2">
             Each room is planned by its size and shape. Move or delete anything that doesn’t suit
