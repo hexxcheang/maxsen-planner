@@ -123,11 +123,38 @@ export const EXTRA_ROOMS: readonly { type: RoomType; name: string }[] = [
 const ROOMS_SHARE = 0.85;
 const DOOR_M = 0.85;
 
-/** The drawing's width in metres implied by the drawn rooms covering most of `floorAreaM2`. */
+/** Typical floor area (m²) of each kind of room, to share out the home's area among its rooms. */
+const TYPICAL_M2: Partial<Record<RoomType, number>> = {
+  living: 20,
+  'living-dining': 28,
+  family: 12,
+  dining: 10,
+  kitchen: 8,
+  'master-bedroom': 14,
+  bedroom: 10,
+  study: 8,
+  bathroom: 4,
+  corridor: 5,
+  foyer: 4,
+  utility: 3,
+  store: 2.5,
+  balcony: 5,
+  staircase: 5,
+};
+const typical = (t: RoomType) => TYPICAL_M2[t] ?? 6;
+
+/**
+ * The drawing's width in metres. The home's floor area is shared out among its listed rooms by
+ * their typical sizes, so outlining only some rooms doesn't make them look bigger than they are.
+ */
 export function drawingWidthMetres(layout: RoomLayout, aspect: number): number | null {
-  const drawn = layout.rooms.reduce((s, r) => s + r.w * r.h, 0);
+  const outlined = layout.rooms.filter((r) => r.w > 0 && r.h > 0);
+  const drawn = outlined.reduce((s, r) => s + r.w * r.h, 0);
   if (drawn <= 0 || layout.floorAreaM2 <= 0) return null;
-  return Math.sqrt((ROOMS_SHARE * layout.floorAreaM2 * aspect) / drawn);
+  const share =
+    outlined.reduce((s, r) => s + typical(r.type), 0) /
+    layout.rooms.reduce((s, r) => s + typical(r.type), 0);
+  return Math.sqrt((ROOMS_SHARE * layout.floorAreaM2 * share * aspect) / drawn);
 }
 
 /**
@@ -139,7 +166,7 @@ export function drawingWidthMetres(layout: RoomLayout, aspect: number): number |
 export function analysisFromLayout(all: RoomLayout, aspect: number): FloorAnalysis {
   // Rooms listed but not outlined yet are left out.
   const layout = { ...all, rooms: all.rooms.filter((r) => r.w > 0 && r.h > 0) };
-  const widthM = drawingWidthMetres(layout, aspect);
+  const widthM = drawingWidthMetres(all, aspect);
   const rooms = layout.rooms.map((r, i) => ({
     id: `r${i + 1}`,
     name: r.name,

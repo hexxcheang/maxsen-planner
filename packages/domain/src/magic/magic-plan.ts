@@ -422,13 +422,12 @@ export function magicPlan({ analysis, sheet, categories, pick }: MagicPlanInput)
         pts = row(room, m(1.1), m(0.5), cap(1.2));
       else if (room.type === 'kitchen') pts = kitchenLights(room);
       else if (LIVING.includes(room.type) && room.type !== 'dining')
-        pts = spread(room, clampN(Math.round(areaM2 / 2.5), 8, 12), fanClear);
+        pts = spread(room, lightsFor(areaM2, 2.5, 12), fanClear);
       else if (room.type === 'master-bedroom')
-        pts = spread(room, clampN(Math.round(areaM2 / 3.5), 4, 6), fanClear);
-      else if (room.type === 'bedroom')
-        pts = spread(room, clampN(Math.round(areaM2 / 4), 2, 4), fanClear);
+        pts = spread(room, lightsFor(areaM2, 3.5, 6), fanClear);
+      else if (room.type === 'bedroom') pts = spread(room, lightsFor(areaM2, 4, 4), fanClear);
       else if (room.type === 'dining' || room.type === 'study')
-        pts = spread(room, clampN(Math.round(areaM2 / 3), 2, 6), fanClear);
+        pts = spread(room, lightsFor(areaM2, 3, 6), fanClear);
       else pts = grid(room, m(1.3), m(0.6), cap(1.5));
       // Leave the dining table to the pendant, and keep clear of the fan's blades.
       const pendantAt = want.has('pendant-lights') ? diningSpot(room) : null;
@@ -572,10 +571,19 @@ export function magicPlan({ analysis, sheet, categories, pick }: MagicPlanInput)
     return strips.filter((s) => s.w > 0 && s.h > 0).sort((a, b) => b.w * b.h - a.w * a.h)[0] ?? r;
   }
 
+  /**
+   * Downlights for a room of `areaM2`, from the area each light covers, so the count follows the
+   * size of the box drawn: a small family corner gets 2, a big living room up to `max`.
+   */
+  function lightsFor(areaM2: number, m2PerLight: number, max: number): number {
+    return clampN(Math.round(areaM2 / m2PerLight), areaM2 < 4 ? 1 : 2, max);
+  }
+
   /** How many LED strip runs a room gets (more downlights, fewer strips). */
   function stripRuns(room: Room): number {
     const areaM2 = area(room) / (u * u);
-    if (LIVING.includes(room.type) && room.type !== 'dining') return areaM2 >= 20 ? 4 : 3;
+    if (LIVING.includes(room.type) && room.type !== 'dining')
+      return areaM2 >= 20 ? 4 : areaM2 >= 14 ? 3 : areaM2 >= 9 ? 2 : areaM2 >= 5 ? 1 : 0;
     if (room.type === 'master-bedroom') return areaM2 >= 18 ? 3 : areaM2 >= 12 ? 2 : 1;
     if (room.type === 'bedroom') return areaM2 >= 13 ? 2 : areaM2 >= 9 ? 1 : 0;
     return 0;
@@ -613,6 +621,8 @@ export function magicPlan({ analysis, sheet, categories, pick }: MagicPlanInput)
     for (let nx = 1; nx <= 6; nx++) {
       for (let ny = 1; ny <= 6; ny++) {
         const n = ring && nx >= 2 && ny >= 2 ? 2 * (nx + ny) - 4 : nx * ny;
+        // Stay within one light of the count the room's size calls for.
+        if (Math.abs(n - count) > 1) continue;
         shapes.push({
           nx,
           ny,
@@ -621,12 +631,13 @@ export function magicPlan({ analysis, sheet, categories, pick }: MagicPlanInput)
       }
     }
     shapes.sort((a, b) => a.score - b.score);
-    for (const { nx, ny } of shapes.slice(0, 8)) {
+    for (const { nx, ny } of shapes) {
       const pts = layout(nx, ny);
       if (!fan || pts.every((p) => dist(p, fan.at) > fan.clear)) return pts;
     }
-    // Too tight for a fan: keep the lights (the fan is left out below).
-    return layout(shapes[0]!.nx, shapes[0]!.ny);
+    // Too tight for a fan: keep the lights at the right count (the fan is left out below).
+    if (fan) return spread(room, count, null);
+    return shapes[0] ? layout(shapes[0].nx, shapes[0].ny) : [];
   }
 
   /** The wall the kitchen cabinets run along: the longest one without an opening. */

@@ -131,3 +131,65 @@ describe('planning outlined rooms', () => {
     assert.ok(total('downlights') > total('led-strips') * 2, 'more downlights than strips');
   });
 });
+
+describe('light counts follow the size of the box drawn', () => {
+  // A 10 m wide drawing (aspect 1.25): fractions × 10 m wide, × 8 m tall.
+  const plan = (w: number, h: number, type: 'family' | 'living-dining' | 'bedroom') => {
+    const layout: RoomLayout = {
+      presetId: 'custom',
+      floorAreaM2: 80 / 0.85,
+      rooms: [
+        { id: 'a', type, name: 'Room', x: 0.1, y: 0.1, w, h, door: null },
+        // Filler so the drawn area (and so the scale) stays 80 m².
+        { id: 'b', type: 'store', name: 'Rest', x: 0, y: 0, w: 1, h: 1 - (w * h) / 1, door: null },
+      ],
+    };
+    const analysis = analysisFromLayout({ ...layout, rooms: layout.rooms.slice(0, 1) }, 1.25);
+    // Fix the scale: 10 m across.
+    analysis.imageWidthMetres = 10;
+    const r = magicPlan({
+      analysis,
+      sheet: { width: 1000, height: 800 },
+      categories: MAGIC_CATEGORIES.map((c) => c.id),
+      pick: (c) => c,
+    });
+    return r.placements.filter((p) => p.categoryId === 'downlights').length;
+  };
+
+  it('gives a small family area a few downlights, not 8', () => {
+    // 2.5 m × 2.4 m ≈ 6 m².
+    const n = plan(0.25, 0.3, 'family');
+    assert.ok(n >= 2 && n <= 3, `${n}`);
+  });
+
+  it('gives a big living room up to 12', () => {
+    // 6 m × 5.6 m ≈ 34 m².
+    const n = plan(0.6, 0.7, 'living-dining');
+    assert.ok(n >= 10 && n <= 12, `${n}`);
+  });
+
+  it('scales bedrooms between 2 and 4', () => {
+    assert.ok(plan(0.28, 0.35, 'bedroom') <= 3); // ≈ 7.8 m²
+    assert.equal(plan(0.4, 0.5, 'bedroom'), 4); // 16 m²
+  });
+});
+
+describe('scale with only some rooms outlined', () => {
+  it('does not blow up the size of the rooms that are outlined', () => {
+    const rooms = FLAT_PRESETS.find((p) => p.id === 'hdb-4')!.rooms.map((r, i) => ({
+      id: `x${i}`,
+      ...r,
+      x: 0,
+      y: 0,
+      w: 0,
+      h: 0,
+      door: null,
+    }));
+    // Only the living room outlined: half the drawing's width, a third of its height.
+    rooms[3] = { ...rooms[3]!, x: 0, y: 0, w: 0.5, h: 1 / 3 };
+    const width = drawingWidthMetres({ presetId: 'hdb-4', floorAreaM2: 93, rooms }, 1.4)!;
+    const livingM2 = 0.5 * width * ((1 / 3) * (width / 1.4));
+    // About the typical share of a 93 m² flat for its living room, not the whole flat.
+    assert.ok(livingM2 > 15 && livingM2 < 35, `${livingM2.toFixed(1)} m²`);
+  });
+});

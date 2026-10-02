@@ -61,17 +61,20 @@ states; `/dev/styleguide` (dev server only) shows every UI primitive and categor
 2. **What to place.** Tick the categories, then review the counts and place everything. One Undo
    removes it all.
 
-How rooms are planned (Singapore practice):
+How rooms are planned (Singapore practice). Light counts follow the size of the box you draw:
 
 | Room | Downlights | LED strips | Also |
 |---|---|---|---|
-| Living / dining | 8–12 | 3–4, in the L-box along the walls | 52" ceiling fan; dining pendant |
-| Master bedroom | 4–6 | 0–3 | 52" ceiling fan |
-| Other bedrooms | 2–4 | 0–2 | 46" ceiling fan |
+| Living / family / dining area | 1 per 2.5 m², 2–12 (about 8–12 in a full living room) | 1–4 by size, in the L-box along the walls | 52" ceiling fan; dining pendant |
+| Master bedroom | 1 per 3.5 m², 2–6 | 1–3 by size | 52" ceiling fan |
+| Other bedrooms | 1 per 4 m², 2–4 | 0–2 by size | 46" ceiling fan |
 | Kitchen | A row over the worktop | Under-cabinet strip | |
 | Toilets | 1–2 | | Switched from outside |
 | Service yard, store, shelter | One surface light | | Switched from outside |
 | Corridor | A single centre row | | |
+
+Room sizes come from the floor area, shared among the listed rooms by their typical sizes, so outlining
+only some rooms doesn't inflate them.
 
 - **Spacing:** downlights are spread evenly and symmetrically, at least 0.5 m off the walls. With a fan
   they ring the fan and stay clear of its blades. Track lights are used only in long, narrow spaces.
