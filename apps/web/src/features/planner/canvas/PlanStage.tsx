@@ -1,5 +1,15 @@
 import { useEffect, useState } from 'react';
-import { Circle, Group, Image as KonvaImage, Layer, Line, Path, Rect, Stage } from 'react-konva';
+import {
+  Circle,
+  Group,
+  Image as KonvaImage,
+  Layer,
+  Line,
+  Path,
+  Rect,
+  Stage,
+  Text,
+} from 'react-konva';
 import type Konva from 'konva';
 import type { Pt, Scene } from '@maxsen/domain';
 import type { Armed, PlannerTool } from '../store/plannerStore';
@@ -39,7 +49,14 @@ interface PlanStageProps {
   /** A click on the plan while something is armed, in plan units. */
   onPlace: (at: Pt, shift: boolean) => void;
   onFinishDraft: () => void;
+  /** Moves or adds points of a selected LED strip or track (one undoable step). */
+  onEditPoints?: (elementId: string, points: Pt[]) => void;
 }
+
+/** Most points an LED strip or track run can be given with the + handle. */
+export const MAX_PATH_POINTS = 8;
+/** How far (plan units) a new point is placed beyond the last one; then drag it anywhere. */
+const NEW_POINT_STEP = 50;
 
 export function PlanStage({
   width,
@@ -56,7 +73,10 @@ export function PlanStage({
   draftColor,
   onPlace,
   onFinishDraft,
+  onEditPoints,
 }: PlanStageProps) {
+  /** Points of the run being reshaped, while a handle is dragged. */
+  const [reshaping, setReshaping] = useState<{ id: string; points: Pt[] } | null>(null);
   const [hover, setHover] = useState<Pt | null>(null);
   const image = useHtmlImage(background.url);
   const { viewport } = view;
@@ -103,6 +123,22 @@ export function PlanStage({
   const selected = new Set(selection);
   const selectedItems = scene.items.filter((i) => selected.has(i.elementId));
   const px = 1 / viewport.scale;
+  // One open LED strip or track selected: show its points as handles, plus a + to add a point.
+  const editable =
+    onEditPoints && tool === 'select' && !panning && !armed && selectedItems.length === 1
+      ? selectedItems.find((i) => i.type === 'path' && !i.closed)
+      : undefined;
+  const editPath = editable?.type === 'path' ? editable : undefined;
+  const editPoints =
+    editPath && (reshaping?.id === editPath.elementId ? reshaping.points : editPath.points);
+  const plusAt = (() => {
+    if (!editPoints || editPoints.length >= MAX_PATH_POINTS) return null;
+    const last = editPoints.at(-1)!;
+    const prev = editPoints.at(-2) ?? { x: last.x - 1, y: last.y };
+    const d = Math.hypot(last.x - prev.x, last.y - prev.y) || 1;
+    const dir = { x: (last.x - prev.x) / d, y: (last.y - prev.y) / d };
+    return { at: { x: last.x + dir.x * 22 * px, y: last.y + dir.y * 22 * px }, dir, last };
+  })();
 
   return (
     <Stage
@@ -229,6 +265,107 @@ export function PlanStage({
           );
         })}
       </Layer>
+      {editPath && editPoints && (
+        <Layer>
+          {reshaping && (
+            <Line
+              points={editPoints.flatMap((p) => [p.x, p.y])}
+              stroke={editPath.color}
+              strokeWidth={editPath.strokeWidth}
+              opacity={0.6}
+              lineCap="round"
+              lineJoin="round"
+              listening={false}
+            />
+          )}
+          {editPoints.map((p, i) => (
+            <Circle
+              key={i}
+              name={`point-${i}`}
+              x={p.x}
+              y={p.y}
+              radius={7 * px}
+              hitStrokeWidth={10 * px}
+              fill="#FFFFFF"
+              stroke={BRASS}
+              strokeWidth={2 * px}
+              draggable
+              onMouseEnter={(e) => {
+                const c = e.target.getStage()?.container();
+                if (c) c.style.cursor = 'move';
+              }}
+              onMouseLeave={(e) => {
+                const c = e.target.getStage()?.container();
+                if (c) c.style.cursor = '';
+              }}
+              onDragMove={(e) => {
+                const next = editPoints.map((q, j) =>
+                  j === i ? { x: e.target.x(), y: e.target.y() } : q,
+                );
+                setReshaping({ id: editPath.elementId, points: next });
+              }}
+              onDragEnd={(e) => {
+                const next = editPoints.map((q, j) =>
+                  j === i
+                    ? {
+                        x: Math.round(e.target.x() * 10) / 10,
+                        y: Math.round(e.target.y() * 10) / 10,
+                      }
+                    : q,
+                );
+                setReshaping(null);
+                onEditPoints!(editPath.elementId, next);
+              }}
+            />
+          ))}
+          {plusAt && (
+            <Group
+              name="add-point"
+              x={plusAt.at.x}
+              y={plusAt.at.y}
+              onMouseEnter={(e) => {
+                const c = e.target.getStage()?.container();
+                if (c) c.style.cursor = 'pointer';
+              }}
+              onMouseLeave={(e) => {
+                const c = e.target.getStage()?.container();
+                if (c) c.style.cursor = '';
+              }}
+              onClick={(e) => {
+                e.cancelBubble = true;
+                const { last, dir } = plusAt;
+                const added = {
+                  x: Math.round((last.x + dir.x * NEW_POINT_STEP) * 10) / 10,
+                  y: Math.round((last.y + dir.y * NEW_POINT_STEP) * 10) / 10,
+                };
+                onEditPoints!(editPath.elementId, [...editPoints, added]);
+              }}
+              onTap={(e) => {
+                e.cancelBubble = true;
+                const { last, dir } = plusAt;
+                onEditPoints!(editPath.elementId, [
+                  ...editPoints,
+                  { x: last.x + dir.x * NEW_POINT_STEP, y: last.y + dir.y * NEW_POINT_STEP },
+                ]);
+              }}
+            >
+              <Circle radius={9 * px} fill={BRASS} stroke="#FFFFFF" strokeWidth={1.5 * px} />
+              <Text
+                text="+"
+                fontSize={16 * px}
+                fontStyle="bold"
+                fill="#FFFFFF"
+                width={18 * px}
+                height={18 * px}
+                offsetX={9 * px}
+                offsetY={8.5 * px}
+                align="center"
+                verticalAlign="middle"
+              />
+            </Group>
+          )}
+        </Layer>
+      )}
       {armed?.kind === 'path' && draft.length > 0 && (
         <Layer listening={false}>
           <Line

@@ -219,7 +219,7 @@ export function createPlannerStore() {
           closed: true,
           smooth: true,
           metres: null,
-          showLabel: true,
+          showLabel: false,
         }),
 
       updateElement: (id, patch) =>
@@ -332,12 +332,19 @@ export function createPlannerStore() {
           z: nextZ(document),
           variantId: armed.variantId,
           points: draft,
-          showLabel: true,
         };
+        // LED lengths aren't shown on the plan; they're settled in Review totals.
         const id =
           armed.elementKind === 'led-strip'
-            ? add({ ...base, kind: 'led-strip', closed: false, smooth: false, metres: null })
-            : add({ ...base, kind: 'track', headCount: 3 });
+            ? add({
+                ...base,
+                kind: 'led-strip',
+                closed: false,
+                smooth: false,
+                metres: null,
+                showLabel: false,
+              })
+            : add({ ...base, kind: 'track', headCount: 3, showLabel: true });
         set({ draft: [] });
         return id;
       },

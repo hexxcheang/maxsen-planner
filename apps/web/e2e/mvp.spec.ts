@@ -62,7 +62,9 @@ test.describe('MVP editing', () => {
     await expect.poll(() => totalFor(page, 'Control Panels')).toBe('2');
   });
 
-  test('draw an LED strip and enter its length', async ({ page }) => {
+  test('draw an LED strip, add and drag points, and settle its length in Review totals', async ({
+    page,
+  }) => {
     await page.goto('/projects/proj_sample_tan/plan?level=lvl_tan_1&type=lighting');
     await expect(page.getByTestId('plan-canvas')).toHaveAttribute('data-scale', '1.00');
     await page.getByRole('button', { name: /Draw LED strip/ }).click();
@@ -70,26 +72,36 @@ test.describe('MVP editing', () => {
     for (const [x, y] of [
       [150, 600],
       [350, 600],
-      [350, 650],
     ]) {
       const p = at(x!, y!);
       await page.mouse.click(p.x, p.y);
     }
     await page.keyboard.press('Enter');
     await openDetails(page);
-    const length = page
-      .getByRole('complementary', { name: 'Details' })
-      .getByLabel('Length', { exact: true });
-    await expect(length).toBeVisible();
-    await length.fill('3.5');
-    await length.press('Enter');
-    await expect(
-      page
-        .getByRole('complementary', { name: 'Details' })
-        .getByText('Enter the length so totals are right'),
-    ).toHaveCount(0);
+    const details = page.getByRole('complementary', { name: 'Details' });
+    await expect(details.getByText('2 points', { exact: true })).toBeVisible();
 
-    // Two LED runs in the sample plus this one: three Smart LED Drivers.
+    // The + just past the end of the selected run adds a third point; dragging it bends the run.
+    // The + sits 22 screen pixels past the end of the run. (Details can resize the canvas.)
+    await page.waitForTimeout(300);
+    const at2 = await viewport(page);
+    const end = at2(350, 600);
+    await page.mouse.click(end.x + 22, end.y);
+    await expect(details.getByText('3 points', { exact: true })).toBeVisible();
+    const third = at2(400, 600);
+    const target = at2(400, 680);
+    await page.mouse.move(third.x, third.y);
+    await page.mouse.down();
+    await page.mouse.move(target.x, target.y, { steps: 6 });
+    await page.mouse.up();
+    // A fourth point, then take it back off.
+    await details.getByRole('button', { name: 'Add a point' }).click();
+    await expect(details.getByText('4 points', { exact: true })).toBeVisible();
+    await details.getByRole('button', { name: 'Remove last point' }).click();
+    await expect(details.getByText('3 points', { exact: true })).toBeVisible();
+    await page.screenshot({ path: 'test-results/screens/led-points.png' });
+
+    // No length is drawn on the plan; the final metres go in Review totals.
     await page.goto('/projects/proj_sample_tan/review');
     const driver = page.getByRole('textbox', {
       name: 'Export quantity for Smart LED Driver, Standard',

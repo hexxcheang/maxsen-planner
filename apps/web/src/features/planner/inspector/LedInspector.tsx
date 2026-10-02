@@ -1,6 +1,8 @@
 import type { CategoryStyle, LedStripPath, VariantSnapshot } from '@maxsen/domain';
 import { CategoryGlyph } from '@/components/CategoryGlyph';
-import { Badge, Field, NumberField, Select, Switch } from '@/components/ui';
+import { Minus, Plus } from 'lucide-react';
+import { Badge, Button, Field, NumberField, Select, Switch } from '@/components/ui';
+import { MAX_PATH_POINTS } from '../canvas/PlanStage';
 import { usePlanner } from '../planner-context';
 import { InspectorSection, LayerAndActions } from './parts';
 
@@ -41,13 +43,9 @@ export function LedInspector({ el, snapshot, style, variantOptions }: Props) {
           />
         </Field>
         <Field
-          label="Length"
-          hint={
-            el.metres === null
-              ? undefined
-              : 'Typed in by the planner, never measured from the drawing'
-          }
-          error={el.metres === null ? 'Enter the length so totals are right' : undefined}
+          label="Estimated length"
+          optional
+          hint="Not shown on the plan. Enter the final length in Review totals."
         >
           <NumberField
             compact
@@ -59,9 +57,46 @@ export function LedInspector({ el, snapshot, style, variantOptions }: Props) {
             onChange={(metres) => update(el.id, { metres })}
           />
         </Field>
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
           <Badge>{el.points.length} points</Badge>
+          {!el.closed && (
+            <>
+              <Button
+                size="sm"
+                icon={<Plus className="size-4" />}
+                disabledReason={
+                  el.points.length >= MAX_PATH_POINTS
+                    ? `At most ${MAX_PATH_POINTS} points`
+                    : undefined
+                }
+                onClick={() => {
+                  const last = el.points.at(-1)!;
+                  const prev = el.points.at(-2) ?? { x: last.x - 1, y: last.y };
+                  const d = Math.hypot(last.x - prev.x, last.y - prev.y) || 1;
+                  const next = {
+                    x: Math.round((last.x + ((last.x - prev.x) / d) * 50) * 10) / 10,
+                    y: Math.round((last.y + ((last.y - prev.y) / d) * 50) * 10) / 10,
+                  };
+                  update(el.id, { points: [...el.points, next] });
+                }}
+              >
+                Add a point
+              </Button>
+              <Button
+                size="sm"
+                icon={<Minus className="size-4" />}
+                disabledReason={el.points.length <= 2 ? 'A run needs at least 2 points' : undefined}
+                onClick={() => update(el.id, { points: el.points.slice(0, -1) })}
+              >
+                Remove last point
+              </Button>
+            </>
+          )}
         </div>
+        <p className="text-meta text-ink-2">
+          Drag the round handles on the plan to bend or shorten the run; the + at its end adds a
+          point you can drag to any angle.
+        </p>
         <Switch
           checked={el.closed}
           onCheckedChange={(closed) => update(el.id, { closed })}

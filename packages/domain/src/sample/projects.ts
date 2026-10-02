@@ -71,7 +71,7 @@ class DocBuilder {
       closed: opts.closed ?? false,
       smooth: opts.smooth ?? false,
       metres,
-      showLabel: true,
+      showLabel: false,
     };
     this.elements.push(el);
     return this;
@@ -90,7 +90,7 @@ class DocBuilder {
       closed: true,
       smooth: true,
       metres,
-      showLabel: true,
+      showLabel: false,
     };
     this.elements.push(el);
     return this;

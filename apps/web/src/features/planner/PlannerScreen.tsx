@@ -434,6 +434,7 @@ export function PlannerScreen() {
                 draftColor="#A8873A"
                 onPlace={place}
                 onFinishDraft={finishDraft}
+                onEditPoints={(id, points) => store.getState().updateElement(id, { points })}
               />
             )}
           </div>
