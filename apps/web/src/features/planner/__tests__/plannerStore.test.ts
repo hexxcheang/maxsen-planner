@@ -62,3 +62,21 @@ describe('plannerStore', () => {
     expect(store.getState().tool).toBe('pan');
   });
 });
+
+describe('drawing runs', () => {
+  it('snaps a nearly level or plumb segment straight, and leaves a real slant alone', () => {
+    const store = loaded();
+    const s = store.getState();
+    s.arm({ kind: 'path', variantId: 'var_lumi_cove_3000', elementKind: 'led-strip' });
+    s.addDraftPoint({ x: 100, y: 100 }, false);
+    s.addDraftPoint({ x: 300, y: 108 }, false); // about 2°: snaps level
+    s.addDraftPoint({ x: 296, y: 250 }, false); // about 2°: snaps plumb
+    s.addDraftPoint({ x: 400, y: 330 }, false); // about 38°: stays
+    expect(store.getState().draft).toEqual([
+      { x: 100, y: 100 },
+      { x: 300, y: 100 },
+      { x: 300, y: 250 },
+      { x: 400, y: 330 },
+    ]);
+  });
+});

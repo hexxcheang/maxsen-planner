@@ -113,7 +113,8 @@ and waived. Every other device is charged at its catalogue price, and the invoic
 
 **LED strips:** select a strip on the plan to get round handles on its points. Drag them to bend,
 lengthen or shorten the run. The **+** just past its end adds a point that you can drag to any angle.
-Lengths aren't shown on the plan; enter the final metres in Review totals.
+Segments within 8° of level or plumb snap exactly straight (hold Shift while drawing to force it). Lengths
+aren't shown on the plan; enter the final metres in Review totals.
 
 **Where data lives:** this browser only (localStorage for projects and settings, IndexedDB for uploaded
 files). Another device or browser starts from the sample data. Shared storage, the API and real passcode

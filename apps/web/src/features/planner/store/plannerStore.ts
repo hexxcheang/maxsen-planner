@@ -13,6 +13,7 @@ import {
   type PlanElement,
   type PlanType,
   type PlanViewState,
+  snapToAxes,
   type Pt,
 } from '@maxsen/domain';
 
@@ -317,7 +318,8 @@ export function createPlannerStore() {
       addDraftPoint: (p, ortho) =>
         set((s) => {
           const last = s.draft.at(-1);
-          const point = rpt(last && ortho ? orthogonal(last, p) : p);
+          // Shift forces a straight segment; otherwise one that's nearly straight snaps straight.
+          const point = rpt(last ? (ortho ? orthogonal(last, p) : snapToAxes(p, [last])) : p);
           if (last && last.x === point.x && last.y === point.y) return {};
           return { draft: [...s.draft, point] };
         }),

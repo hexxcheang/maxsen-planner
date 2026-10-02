@@ -176,3 +176,31 @@ describe('distanceToPath', () => {
     assert.equal(distanceToPath(p, square, { closed: true, smooth: false }), 2);
   });
 });
+
+describe('snapToAxes', () => {
+  it('straightens a nearly level or plumb segment', async () => {
+    const { snapToAxes } = await import('../src/geometry/points.ts');
+    assert.deepEqual(snapToAxes({ x: 100, y: 7 }, [{ x: 0, y: 0 }]), { x: 100, y: 0 });
+    assert.deepEqual(snapToAxes({ x: -6, y: 100 }, [{ x: 0, y: 0 }]), { x: 0, y: 100 });
+  });
+
+  it('leaves a clearly slanted segment alone', async () => {
+    const { snapToAxes } = await import('../src/geometry/points.ts');
+    assert.deepEqual(snapToAxes({ x: 100, y: 30 }, [{ x: 0, y: 0 }]), { x: 100, y: 30 });
+  });
+
+  it('makes a clean corner between two neighbours', async () => {
+    const { snapToAxes } = await import('../src/geometry/points.ts');
+    // Previous point to the left, next point below: x lines up with next, y with previous.
+    assert.deepEqual(
+      snapToAxes({ x: 103, y: 4 }, [
+        { x: 0, y: 0 },
+        { x: 100, y: 200 },
+      ]),
+      {
+        x: 100,
+        y: 0,
+      },
+    );
+  });
+});

@@ -11,7 +11,7 @@ import {
   Text,
 } from 'react-konva';
 import type Konva from 'konva';
-import type { Pt, Scene } from '@maxsen/domain';
+import { snapToAxes, type Pt, type Scene } from '@maxsen/domain';
 import type { Armed, PlannerTool } from '../store/plannerStore';
 import type { StageViewport } from './useStageViewport';
 import { SceneLayer } from './SceneLayer';
@@ -131,6 +131,10 @@ export function PlanStage({
   const editPath = editable?.type === 'path' ? editable : undefined;
   const editPoints =
     editPath && (reshaping?.id === editPath.elementId ? reshaping.points : editPath.points);
+  const neighbours = (i: number) =>
+    editPoints
+      ? [editPoints[i - 1], editPoints[i + 1]].filter((q): q is Pt => q !== undefined)
+      : [];
   const plusAt = (() => {
     if (!editPoints || editPoints.length >= MAX_PATH_POINTS) return null;
     const last = editPoints.at(-1)!;
@@ -299,19 +303,16 @@ export function PlanStage({
                 if (c) c.style.cursor = '';
               }}
               onDragMove={(e) => {
-                const next = editPoints.map((q, j) =>
-                  j === i ? { x: e.target.x(), y: e.target.y() } : q,
-                );
+                // Segments within a few degrees of level or plumb snap straight.
+                const at = snapToAxes({ x: e.target.x(), y: e.target.y() }, neighbours(i));
+                e.target.position(at);
+                const next = editPoints.map((q, j) => (j === i ? at : q));
                 setReshaping({ id: editPath.elementId, points: next });
               }}
               onDragEnd={(e) => {
+                const at = snapToAxes({ x: e.target.x(), y: e.target.y() }, neighbours(i));
                 const next = editPoints.map((q, j) =>
-                  j === i
-                    ? {
-                        x: Math.round(e.target.x() * 10) / 10,
-                        y: Math.round(e.target.y() * 10) / 10,
-                      }
-                    : q,
+                  j === i ? { x: Math.round(at.x * 10) / 10, y: Math.round(at.y * 10) / 10 } : q,
                 );
                 setReshaping(null);
                 onEditPoints!(editPath.elementId, next);
@@ -369,7 +370,9 @@ export function PlanStage({
       {armed?.kind === 'path' && draft.length > 0 && (
         <Layer listening={false}>
           <Line
-            points={[...draft, ...(hover ? [hover] : [])].flatMap((p) => [p.x, p.y])}
+            points={[...draft, ...(hover ? [snapToAxes(hover, [draft.at(-1)!])] : [])].flatMap(
+              (p) => [p.x, p.y],
+            )}
             stroke={draftColor}
             strokeWidth={6}
             opacity={0.75}
