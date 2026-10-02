@@ -11,6 +11,7 @@ import { CategoryGlyph } from '@/components/CategoryGlyph';
 import { Badge, Button, EmptyState, IconButton, PageHeader } from '@/components/ui';
 import { Page } from '@/components/Page';
 import { cn } from '@/lib/cn';
+import { formatMoney } from '@/lib/format';
 import { fileUrl } from '@/lib/files';
 import { useActions, useCatalogue, useSettings } from '@/lib/data/hooks';
 import { useAdmin } from '@/app/auth/auth-context';
@@ -218,6 +219,11 @@ export function CatalogueScreen() {
                                 <span className="flex items-center gap-2 text-control font-medium text-ink">
                                   {v.name}
                                   {v.hidden && <Badge>Hidden</Badge>}
+                                  <span className="tnum text-meta font-normal text-ink-3">
+                                    {v.price != null
+                                      ? `S$${formatMoney(v.price)}${categoryId === 'led-strips' ? '/m' : ''}`
+                                      : 'No price'}
+                                  </span>
                                 </span>
                                 <span className="line-clamp-2 max-w-[72ch] text-meta text-ink-2">
                                   {v.description}
@@ -279,6 +285,7 @@ export function CatalogueScreen() {
         open={editing?.kind === 'variant'}
         variant={editing?.kind === 'variant' ? editing.variant : null}
         productName={editing?.kind === 'variant' ? editing.product.name : ''}
+        perMetre={categoryId === 'led-strips'}
         onOpenChange={(o) => !o && setEditing(null)}
         onSave={(input) => {
           if (editing?.kind !== 'variant') return;
@@ -288,7 +295,7 @@ export function CatalogueScreen() {
             actions.setVariantImage(editing.variant.id, imageFileId);
           } else {
             const id = actions.addVariant(editing.product.id, fields);
-            if (fields.hidden) actions.updateVariant(id, { hidden: true });
+            actions.updateVariant(id, { hidden: fields.hidden, price: fields.price });
             actions.setVariantImage(id, imageFileId);
             setExpanded((s) => new Set(s).add(editing.product.id));
           }

@@ -1,0 +1,132 @@
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import { buildInvoice, invoiceNumber, type InvoiceInputLine } from '../src/pricing/invoice.ts';
+import { DEFAULT_PRICING, resolvePricing } from '../src/pricing/pricing.ts';
+import { SYSTEM_VARIANT_IDS } from '../src/categories.ts';
+import { SAMPLE_VARIANTS } from '../src/sample/catalogue.ts';
+
+const line = (
+  variantId: string,
+  categoryId: InvoiceInputLine['categoryId'],
+  exportQuantity: number,
+  unit: 'pcs' | 'm' = 'pcs',
+): InvoiceInputLine => ({
+  variantId,
+  categoryId,
+  productName: variantId,
+  variantName: 'Std',
+  unit,
+  exportQuantity,
+});
+const prices = new Map(SAMPLE_VARIANTS.map((v) => [v.id, v.price ?? null]));
+const priceOf = (id: string) => prices.get(id) ?? null;
+type ItemRow = Extract<ReturnType<typeof buildInvoice>['rows'][number], { kind: 'item' }>;
+const items = (inv: ReturnType<typeof buildInvoice>) =>
+  inv.rows.filter((r): r is ItemRow => r.kind === 'item');
+
+describe('buildInvoice', () => {
+  // Like the template: 10 switches, 24 lights, 60 m of LED with 12 drivers, a few extras.
+  const inv = buildInvoice(
+    [
+      line('var_nova_pro_2g_black', 'smart-switches', 6),
+      line('var_nova_pro_3g_black', 'smart-switches', 4),
+      line('var_ir_aircon', 'aircon-controllers', 4),
+      line('var_gateway', 'gateways', 1),
+      line('var_luna_dl_3000', 'downlights', 20),
+      line('var_lumi_surface_round', 'surface-lights', 4),
+      line('var_lumi_cove_3000', 'led-strips', 60, 'm'),
+      line(SYSTEM_VARIANT_IDS.smartLedDriver, 'misc-lighting', 12),
+      line('var_temp_sensor', 'sensors', 3),
+      line('var_nova_s8', 'control-panels', 1),
+    ],
+    priceOf,
+    DEFAULT_PRICING,
+  );
+
+  it('forms packages from every 10 switches, 12 lights and 30 m + 6 drivers', () => {
+    assert.deepEqual(inv.packages, { switches: 1, lights: 2, led: 2 });
+    const pkg = items(inv).filter((r) => r.highlight);
+    assert.deepEqual(
+      pkg.map((r) => [r.quantity, r.unitPrice]),
+      [
+        [1, 1990],
+        [2, 988],
+        [2, 988],
+      ],
+    );
+    assert.match(pkg[1]!.description, /Total 24 Selection/);
+    assert.match(pkg[2]!.description, /Total 60Meters, 12 Drivers/);
+  });
+
+  it('does not charge again for the IR blasters and gateway in the switch package', () => {
+    assert.ok(!items(inv).some((r) => /var_ir_aircon|var_gateway/.test(r.description)));
+  });
+
+  it('charges integration per light and waives it', () => {
+    const integ = items(inv).filter((r) => /^Integration/.test(r.description));
+    assert.deepEqual(
+      integ.map((r) => [r.quantity, r.unitPrice]),
+      [
+        [24, 15],
+        [24, -15],
+        [12, 15],
+        [12, -15],
+      ],
+    );
+  });
+
+  it('prices other devices from the catalogue and totals with a 60% deposit', () => {
+    assert.ok(
+      items(inv).some((r) => r.description.startsWith('var_temp_sensor') && r.unitPrice === 48),
+    );
+    assert.equal(inv.total, 1990 + 2 * 988 + 2 * 988 + 3 * 48 + 680);
+    assert.equal(inv.deposit, Math.round(inv.total * 0.6 * 100) / 100);
+    assert.equal(inv.rows.at(-1)!.kind, 'note');
+  });
+
+  it('charges what is left over beyond a package at add-on rates', () => {
+    const more = buildInvoice(
+      [
+        line('var_nova_pro_1g_black', 'smart-switches', 13),
+        line('var_luna_dl_3000', 'downlights', 14),
+        line('var_lumi_cove_3000', 'led-strips', 34.5, 'm'),
+        line(SYSTEM_VARIANT_IDS.smartLedDriver, 'misc-lighting', 7),
+      ],
+      priceOf,
+      DEFAULT_PRICING,
+    );
+    const find = (re: RegExp) => items(more).find((r) => re.test(r.description));
+    assert.equal(find(/Add-On Per Nova\+ Pro/)!.quantity, 3);
+    assert.equal(find(/Add On Per Luna/)!.quantity, 2);
+    assert.equal(find(/Per Smart Control \+ Driver/)!.quantity, 1);
+    assert.equal(find(/Per 1 Meter/)!.quantity, 4.5);
+  });
+
+  it('prices pieces individually below a package, and lists anything without a price', () => {
+    const few = buildInvoice(
+      [
+        line('var_nova_pro_1g_black', 'smart-switches', 4),
+        line('var_breeze_fan_52', 'ceiling-fans', 2),
+      ],
+      priceOf,
+      DEFAULT_PRICING,
+    );
+    assert.equal(few.packages.switches, 0);
+    assert.ok(items(few).some((r) => r.quantity === 4 && r.unitPrice === 180));
+    assert.deepEqual(few.unpriced, ['var_breeze_fan_52, Std']);
+  });
+});
+
+describe('pricing settings', () => {
+  it('fills in defaults around saved changes', () => {
+    const p = resolvePricing({
+      pricing: { ...DEFAULT_PRICING, lights: { ...DEFAULT_PRICING.lights, packagePrice: 1000 } },
+    });
+    assert.equal(p.lights.packagePrice, 1000);
+    assert.equal(p.led.packagePrice, 988);
+  });
+
+  it('numbers invoices by date', () => {
+    assert.equal(invoiceNumber('MXN-HX-', new Date(2026, 8, 16), 2), 'MXN-HX-26091602');
+  });
+});

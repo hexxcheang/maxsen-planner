@@ -40,6 +40,6 @@ describe('ExportsScreen', () => {
     expect(await screen.findByRole('button', { name: 'Generate all exports' })).not.toHaveAttribute(
       'aria-disabled',
     );
-    expect(screen.getAllByRole('button', { name: 'Generate' })).toHaveLength(3);
+    expect(screen.getAllByRole('button', { name: 'Generate' })).toHaveLength(4);
   });
 });

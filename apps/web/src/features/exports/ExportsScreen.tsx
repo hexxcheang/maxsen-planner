@@ -6,6 +6,7 @@ import {
   FileSpreadsheet,
   FileText,
   Map as MapIcon,
+  Receipt,
 } from 'lucide-react';
 import { exportFilename, type ExportKind } from '@maxsen/domain';
 import { Button, buttonClass, PageHeader } from '@/components/ui';
@@ -16,6 +17,7 @@ import { useLevels, usePlans, useSettings } from '@/lib/data/hooks';
 import { useCurrentProject } from '@/features/project/useProjectContext';
 import { FloorPlanOptions } from './FloorPlanOptions';
 import { ProductPdfOptions } from './ProductPdfOptions';
+import { InvoiceOptions } from './InvoiceOptions';
 
 function ExportPanel({
   title,
@@ -108,7 +110,7 @@ export function ExportsScreen() {
           </Button>
         }
       />
-      <div className="grid grid-cols-3 gap-8 max-[1180px]:grid-cols-2">
+      <div className="grid grid-cols-4 gap-8 max-[1380px]:grid-cols-2 max-[700px]:grid-cols-1">
         <ExportPanel
           title="Marked floor plan"
           icon={<MapIcon />}
@@ -134,6 +136,14 @@ export function ExportsScreen() {
           <p className="text-meta text-ink-2">
             No options. Quantities come from Review totals, including any adjustments.
           </p>
+        </ExportPanel>
+        <ExportPanel
+          title="Invoice"
+          icon={<Receipt />}
+          summary="Your invoice template filled in: packages, add-ons and other devices priced, with total and deposit."
+          {...panel('invoice')}
+        >
+          <InvoiceOptions project={project} settings={settings} />
         </ExportPanel>
       </div>
     </Page>

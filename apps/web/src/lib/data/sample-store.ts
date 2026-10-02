@@ -50,11 +50,21 @@ export interface SampleState {
 export type SampleSeed = 'sample' | 'empty';
 
 /**
- * Brings a saved workspace up to date with categories added since it was saved: products of a
- * category the saved catalogue has never had are added from the sample catalogue. Products the
- * user deleted from an existing category are not brought back.
+ * Brings a saved workspace up to date: variants saved before prices existed take the catalogue
+ * price, and products of a category the saved catalogue has never had are added from the sample
+ * catalogue. Products the user deleted from an existing category are not brought back.
  */
-export function addNewSampleCategories(state: SampleState): SampleState {
+export function addNewSampleCategories(saved: SampleState): SampleState {
+  // Variants saved before prices existed take the catalogue price.
+  const priced = new Map(sample.SAMPLE_VARIANTS.map((v) => [v.id, v.price ?? null]));
+  const state = saved.variants.some((v) => v.price === undefined)
+    ? {
+        ...saved,
+        variants: saved.variants.map((v) =>
+          v.price === undefined ? { ...v, price: priced.get(v.id) ?? null } : v,
+        ),
+      }
+    : saved;
   const known = new Set(state.products.map((p) => p.categoryId));
   const fresh = sample.SAMPLE_PRODUCTS.filter((p) => !known.has(p.categoryId));
   if (fresh.length === 0 || state.products.length === 0) return state;
@@ -476,7 +486,7 @@ export function createSampleStore(
 
     updateVariant(
       variantId: string,
-      patch: Partial<Pick<Variant, 'name' | 'description' | 'hidden'>>,
+      patch: Partial<Pick<Variant, 'name' | 'description' | 'hidden' | 'price'>>,
     ) {
       update((d) => {
         const v = d.variants.find((x) => x.id === variantId);

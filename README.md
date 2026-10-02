@@ -90,11 +90,35 @@ button that outlines the rooms for you to check:
    `ANTHROPIC_API_KEY=`. The `.env` file is never uploaded to GitHub.
 3. Restart the app (Control + C, then `pnpm dev`). The Terminal shows `Magic Plan: ready`.
 
+**Prices and the invoice:** the _Invoice_ export fills in your own invoice template
+(`apps/web/public/templates/invoice-template.xlsx`). Quantities come from Review totals and are grouped
+into packages:
+
+| Package | Contents | Price |
+|---|---|---|
+| Switch | every 10 smart switches (includes 4 IR blasters and 1 gateway) | S$1,990 |
+| Light | every 12 downlights / surface lights | S$988 |
+| LED | every 30 m of LED strip with 6 drivers | S$988 |
+
+Anything beyond a package is charged at the add-on rates. Integration per light and per driver is listed
+and waived. Every other device is charged at its catalogue price, and the invoice adds the total and a
+60% deposit.
+
+- Set each device's price when editing a variant in **Catalogue**. Prices appear only on the invoice,
+  never on the product description.
+- Set package prices, add-on rates, company details, invoice prefix, deposit, terms and bank details in
+  **Admin settings › Pricing**.
+- Upload your newest price catalogue PDF in the same place, for reference. Prices aren't read from it
+  automatically, because the catalogue PDF is made of images rather than text.
+
+**LED strips:** select a strip on the plan to get round handles on its points. Drag them to bend,
+lengthen or shorten the run. The **+** just past its end adds a point that you can drag to any angle.
+Lengths aren't shown on the plan; enter the final metres in Review totals.
+
 **Where data lives:** this browser only (localStorage for projects and settings, IndexedDB for uploaded
 files). Another device or browser starts from the sample data. Shared storage, the API and real passcode
 checks are Phase B.
 
-**Not yet:** marquee selection,
-vertex editing of drawn paths, and saving a project as a template.
+**Not yet:** marquee selection and saving a project as a template.
 
 See `docs/superpowers/notes/phase-a-review.md` for the Phase A review.

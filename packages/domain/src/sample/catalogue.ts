@@ -618,6 +618,43 @@ export const SAMPLE_PRODUCTS: Product[] = SPECS.map((s, i) => ({
   updatedAt: T0,
 }));
 
+/**
+ * Selling prices (S$) from the current price catalogue and invoice template, per piece or per metre
+ * for LED strips. Items the catalogue doesn't price on their own are left for the user to set.
+ */
+const PRICES: Record<string, number> = {
+  var_ark_1g: 100,
+  var_ark_2g: 100,
+  var_ark_3g: 100,
+  var_ark_4g: 100,
+  var_nova_pro_1g_black: 180,
+  var_nova_pro_2g_black: 180,
+  var_nova_pro_3g_black: 180,
+  var_nova_pro_4g_black: 180,
+  var_nova_pro_1g_champagne: 180,
+  var_nova_pro_2g_champagne: 180,
+  var_lusano_1g: 360,
+  var_lusano_2g: 360,
+  var_lusano_3g: 360,
+  var_nova_s1: 250,
+  var_nova_s8: 680,
+  var_nova_s10: 780,
+  var_curtain_single: 380,
+  var_curtain_double: 380,
+  var_temp_sensor: 48,
+  var_luna_dl_3000: 78,
+  var_luna_dl_4000: 78,
+  var_luna_antiglare: 78,
+  var_lumi_surface_round: 78,
+  var_lumi_surface_square: 78,
+  var_luna_track_black: 78,
+  var_luna_track_white: 78,
+  var_lumi_cove_3000: 18,
+  var_lumi_cove_4000: 18,
+  var_lumi_cob_3000: 18,
+  [SYSTEM_VARIANT_IDS.smartLedDriver]: 78,
+};
+
 export const SAMPLE_VARIANTS: Variant[] = SPECS.flatMap((s) =>
   s.variants.map(([id, name, description, imageFileId], i): Variant => ({
     id,
@@ -629,6 +666,7 @@ export const SAMPLE_VARIANTS: Variant[] = SPECS.flatMap((s) =>
     sortOrder: i + 1,
     createdAt: T0,
     updatedAt: T0,
+    price: PRICES[id] ?? null,
   })),
 );
 

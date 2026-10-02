@@ -12,6 +12,7 @@ import {
   type ReviewLine,
   type Settings,
   type VariantResolver,
+  type Variant,
 } from '@maxsen/domain';
 import { fileUrl } from '@/lib/files';
 import { formatDate } from '@/lib/format';
@@ -26,6 +27,8 @@ export interface ExportContext {
   settings: Settings;
   lines: ReviewLine[];
   resolve: VariantResolver;
+  /** The live catalogue, for prices on the invoice. */
+  variants: Variant[];
 }
 
 const INK: [number, number, number] = [31, 29, 26];

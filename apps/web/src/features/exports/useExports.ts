@@ -1,7 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { applyAdjustments, exportFilename, type ExportKind } from '@maxsen/domain';
 import { useToast } from '@/components/ui';
-import { useLevels, usePlans, useProjectTotals, useResolver, useSettings } from '@/lib/data/hooks';
+import {
+  useCatalogue,
+  useLevels,
+  usePlans,
+  useProjectTotals,
+  useResolver,
+  useSettings,
+} from '@/lib/data/hooks';
 import type { Project } from '@maxsen/domain';
 import {
   buildFloorPlanPdf,
@@ -9,6 +16,7 @@ import {
   buildQuantityXlsx,
   type ExportContext,
 } from './build/generate';
+import { buildProjectInvoice } from './build/invoice';
 
 export type ExportState =
   | { status: 'idle' }
@@ -20,9 +28,15 @@ const BUILDERS: Record<ExportKind, (ctx: ExportContext) => Promise<Blob>> = {
   'floor-plan': buildFloorPlanPdf,
   'product-description': buildProductPdf,
   quantity: buildQuantityXlsx,
+  invoice: buildProjectInvoice,
 };
 
-export const EXPORT_KINDS: ExportKind[] = ['floor-plan', 'product-description', 'quantity'];
+export const EXPORT_KINDS: ExportKind[] = [
+  'floor-plan',
+  'product-description',
+  'quantity',
+  'invoice',
+];
 
 /** Generates exports fresh from the current plans and review totals; files are not stored. */
 export function useExports(project: Project) {
@@ -31,11 +45,13 @@ export function useExports(project: Project) {
   const { data: settings } = useSettings();
   const { data: totals } = useProjectTotals(project.id);
   const { data: resolve } = useResolver(project.id);
+  const { data: catalogue } = useCatalogue();
   const { toast } = useToast();
   const [state, setState] = useState<Record<ExportKind, ExportState>>({
     'floor-plan': { status: 'idle' },
     'product-description': { status: 'idle' },
     quantity: { status: 'idle' },
+    invoice: { status: 'idle' },
   });
   const urls = useRef<string[]>([]);
   useEffect(() => () => urls.current.forEach((u) => URL.revokeObjectURL(u)), []);
@@ -50,6 +66,7 @@ export function useExports(project: Project) {
         settings,
         lines: applyAdjustments(totals, project.quantityAdjustments),
         resolve,
+        variants: catalogue.variants,
       };
       const blob = await BUILDERS[kind](ctx);
       const url = URL.createObjectURL(blob);

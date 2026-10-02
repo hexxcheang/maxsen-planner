@@ -1,0 +1,183 @@
+/**
+ * Turns a project's final quantities (Review totals) into invoice lines the way Maxsen quotes:
+ * every 10 switches make a switch package, every 12 downlights/surface lights a light package, and
+ * every 30 m of LED strip with 6 drivers an LED package; what's left over is charged at add-on
+ * rates, and everything else at its catalogue price.
+ */
+import { SYSTEM_VARIANT_IDS, type CategoryId } from '../categories.ts';
+import type { PricingSettings } from './pricing.ts';
+
+/** The parts of a Review totals line the invoice needs. */
+export interface InvoiceInputLine {
+  variantId: string;
+  categoryId: CategoryId;
+  productName: string;
+  variantName: string;
+  unit: 'pcs' | 'm';
+  /** The final quantity from Review totals. */
+  exportQuantity: number;
+}
+
+export type InvoiceRow =
+  | {
+      kind: 'item';
+      description: string;
+      quantity: number;
+      /** Null when the catalogue has no price yet. */
+      unitPrice: number | null;
+      /** Packages are printed highlighted, like the template's first line. */
+      highlight?: boolean;
+    }
+  | { kind: 'section'; title: string }
+  | { kind: 'note'; text: string; tone?: 'warranty' };
+
+export interface Invoice {
+  rows: InvoiceRow[];
+  total: number;
+  deposit: number;
+  /** Packages formed, for showing in the app. */
+  packages: { switches: number; lights: number; led: number };
+  /** Lines without a price, so the total is incomplete until they're set. */
+  unpriced: string[];
+}
+
+const LIGHT_CATEGORIES: CategoryId[] = ['downlights', 'surface-lights'];
+
+export function buildInvoice(
+  lines: InvoiceInputLine[],
+  priceOf: (variantId: string) => number | null | undefined,
+  pricing: PricingSettings,
+): Invoice {
+  const rows: InvoiceRow[] = [];
+  const unpriced: string[] = [];
+  const used = new Set<string>();
+  const qty = (pred: (l: InvoiceInputLine) => boolean) =>
+    lines.filter(pred).reduce((s, l) => s + l.exportQuantity, 0);
+  const item = (
+    description: string,
+    quantity: number,
+    unitPrice: number | null,
+    highlight = false,
+  ) => {
+    if (quantity <= 0) return;
+    if (unitPrice === null) unpriced.push(description);
+    rows.push({
+      kind: 'item',
+      description,
+      quantity,
+      unitPrice,
+      ...(highlight ? { highlight } : {}),
+    });
+  };
+  /** One line per catalogue item, at its catalogue price (or `fallback`), less `free` pieces. */
+  const perVariant = (
+    pick: (l: InvoiceInputLine) => boolean,
+    fallback: number | null,
+    free = 0,
+  ) => {
+    let left = free;
+    for (const l of lines.filter((x) => pick(x) && x.exportQuantity > 0)) {
+      used.add(l.variantId);
+      const covered = Math.min(left, l.exportQuantity);
+      left -= covered;
+      const name = `${l.productName}, ${l.variantName}`;
+      item(name, round(l.exportQuantity - covered), priceOf(l.variantId) ?? fallback);
+    }
+  };
+
+  // --- smart home packages --------------------------------------------------------------------
+  const sw = pricing.switches;
+  const isSwitch = (l: InvoiceInputLine) => l.categoryId === 'smart-switches';
+  const switches = qty(isSwitch);
+  const swPackages = Math.floor(switches / sw.packageSize);
+  if (swPackages > 0) {
+    item(sw.description, swPackages, sw.packagePrice, true);
+    item(sw.addOnName, switches - swPackages * sw.packageSize, sw.addOnPrice);
+    for (const l of lines.filter(isSwitch)) used.add(l.variantId);
+  } else perVariant(isSwitch, sw.addOnPrice);
+  // IR blasters and gateways in the switch packages aren't charged again.
+  perVariant((l) => l.categoryId === 'aircon-controllers', null, swPackages * sw.includesAircon);
+  perVariant((l) => l.categoryId === 'gateways', null, swPackages * sw.includesGateways);
+
+  // --- lighting --------------------------------------------------------------------------------
+  const lt = pricing.lights;
+  const isLight = (l: InvoiceInputLine) => LIGHT_CATEGORIES.includes(l.categoryId);
+  const isStrip = (l: InvoiceInputLine) => l.categoryId === 'led-strips';
+  const isDriver = (l: InvoiceInputLine) => l.variantId === SYSTEM_VARIANT_IDS.smartLedDriver;
+  const lights = qty(isLight);
+  const metres = round(qty(isStrip));
+  const drivers = qty(isDriver);
+  if (lights + metres + drivers > 0) rows.push({ kind: 'section', title: 'Lighting' });
+
+  const ltPackages = Math.floor(lights / lt.packageSize);
+  if (ltPackages > 0) {
+    item(
+      fill(lt.description, { total: ltPackages * lt.packageSize }),
+      ltPackages,
+      lt.packagePrice,
+      true,
+    );
+    item(lt.addOnName, lights - ltPackages * lt.packageSize, lt.addOnPrice);
+    for (const l of lines.filter(isLight)) used.add(l.variantId);
+  } else perVariant(isLight, lt.addOnPrice);
+  if (lights > 0 && lt.integrationPrice > 0) {
+    item(lt.integrationName, lights, lt.integrationPrice);
+    if (lt.integrationWaived) item('Integration Waived', lights, -lt.integrationPrice);
+  }
+
+  const led = pricing.led;
+  const ledPackages = Math.floor(metres / led.packageMetres);
+  if (ledPackages > 0) {
+    item(
+      fill(led.description, {
+        metres: ledPackages * led.packageMetres,
+        drivers: ledPackages * led.packageDrivers,
+      }),
+      ledPackages,
+      led.packagePrice,
+      true,
+    );
+  }
+  for (const l of lines.filter((x) => isStrip(x) || isDriver(x))) used.add(l.variantId);
+  item(
+    led.driverAddOnName,
+    Math.max(0, drivers - ledPackages * led.packageDrivers),
+    led.driverAddOnPrice,
+  );
+  item(
+    led.metreAddOnName,
+    round(Math.max(0, metres - ledPackages * led.packageMetres)),
+    led.metreAddOnPrice,
+  );
+  if (drivers > 0 && led.integrationPrice > 0) {
+    item(led.integrationName, drivers, led.integrationPrice);
+    if (led.integrationWaived) item('Integration Waived', drivers, -led.integrationPrice);
+  }
+
+  // --- everything else, at catalogue prices ------------------------------------------------------
+  perVariant((l) => !used.has(l.variantId), null);
+
+  rows.push({ kind: 'note', text: pricing.warranty, tone: 'warranty' });
+
+  const total = round2(
+    rows.reduce((s, r) => (r.kind === 'item' ? s + r.quantity * (r.unitPrice ?? 0) : s), 0),
+  );
+  return {
+    rows,
+    total,
+    deposit: round2((total * pricing.depositPercent) / 100),
+    packages: { switches: swPackages, lights: ltPackages, led: ledPackages },
+    unpriced,
+  };
+}
+
+/** Invoice number: prefix, yymmdd, then a 2-digit count for the day. */
+export function invoiceNumber(prefix: string, date: Date, count = 1): string {
+  const two = (n: number) => String(n).padStart(2, '0');
+  return `${prefix}${two(date.getFullYear() % 100)}${two(date.getMonth() + 1)}${two(date.getDate())}${two(count)}`;
+}
+
+const fill = (text: string, values: Record<string, number>) =>
+  text.replace(/\{(\w+)\}/g, (m, k: string) => (k in values ? String(values[k]) : m));
+const round = (n: number) => Math.round(n * 10) / 10;
+const round2 = (n: number) => Math.round(n * 100) / 100;

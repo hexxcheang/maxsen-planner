@@ -82,3 +82,8 @@ export function formatMetres(metres: number): string {
 export function formatQuantity(quantity: number, unit: 'pcs' | 'm'): string {
   return unit === 'm' ? formatMetres(quantity) : String(quantity);
 }
+
+/** S$ amounts as on the invoice: 1,990.00 */
+export function formatMoney(amount: number): string {
+  return amount.toLocaleString('en-SG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}

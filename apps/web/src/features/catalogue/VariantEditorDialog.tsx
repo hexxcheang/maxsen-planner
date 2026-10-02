@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { ImageUp } from 'lucide-react';
 import type { Variant } from '@maxsen/domain';
-import { Button, Dialog, Field, Input, Switch, Textarea } from '@/components/ui';
+import { Button, Dialog, Field, Input, NumberField, Switch, Textarea } from '@/components/ui';
 import { fileUrl } from '@/lib/files';
 import { ImagePicker } from '@/components/ImagePicker';
 
@@ -15,10 +15,20 @@ interface Props {
     description: string;
     hidden: boolean;
     imageFileId: string | null;
+    price: number | null;
   }) => void;
+  /** LED strips are priced per metre. */
+  perMetre?: boolean;
 }
 
-export function VariantEditorDialog({ open, variant, productName, onOpenChange, onSave }: Props) {
+export function VariantEditorDialog({
+  open,
+  variant,
+  productName,
+  onOpenChange,
+  onSave,
+  perMetre = false,
+}: Props) {
   return (
     <Dialog
       open={open}
@@ -34,12 +44,21 @@ export function VariantEditorDialog({ open, variant, productName, onOpenChange, 
         </>
       }
     >
-      {open && <VariantForm variant={variant} onSave={onSave} />}
+      {open && <VariantForm variant={variant} onSave={onSave} perMetre={perMetre} />}
     </Dialog>
   );
 }
 
-function VariantForm({ variant, onSave }: { variant: Variant | null; onSave: Props['onSave'] }) {
+function VariantForm({
+  variant,
+  onSave,
+  perMetre,
+}: {
+  variant: Variant | null;
+  onSave: Props['onSave'];
+  perMetre: boolean;
+}) {
+  const [price, setPrice] = useState<number | null>(variant?.price ?? null);
   const [name, setName] = useState(variant?.name ?? '');
   const [description, setDescription] = useState(variant?.description ?? '');
   const [hidden, setHidden] = useState(variant?.hidden ?? false);
@@ -51,7 +70,7 @@ function VariantForm({ variant, onSave }: { variant: Variant | null; onSave: Pro
       setError('Enter a variant name');
       return;
     }
-    onSave({ name: name.trim(), description: description.trim(), hidden, imageFileId });
+    onSave({ name: name.trim(), description: description.trim(), hidden, imageFileId, price });
   };
   return (
     <form
@@ -80,6 +99,20 @@ function VariantForm({ variant, onSave }: { variant: Variant | null; onSave: Pro
         </Field>
         <Field label="Customer description" hint="Shown in the product description PDF">
           <Textarea rows={4} value={description} onChange={(e) => setDescription(e.target.value)} />
+        </Field>
+        <Field
+          label={perMetre ? 'Price per metre (S$)' : 'Price (S$)'}
+          optional
+          hint="Used on the invoice only. Never shown to the client in the product description."
+        >
+          <NumberField
+            value={price}
+            min={0}
+            precision={2}
+            allowEmpty
+            aria-label={perMetre ? 'Price per metre' : 'Price'}
+            onChange={setPrice}
+          />
         </Field>
         <Switch
           checked={hidden}

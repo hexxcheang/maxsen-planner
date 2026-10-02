@@ -14,6 +14,7 @@ import { BrandingSection } from './BrandingSection';
 import { DataSection } from './DataSection';
 import { FavouritesSection } from './FavouritesSection';
 import { IconStylesSection } from './IconStylesSection';
+import { PricingSection } from './PricingSection';
 
 export function AdminScreen() {
   const admin = useAdmin();
@@ -52,12 +53,16 @@ export function AdminScreen() {
       <Tabs defaultValue="branding">
         <TabsList label="Admin sections" className="mb-6">
           <TabsTrigger value="branding">Branding</TabsTrigger>
+          <TabsTrigger value="pricing">Pricing</TabsTrigger>
           <TabsTrigger value="icons">Icon styles</TabsTrigger>
           <TabsTrigger value="favourites">Favourites</TabsTrigger>
           <TabsTrigger value="data">Your data</TabsTrigger>
         </TabsList>
         <TabsContent value="branding">
           <BrandingSection />
+        </TabsContent>
+        <TabsContent value="pricing">
+          <PricingSection />
         </TabsContent>
         <TabsContent value="icons">
           <IconStylesSection />

@@ -153,3 +153,20 @@ describe('upgrading saved data', () => {
     expect(addNewSampleCategories(next)).toBe(next);
   });
 });
+
+describe('upgrading saved prices', () => {
+  it('gives variants saved before prices existed the catalogue price, keeping set ones', () => {
+    const state = createSampleStore('sample').getState();
+    const old: SampleState = {
+      ...state,
+      variants: state.variants.map((v) =>
+        v.id === 'var_nova_s8' ? { ...v, price: 700 } : { ...v, price: undefined },
+      ),
+    };
+    const next = addNewSampleCategories(old);
+    const price = (id: string) => next.variants.find((v) => v.id === id)!.price;
+    expect(price('var_nova_s8')).toBe(700);
+    expect(price('var_nova_s1')).toBe(250);
+    expect(price('var_breeze_fan_46')).toBe(null);
+  });
+});

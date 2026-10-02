@@ -1,4 +1,4 @@
-export type ExportKind = 'floor-plan' | 'product-description' | 'quantity';
+export type ExportKind = 'floor-plan' | 'product-description' | 'quantity' | 'invoice';
 
 const MAX_LENGTH = 100;
 const FALLBACK = 'Project';
@@ -28,6 +28,7 @@ const SUFFIX: Record<ExportKind, string> = {
   'floor-plan': ' - Marked Floor Plan.pdf',
   'product-description': ' - Product Description.pdf',
   quantity: ' - Quantity List.xlsx',
+  invoice: ' - Invoice.xlsx',
 };
 
 /** Export filenames per product spec §11. */

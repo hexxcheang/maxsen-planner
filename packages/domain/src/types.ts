@@ -7,6 +7,7 @@
  */
 import type { BadgeStyle, CategoryId, PlanType } from './categories.ts';
 import type { RoomLayout } from './magic/room-layout.ts';
+import type { PricingSettings } from './pricing/pricing.ts';
 
 export type { BadgeStyle, CategoryId, PlanType };
 
@@ -145,6 +146,8 @@ export interface ProductPdfExportSettings {
 export interface ExportSettings {
   floorPlan: FloorPlanExportSettings;
   productDescription: ProductPdfExportSettings;
+  /** Invoice number for this project's invoice; generated when absent. */
+  invoiceNumber?: string;
 }
 
 export interface ProjectDetails {
@@ -264,6 +267,11 @@ export interface Variant {
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
+  /**
+   * Selling price in S$ per piece (per metre for LED strips), used only on the invoice; never shown
+   * in the product description. Null or absent until set.
+   */
+  price?: number | null;
 }
 
 export interface CategoryStyleOverride {
@@ -290,6 +298,8 @@ export interface Settings {
   branding: Branding;
   categoryStyles: Partial<Record<CategoryId, CategoryStyleOverride>>;
   favouriteVariantIds: string[];
+  /** Packages, add-on rates and invoice details; defaults apply where absent. */
+  pricing?: PricingSettings;
 }
 
 export interface TemplateLevel {
