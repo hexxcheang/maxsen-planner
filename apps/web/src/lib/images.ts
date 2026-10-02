@@ -2,7 +2,7 @@
  * Browser-side image work: turning uploads (PDF pages, JPG, PNG) into page images and thumbnails,
  * and rotating a page into a plan background. Long edges are capped to keep iPad memory in check.
  */
-import type { Rotation } from '@maxsen/domain';
+import { suggestCrop, toGray, type CropRect, type Rotation } from '@maxsen/domain';
 
 const PAGE_LONG_EDGE = 3000;
 const THUMB_LONG_EDGE = 360;
@@ -104,25 +104,67 @@ export async function rasterizePdf(
   return pages;
 }
 
-/** Rotates a page image clockwise by 0/90/180/270 degrees into a new PNG. */
-export async function rotateImage(
-  url: string,
-  rotation: Rotation,
-): Promise<{ blob: Blob; width: number; height: number }> {
-  const img = await loadImage(url);
-  const w = img.naturalWidth || 1400;
-  const h = img.naturalHeight || 1000;
+/** Draws a page turned clockwise by 0/90/180/270 degrees, scaled by `k`, onto a new canvas. */
+function rotatedCanvas(img: HTMLImageElement, rotation: Rotation, k = 1): HTMLCanvasElement {
+  const w = (img.naturalWidth || 1400) * k;
+  const h = (img.naturalHeight || 1000) * k;
   const quarter = rotation === 90 || rotation === 270;
   const canvas = document.createElement('canvas');
-  canvas.width = quarter ? h : w;
-  canvas.height = quarter ? w : h;
-  const ctx = canvas.getContext('2d')!;
+  canvas.width = Math.max(1, Math.round(quarter ? h : w));
+  canvas.height = Math.max(1, Math.round(quarter ? w : h));
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
   ctx.fillStyle = '#FFFFFF';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.translate(canvas.width / 2, canvas.height / 2);
   ctx.rotate((rotation * Math.PI) / 180);
   ctx.drawImage(img, -w / 2, -h / 2, w, h);
-  return { blob: await canvasToBlob(canvas), width: canvas.width, height: canvas.height };
+  return canvas;
+}
+
+/**
+ * Turns a page image clockwise by 0/90/180/270 degrees, then crops it to `crop` (fractions of the
+ * turned page), into a new PNG.
+ */
+export async function rotateImage(
+  url: string,
+  rotation: Rotation,
+  crop: CropRect = { x: 0, y: 0, w: 1, h: 1 },
+): Promise<{ blob: Blob; width: number; height: number }> {
+  const turned = rotatedCanvas(await loadImage(url), rotation);
+  const sx = Math.round(crop.x * turned.width);
+  const sy = Math.round(crop.y * turned.height);
+  const sw = Math.max(1, Math.round(crop.w * turned.width));
+  const sh = Math.max(1, Math.round(crop.h * turned.height));
+  if (sx === 0 && sy === 0 && sw === turned.width && sh === turned.height) {
+    return { blob: await canvasToBlob(turned), width: turned.width, height: turned.height };
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = sw;
+  canvas.height = sh;
+  canvas.getContext('2d')!.drawImage(turned, sx, sy, sw, sh, 0, 0, sw, sh);
+  return { blob: await canvasToBlob(canvas), width: sw, height: sh };
+}
+
+/**
+ * A small preview of a page turned by `rotation`, plus a suggested crop to just the floor plan
+ * (worked out on this computer).
+ */
+export async function previewForCrop(
+  url: string,
+  rotation: Rotation,
+  longEdge = 1200,
+): Promise<{ url: string; aspect: number; suggested: CropRect }> {
+  const img = await loadImage(url);
+  const k = Math.min(1, longEdge / Math.max(img.naturalWidth || 1400, img.naturalHeight || 1000));
+  const canvas = rotatedCanvas(img, rotation, k);
+  const data = canvas.getContext('2d')!.getImageData(0, 0, canvas.width, canvas.height);
+  let suggested: CropRect = { x: 0, y: 0, w: 1, h: 1 };
+  try {
+    suggested = suggestCrop(toGray(data.data, canvas.width, canvas.height));
+  } catch (e) {
+    console.warn('Could not suggest a crop', e);
+  }
+  return { url: canvas.toDataURL('image/png'), aspect: canvas.width / canvas.height, suggested };
 }
 
 /** Rasterises any image URL (including SVG) to PNG data for PDF embedding. */

@@ -14,6 +14,7 @@ import {
   sample,
   setAdjustment,
   type CategoryId,
+  type CropRect,
   type ExportSettings,
   type Level,
   type Orientation,
@@ -546,6 +547,7 @@ export function createSampleStore(
       bg: {
         sourcePageId: string;
         rotation: Rotation;
+        crop?: CropRect;
         fileId: string;
         width: number;
         height: number;
@@ -559,7 +561,7 @@ export function createSampleStore(
           projectId,
           levelId,
           type,
-          background: { ...bg, crop: { x: 0, y: 0, w: 1, h: 1 } },
+          background: { ...bg, crop: bg.crop ?? { x: 0, y: 0, w: 1, h: 1 } },
           document: createEmptyPlanDocument(),
           revision: 1,
           updatedAt: now(),

@@ -1,11 +1,12 @@
-import { useState } from 'react';
-import type { Level, PlanType, Rotation, SourceFile, SourcePage } from '@maxsen/domain';
+import { useEffect, useState } from 'react';
+import type { CropRect, Level, PlanType, Rotation, SourceFile, SourcePage } from '@maxsen/domain';
 import { Button, Dialog, SegmentedControl, useToast } from '@/components/ui';
 import { cn } from '@/lib/cn';
 import { fileUrl } from '@/lib/files';
-import { rotateImage } from '@/lib/images';
+import { previewForCrop, rotateImage } from '@/lib/images';
 import { useActions } from '@/lib/data/hooks';
 import { putFile } from '@/lib/storage/file-store';
+import { CropBox } from './CropBox';
 import { PLAN_LABELS } from './labels';
 
 interface Props {
@@ -17,6 +18,8 @@ interface Props {
   files: SourceFile[];
   pages: SourcePage[];
 }
+
+const FULL: CropRect = { x: 0, y: 0, w: 1, h: 1 };
 
 /** Pick an uploaded page, turn it upright, and lock it in as the plan's background drawing. */
 export function ChooseDrawingDialog({
@@ -34,17 +37,40 @@ export function ChooseDrawingDialog({
   const [rotation, setRotation] = useState<Rotation>(0);
   const [busy, setBusy] = useState(false);
   const page = pages.find((p) => p.id === pageId);
-  const quarter = rotation === 90 || rotation === 270;
+  const [preview, setPreview] = useState<{
+    key: string;
+    url: string;
+    aspect: number;
+    suggested: CropRect;
+  } | null>(null);
+  const [crop, setCrop] = useState<CropRect>(FULL);
+  const previewKey = page ? `${page.id}:${rotation}` : '';
+  const ready = preview?.key === previewKey;
+
+  // Turn the page and suggest a crop to just the floor plan whenever the page or rotation changes.
+  useEffect(() => {
+    if (!page) return;
+    let live = true;
+    void previewForCrop(fileUrl(page.fileId), rotation).then((p) => {
+      if (!live) return;
+      setPreview({ key: `${page.id}:${rotation}`, ...p });
+      setCrop(p.suggested);
+    });
+    return () => {
+      live = false;
+    };
+  }, [page, rotation]);
 
   const confirm = async () => {
     if (!page) return;
     setBusy(true);
     try {
-      const rotated = await rotateImage(fileUrl(page.fileId), rotation);
+      const rotated = await rotateImage(fileUrl(page.fileId), rotation, crop);
       const fileId = await putFile(rotated.blob);
       actions.assignPlan(projectId, level.id, type, {
         sourcePageId: page.id,
         rotation,
+        crop,
         fileId,
         width: rotated.width,
         height: rotated.height,
@@ -69,7 +95,12 @@ export function ChooseDrawingDialog({
       footer={
         <>
           <Button onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button variant="primary" disabled={!page} loading={busy} onClick={() => void confirm()}>
+          <Button
+            variant="primary"
+            disabled={!page || !ready}
+            loading={busy}
+            onClick={() => void confirm()}
+          >
             Use this drawing
           </Button>
         </>
@@ -116,15 +147,19 @@ export function ChooseDrawingDialog({
           </div>
           <div className="flex min-w-0 flex-col gap-3">
             <div className="flex aspect-[7/5] items-center justify-center overflow-hidden bg-desk p-4">
-              {page ? (
-                <img
-                  src={fileUrl(page.fileId)}
-                  alt="Selected drawing"
-                  className="max-h-full max-w-full border border-rule-2 bg-surface object-contain transition-transform duration-[var(--dur-panel)]"
-                  style={{ transform: `rotate(${rotation}deg)${quarter ? ' scale(0.72)' : ''}` }}
+              {!page ? (
+                <span className="text-control text-ink-2">Select a page on the left.</span>
+              ) : ready ? (
+                <CropBox
+                  imageUrl={preview.url}
+                  aspect={preview.aspect}
+                  crop={crop}
+                  onChange={setCrop}
                 />
               ) : (
-                <span className="text-control text-ink-2">Select a page on the left.</span>
+                <span role="status" className="text-control text-ink-2">
+                  Finding the floor plan…
+                </span>
               )}
             </div>
             <div className="flex items-center gap-3">
@@ -136,6 +171,22 @@ export function ChooseDrawingDialog({
                 onChange={(v) => setRotation(Number(v) as Rotation)}
                 options={[0, 90, 180, 270].map((r) => ({ value: String(r), label: `${r}°` }))}
               />
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-control text-ink-2">Crop</span>
+              <Button
+                size="sm"
+                disabled={!ready}
+                onClick={() => preview && setCrop(preview.suggested)}
+              >
+                Fit to floor plan
+              </Button>
+              <Button size="sm" disabled={!ready} onClick={() => setCrop(FULL)}>
+                Whole page
+              </Button>
+              <span className="text-meta text-ink-2">
+                Drag the box or its handles to trim borders, title blocks and notes.
+              </span>
             </div>
           </div>
         </div>

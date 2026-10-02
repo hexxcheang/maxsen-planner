@@ -4,6 +4,7 @@
  * windows from the image itself. Nothing leaves the browser.
  */
 import {
+  cropLabel,
   readFloorPlan,
   rotateLabel,
   toGray,
@@ -125,7 +126,9 @@ async function labelsFor(
       const found = await pdfLabels(file.fileId, page.pageIndex);
       // A scanned PDF has no text layer; fall through to OCR.
       if (found.some((l) => /[a-z]{3}/i.test(l.text))) {
-        return found.map((l) => rotateLabel(l, plan.background.rotation));
+        return found
+          .map((l) => cropLabel(rotateLabel(l, plan.background.rotation), plan.background.crop))
+          .filter((l): l is DrawingLabel => l !== null);
       }
     } catch (e) {
       console.warn('PDF text could not be read; using OCR', e);

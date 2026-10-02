@@ -13,7 +13,8 @@ import { SAMPLE_DRAWINGS, hdb4room, type Drawing } from '../src/sample/drawings.
 import { analyseSampleDrawing } from '../src/sample/analyses.ts';
 import { magicPlan, MAGIC_CATEGORIES } from '../src/magic/magic-plan.ts';
 import type { AnalysisRoom, FloorAnalysis } from '../src/magic/analysis.ts';
-import { rotateLabel } from '../src/magic/vision/labels.ts';
+import { cropLabel, rotateLabel } from '../src/magic/vision/labels.ts';
+import { suggestCrop } from '../src/magic/vision/crop.ts';
 import { rasterize } from './helpers/raster.ts';
 
 describe('image primitives', () => {
@@ -205,5 +206,29 @@ describe('rotateLabel', () => {
     assert.deepEqual(rotateLabel(l, 90), { text: 'Kitchen', x: 0.9, y: 0.2 });
     assert.deepEqual(rotateLabel(l, 180), { text: 'Kitchen', x: 0.8, y: 0.9 });
     assert.deepEqual(rotateLabel(l, 270), { text: 'Kitchen', x: 0.1, y: 0.8 });
+  });
+});
+
+describe('suggestCrop', () => {
+  it('crops a sample page to the plan, leaving out the title block', () => {
+    const { image } = rasterize(hdb4room);
+    const c = suggestCrop(image);
+    // Building walls run 100–1300 × 100–900 on a 1400 × 1000 page.
+    assert.ok(c.x > 0.02 && c.x < 0.071, `x ${c.x}`);
+    assert.ok(c.y > 0.02 && c.y < 0.1, `y ${c.y}`);
+    assert.ok(c.x + c.w > 0.929 && c.x + c.w < 0.98, `right ${c.x + c.w}`);
+    assert.ok(c.y + c.h > 0.9 && c.y + c.h < 0.95, `bottom ${c.y + c.h}`);
+  });
+
+  it('leaves a blank page alone', () => {
+    const blank: GrayImage = { width: 200, height: 100, data: new Uint8Array(20000).fill(255) };
+    assert.deepEqual(suggestCrop(blank), { x: 0, y: 0, w: 1, h: 1 });
+  });
+
+  it('maps labels onto the cropped page', () => {
+    const crop = { x: 0.1, y: 0.2, w: 0.5, h: 0.5 };
+    const l = cropLabel({ text: 'Kitchen', x: 0.35, y: 0.45 }, crop)!;
+    assert.ok(Math.abs(l.x - 0.5) < 1e-9 && Math.abs(l.y - 0.5) < 1e-9);
+    assert.equal(cropLabel({ text: 'Title', x: 0.9, y: 0.9 }, crop), null);
   });
 });

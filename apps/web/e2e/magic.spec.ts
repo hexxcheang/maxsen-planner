@@ -53,16 +53,7 @@ test.describe('Magic Plan', () => {
       route.fulfill({ json: { configured: false } }),
     );
     // A real drawing as a customer would send it: the sample 4-room plan as a PNG scan.
-    await uploadAndOpen(page, async () => {
-      const img = new Image();
-      img.src = '/sample/floorplan-hdb-4room.svg';
-      await img.decode();
-      const c = document.createElement('canvas');
-      c.width = 2100;
-      c.height = 1500;
-      c.getContext('2d')!.drawImage(img, 0, 0, c.width, c.height);
-      return c.toDataURL('image/png').split(',')[1]!;
-    });
+    await uploadAndOpen(page, drawHdbPng);
 
     await page.getByRole('button', { name: 'Magic Plan' }).click();
     const dialog = page.getByRole('dialog', { name: 'Magic Plan' });
@@ -98,6 +89,53 @@ test.describe('Magic Plan', () => {
     });
   });
 
+  test('suggests a crop to the floor plan and lets you adjust it', async ({ page }, testInfo) => {
+    await createProjectWithUpload(page, drawHdbPng);
+    const card = page.getByRole('region', { name: 'Smart Home Plan' });
+    await card.getByRole('button', { name: 'Choose a drawing' }).click();
+    const dialog = page.getByRole('dialog');
+    await dialog.getByRole('radio', { name: /plan.png, page 1/ }).click();
+    const crop = dialog.getByRole('group', { name: 'Crop' });
+    await expect(crop).toBeVisible();
+    const read = async () =>
+      (await crop.getAttribute('data-crop'))!.split(',').map(Number) as [
+        number,
+        number,
+        number,
+        number,
+      ];
+    // The plan sits inside the page with a margin; the title block and border are trimmed.
+    const [x, y, w, h] = await read();
+    expect(x).toBeGreaterThan(0.02);
+    expect(y).toBeGreaterThan(0.02);
+    expect(w).toBeLessThan(0.95);
+    expect(h).toBeLessThan(0.95);
+    await page.screenshot({ path: `test-results/screens/crop-${testInfo.project.name}.png` });
+
+    // Drag the bottom-right handle in.
+    const handle = dialog.getByRole('button', { name: 'Bottom-right corner of the crop' });
+    const box = (await handle.boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x - 40, box.y - 30, { steps: 4 });
+    await page.mouse.up();
+    const dragged = await read();
+    expect(dragged[2]).toBeLessThan(w);
+    expect(dragged[3]).toBeLessThan(h);
+
+    await dialog.getByRole('button', { name: 'Whole page' }).click();
+    expect(await read()).toEqual([0, 0, 1, 1]);
+    await dialog.getByRole('button', { name: 'Fit to floor plan' }).click();
+    expect(await read()).toEqual([x, y, w, h]);
+
+    await dialog.getByRole('button', { name: 'Use this drawing' }).click();
+    await card.getByRole('link', { name: 'Open in planner' }).click();
+    await page.waitForTimeout(500);
+    await page.screenshot({
+      path: `test-results/screens/crop-planner-${testInfo.project.name}.png`,
+    });
+  });
+
   test('explains when an uploaded page has no plan it can read', async ({ page }) => {
     await page.route('**/api/magic-plan/status', (route) =>
       route.fulfill({ json: { configured: false } }),
@@ -124,8 +162,20 @@ test.describe('Magic Plan', () => {
   });
 });
 
-/** Creates a blank project, uploads a PNG drawn in the page, and opens it as the Smart Home Plan. */
-async function uploadAndOpen(page: Page, drawPng: () => Promise<string>) {
+/** The sample 4-room plan as a customer's PNG scan. */
+async function drawHdbPng() {
+  const img = new Image();
+  img.src = '/sample/floorplan-hdb-4room.svg';
+  await img.decode();
+  const c = document.createElement('canvas');
+  c.width = 2100;
+  c.height = 1500;
+  c.getContext('2d')!.drawImage(img, 0, 0, c.width, c.height);
+  return c.toDataURL('image/png').split(',')[1]!;
+}
+
+/** Creates a blank project and uploads a PNG drawn in the page. */
+async function createProjectWithUpload(page: Page, drawPng: () => Promise<string>) {
   await page.goto('/projects/new');
   await page.getByRole('radio', { name: /Start from blank/ }).click();
   await page.getByRole('button', { name: 'Continue' }).click();
@@ -137,6 +187,11 @@ async function uploadAndOpen(page: Page, drawPng: () => Promise<string>) {
     mimeType: 'image/png',
     buffer: Buffer.from(png, 'base64'),
   });
+}
+
+/** Creates a blank project, uploads a PNG drawn in the page, and opens it as the Smart Home Plan. */
+async function uploadAndOpen(page: Page, drawPng: () => Promise<string>) {
+  await createProjectWithUpload(page, drawPng);
   const card = page.getByRole('region', { name: 'Smart Home Plan' });
   await card.getByRole('button', { name: 'Choose a drawing' }).click();
   await page

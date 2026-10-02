@@ -37,7 +37,9 @@ states; `/dev/styleguide` (dev server only) shows every UI primitive and categor
 1. **Sign in** with `maxsen`; unlock admin with `admin`.
 2. **New project** from blank or a template (templates copy levels and export settings).
 3. **Setup:** upload PDFs (each page is rendered in the browser) or JPG/PNG images, add and order levels,
-   set paper size and orientation, and choose a drawing for each Smart Home or Lighting plan, rotated upright.
+   set paper size and orientation, and choose a drawing for each Smart Home or Lighting plan. Turn it
+   upright, then crop it: the app suggests a crop to just the floor plan (trimming borders, title blocks
+   and notes), and you can drag the box or its handles to adjust it.
 4. **Planner:** click a library item then click the plan (or drag it on) to place devices; draw LED strips
    and tracks by clicking points (Shift for straight runs, double-click or Enter to finish); circle LED loops;
    text notes. Edit everything in Details: variant, label, rotation, LED metres, head counts, note styling,
@@ -62,6 +64,9 @@ them, windows, scale) and places devices by fixed rules based on Singapore renov
   one surface light, because it may not be hacked.
 - **LED coves** go in living areas and the master bedroom, with fewer downlights there. Dining
   gets a pendant. Track lights are used only in long, narrow spaces.
+- **Ceiling fans** (with light) go in living areas and bedrooms: 52" in the living room and master
+  bedroom, 46" in common bedrooms. Downlights stay 0.5 m clear of the blades, and the fan gets a
+  gang on the room's switch.
 - **Switches** go inside each room, beside the opening, on the side with more wall (which way a
   door swings isn't needed). Bathrooms, stores, the shelter and the service yard are switched from
   outside.
@@ -94,7 +99,7 @@ the Magic Plan window:
 files). Another device or browser starts from the sample data. Shared storage, the API and real passcode
 checks are Phase B.
 
-**Not yet:** dragging the crop rectangle (drawings are used full-page, rotation only), marquee selection,
+**Not yet:** marquee selection,
 vertex editing of drawn paths, and saving a project as a template.
 
 See `docs/superpowers/notes/phase-a-review.md` for the Phase A review.
