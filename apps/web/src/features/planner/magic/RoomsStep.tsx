@@ -1,6 +1,6 @@
 import { useRef, useState, type PointerEvent } from 'react';
-import { Check, DoorOpen, Sparkles, SquareDashed, Trash2 } from 'lucide-react';
-import { EXTRA_ROOMS, FLAT_PRESETS, type DrawnRoom, type RoomLayout } from '@maxsen/domain';
+import { Check, DoorOpen, PanelTop, RefreshCw, Sparkles, SquareDashed, Trash2 } from 'lucide-react';
+import { EXTRA_ROOMS, FLAT_PRESETS, newId, type DrawnRoom, type RoomLayout } from '@maxsen/domain';
 import { Button, Field, IconButton, Input, Select } from '@/components/ui';
 import { cn } from '@/lib/cn';
 import { applyPreset, blank, drawn } from './room-layouts';
@@ -14,6 +14,9 @@ interface Props {
   /** Fills the rooms in with Claude, when it is set up. */
   onSuggest?: () => void;
   suggesting?: boolean;
+  /** Looks for windows on the drawing again. */
+  onFindWindows?: () => void;
+  findingWindows?: boolean;
 }
 
 type Mode = 'draw' | 'door';
@@ -22,7 +25,19 @@ type Mode = 'draw' | 'door';
  * The pre-step of Magic Plan: say what kind of home it is, then outline each room on the drawing
  * with a box and tap where its door is. Magic Plan then plans exactly those rooms.
  */
-export function RoomsStep({ imageUrl, aspect, layout, onChange, onSuggest, suggesting }: Props) {
+export function RoomsStep({
+  imageUrl,
+  aspect,
+  layout,
+  onChange,
+  onSuggest,
+  suggesting,
+  onFindWindows,
+  findingWindows,
+}: Props) {
+  /** Drawing a window along a wall instead of outlining rooms. */
+  const [windowMode, setWindowMode] = useState(false);
+  const windows = layout.windows ?? [];
   const firstTodo = layout.rooms.find((r) => !drawn(r) || !r.door);
   const [activeId, setActiveId] = useState<string | null>(firstTodo?.id ?? null);
   const [mode, setMode] = useState<Mode>(firstTodo && drawn(firstTodo) ? 'door' : 'draw');
@@ -51,9 +66,9 @@ export function RoomsStep({ imageUrl, aspect, layout, onChange, onSuggest, sugge
     };
   };
   const down = (e: PointerEvent) => {
-    if (!active) return;
+    if (!active && !windowMode) return;
     const p = at(e);
-    if (mode === 'door') {
+    if (!windowMode && active && mode === 'door') {
       const rooms = layout.rooms.map((r) => (r.id === active.id ? { ...r, door: p } : r));
       onChange({ ...layout, rooms });
       advance(rooms, active.id);
@@ -68,6 +83,19 @@ export function RoomsStep({ imageUrl, aspect, layout, onChange, onSuggest, sugge
     setBox({ ...box, x1: p.x, y1: p.y });
   };
   const up = () => {
+    if (box && windowMode) {
+      // A window runs along one wall: keep the longer direction, straight.
+      const dx = Math.abs(box.x1 - box.x0);
+      const dy = Math.abs(box.y1 - box.y0) / aspect;
+      setBox(null);
+      if (Math.max(dx, dy) < 0.02) return;
+      const win =
+        dx >= dy
+          ? { x1: Math.min(box.x0, box.x1), y1: box.y0, x2: Math.max(box.x0, box.x1), y2: box.y0 }
+          : { x1: box.x0, y1: Math.min(box.y0, box.y1), x2: box.x0, y2: Math.max(box.y0, box.y1) };
+      onChange({ ...layout, windows: [...windows, { id: newId('room'), ...win }] });
+      return;
+    }
     if (!box || !active) return;
     const x = Math.min(box.x0, box.x1);
     const y = Math.min(box.y0, box.y1);
@@ -80,13 +108,15 @@ export function RoomsStep({ imageUrl, aspect, layout, onChange, onSuggest, sugge
   };
 
   const done = layout.rooms.filter((r) => drawn(r)).length;
-  const prompt = !active
-    ? done === layout.rooms.length && done > 0
-      ? 'All rooms are outlined. Select a room to redraw it or move its door.'
-      : 'Choose the type of home, or add rooms, then outline them on the drawing.'
-    : mode === 'draw'
-      ? `Drag a box over the ${active.name}.`
-      : `Tap where the ${active.name}’s door is (or skip if it has none).`;
+  const prompt = windowMode
+    ? 'Drag along a wall from one end of the window to the other.'
+    : !active
+      ? done === layout.rooms.length && done > 0
+        ? 'All rooms are outlined. Select a room to redraw it or move its door.'
+        : 'Choose the type of home, or add rooms, then outline them on the drawing.'
+      : mode === 'draw'
+        ? `Drag a box over the ${active.name}.`
+        : `Tap where the ${active.name}’s door is (or skip if it has none).`;
   const pct = (n: number) => `${n * 100}%`;
   const live = box && {
     x: Math.min(box.x0, box.x1),
@@ -194,6 +224,52 @@ export function RoomsStep({ imageUrl, aspect, layout, onChange, onSuggest, sugge
             select(room, 'draw');
           }}
         />
+        <div className="flex items-center justify-between border-b border-rule pt-1 pb-1.5">
+          <span className="text-control font-semibold text-ink">Windows ({windows.length})</span>
+          {onFindWindows && (
+            <Button
+              size="sm"
+              variant="ghost"
+              icon={<RefreshCw className="size-3.5" />}
+              loading={findingWindows}
+              onClick={onFindWindows}
+            >
+              Find again
+            </Button>
+          )}
+        </div>
+        <p className="text-meta text-ink-2">
+          Found on the drawing’s outer walls. Curtains and curtain-cove LED strips go along them.
+        </p>
+        {windows.length > 0 && (
+          <ul aria-label="Windows" className="flex max-h-[140px] flex-col gap-0.5 overflow-y-auto">
+            {windows.map((w, i) => (
+              <li key={w.id} className="flex items-center gap-2 px-1 text-control text-ink">
+                <PanelTop aria-hidden className="size-4 shrink-0 text-[#2F6FB3]" />
+                <span className="flex-1">Window {i + 1}</span>
+                <IconButton
+                  size="sm"
+                  label={`Remove window ${i + 1}`}
+                  icon={<Trash2 className="size-4" />}
+                  onClick={() =>
+                    onChange({ ...layout, windows: windows.filter((x) => x.id !== w.id) })
+                  }
+                />
+              </li>
+            ))}
+          </ul>
+        )}
+        <Button
+          size="sm"
+          aria-pressed={windowMode}
+          icon={<PanelTop className="size-4" />}
+          onClick={() => {
+            setWindowMode((v) => !v);
+            setBox(null);
+          }}
+        >
+          {windowMode ? 'Done adding windows' : 'Add a window'}
+        </Button>
         {onSuggest && (
           <Button
             size="sm"
@@ -211,7 +287,7 @@ export function RoomsStep({ imageUrl, aspect, layout, onChange, onSuggest, sugge
           <p role="status" className="text-control text-ink">
             {prompt}
           </p>
-          {active && mode === 'door' && (
+          {!windowMode && active && mode === 'door' && (
             <Button size="sm" onClick={() => advance(layout.rooms, active.id)}>
               Skip
             </Button>
@@ -223,7 +299,7 @@ export function RoomsStep({ imageUrl, aspect, layout, onChange, onSuggest, sugge
             data-testid="room-canvas"
             className={cn(
               'relative w-full touch-none select-none border border-rule-2 bg-surface',
-              active ? 'cursor-crosshair' : 'cursor-default',
+              active || windowMode ? 'cursor-crosshair' : 'cursor-default',
             )}
             style={{
               aspectRatio: String(aspect),
@@ -279,7 +355,39 @@ export function RoomsStep({ imageUrl, aspect, layout, onChange, onSuggest, sugge
                   </g>
                 );
               })}
-              {live && (
+              {windows.map((w) => (
+                <line
+                  key={w.id}
+                  x1={pct(w.x1)}
+                  y1={pct(w.y1)}
+                  x2={pct(w.x2)}
+                  y2={pct(w.y2)}
+                  stroke="#2F6FB3"
+                  strokeWidth={5}
+                  strokeLinecap="round"
+                  opacity={0.85}
+                />
+              ))}
+              {live && windowMode && (
+                <line
+                  x1={pct(box.x0)}
+                  y1={pct(box.y0)}
+                  x2={pct(
+                    Math.abs(box.x1 - box.x0) >= Math.abs(box.y1 - box.y0) / aspect
+                      ? box.x1
+                      : box.x0,
+                  )}
+                  y2={pct(
+                    Math.abs(box.x1 - box.x0) >= Math.abs(box.y1 - box.y0) / aspect
+                      ? box.y0
+                      : box.y1,
+                  )}
+                  stroke="#2F6FB3"
+                  strokeWidth={4}
+                  strokeDasharray="6 4"
+                />
+              )}
+              {live && !windowMode && (
                 <rect
                   x={pct(live.x)}
                   y={pct(live.y)}
@@ -296,7 +404,7 @@ export function RoomsStep({ imageUrl, aspect, layout, onChange, onSuggest, sugge
         </div>
         <p className="text-meta text-ink-2">
           Boxes can be rough: cover each room’s floor. The green dot is the door; the switch goes
-          beside it.
+          beside it. Blue lines are windows.
         </p>
       </div>
     </div>

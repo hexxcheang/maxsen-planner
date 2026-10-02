@@ -22,7 +22,7 @@ import { Button, Checkbox, Dialog, Switch } from '@/components/ui';
 import { useActions, useCatalogue, useSettings } from '@/lib/data/hooks';
 import { fileUrl } from '@/lib/files';
 import { analyseBackground, magicPlanConfigured, MagicPlanError } from './analysis-source';
-import { drawn, startingLayout } from './room-layouts';
+import { detectWindows, drawn, startingLayout } from './room-layouts';
 import { RoomsStep } from './RoomsStep';
 
 export interface MagicPlanOutcome {
@@ -67,12 +67,34 @@ export function MagicPlanDialog({ open, onOpenChange, level, plans, onApply }: P
   const aspect = source ? source.background.width / source.background.height : 1.4;
   const builtIn = source ? Boolean(sample.sampleAnalysisFor(source.background.fileId)) : false;
   const [layout, setLayout] = useState<RoomLayout | null>(null);
+  const [findingWindows, setFindingWindows] = useState(false);
+
+  /** Looks for windows on the drawing and keeps them with the outlined rooms. */
+  const findWindows = async (base: RoomLayout) => {
+    if (!source) return;
+    setFindingWindows(true);
+    try {
+      const windows = await detectWindows(fileUrl(source.background.fileId));
+      setLayout((cur) => {
+        const next = { ...(cur ?? base), windows };
+        actions.setMagicLayout(source.id, next);
+        return next;
+      });
+    } catch (e) {
+      console.warn('Windows could not be found on this drawing', e);
+    } finally {
+      setFindingWindows(false);
+    }
+  };
 
   useEffect(() => {
     if (!open || !source) return;
     setStep({ kind: 'rooms' });
     setReplace(hasContent);
-    setLayout(startingLayout(source));
+    const start = startingLayout(source);
+    setLayout(start);
+    // The first time, look for the windows on the drawing.
+    if (!start.windows) void findWindows(start);
     if (!builtIn) void magicPlanConfigured().then(setConfigured);
     // Only when the window opens: later saves of the layout must not reset it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -221,6 +243,8 @@ export function MagicPlanDialog({ open, onOpenChange, level, plans, onApply }: P
             layout={layout}
             onChange={changeLayout}
             onSuggest={!builtIn && configured ? () => void suggest() : undefined}
+            onFindWindows={() => layout && void findWindows(layout)}
+            findingWindows={findingWindows}
             suggesting={suggesting}
           />
         </div>

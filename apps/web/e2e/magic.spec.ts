@@ -96,6 +96,27 @@ test.describe('Magic Plan', () => {
     await outline('Master Toilet', [1140, 100, 160, 200], [1142, 255]);
     await outline('Common Toilet', [720, 100, 160, 200], [795, 298]);
     await expect(dialog.getByText(/7 of 7 outlined/)).toBeVisible();
+
+    // The six windows on the outer walls were found on the drawing; add one by hand, then remove it.
+    await expect(dialog.getByText('Windows (6)')).toBeVisible();
+    await dialog.getByRole('button', { name: 'Add a window' }).click();
+    // Clicking may scroll the dialog: measure the drawing again.
+    await canvas.scrollIntoViewIfNeeded();
+    const box2 = (await canvas.boundingBox())!;
+    const Q = (x: number, y: number) => ({
+      x: box2.x + (x / 1400) * box2.width,
+      y: box2.y + (y / 1000) * box2.height,
+    });
+    const w1 = Q(1300, 700);
+    const w2 = Q(1300, 860);
+    await page.mouse.move(w1.x, w1.y);
+    await page.mouse.down();
+    await page.mouse.move(w2.x, w2.y, { steps: 4 });
+    await page.mouse.up();
+    await expect(dialog.getByText('Windows (7)')).toBeVisible();
+    await dialog.getByRole('button', { name: 'Done adding windows' }).click();
+    await dialog.getByRole('button', { name: 'Remove window 7' }).click();
+    await expect(dialog.getByText('Windows (6)')).toBeVisible();
     await page.screenshot({
       path: `test-results/screens/magic-rooms-drawn-${testInfo.project.name}.png`,
     });

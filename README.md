@@ -73,6 +73,11 @@ How rooms are planned (Singapore practice). Light counts follow the size of the 
 | Service yard, store, shelter | One surface light | | Switched from outside |
 | Corridor | A single centre row | | |
 
+Windows are found on the drawing's outer walls (the thin, glazed breaks) when the Rooms step opens and
+shown in blue. Remove a wrong one, or draw a missing one along its wall with _Add a window_. Each window
+in a living room or bedroom gets a curtain, and its wall gets the room's first LED strip as a curtain
+cove. Strips run close along the walls, 0.3 m in.
+
 Room sizes come from the floor area, shared among the listed rooms by their typical sizes, so outlining
 only some rooms doesn't inflate them.
 

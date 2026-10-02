@@ -1,4 +1,8 @@
+import { loadImage } from '@/lib/images';
 import {
+  findWindows,
+  toGray,
+  type DrawnWindow,
   FLAT_PRESETS,
   layoutFromAnalysis,
   newId,
@@ -42,4 +46,22 @@ export function startingLayout(plan: Plan): RoomLayout {
   const builtIn = sample.sampleAnalysisFor(plan.background.fileId);
   if (builtIn) return layoutFromAnalysis(builtIn, plan.background.width / plan.background.height);
   return applyPreset({ presetId: 'hdb-4', floorAreaM2: 93, rooms: [] }, 'hdb-4');
+}
+
+/** Windows found on the plan's drawing, read on this computer. */
+export async function detectWindows(imageUrl: string): Promise<DrawnWindow[]> {
+  const img = await loadImage(imageUrl);
+  const k = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(img.naturalWidth * k));
+  canvas.height = Math.max(1, Math.round(img.naturalHeight * k));
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  return findWindows(toGray(data.data, canvas.width, canvas.height)).map((w) => ({
+    id: newId('room'),
+    ...w,
+  }));
 }

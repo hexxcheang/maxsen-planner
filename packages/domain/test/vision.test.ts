@@ -84,3 +84,20 @@ describe('suggestCrop', () => {
     assert.deepEqual(suggestCrop(blank), { x: 0, y: 0, w: 1, h: 1 });
   });
 });
+
+describe('findWindows', () => {
+  it('finds the glazed breaks in the outer walls of a sample drawing', async () => {
+    const { findWindows } = await import('../src/magic/vision/windows.ts');
+    const { image } = rasterize(hdb4room);
+    const found = findWindows(image);
+    assert.equal(found.length, hdb4room.windows.length);
+    for (const w of hdb4room.windows) {
+      const hit = found.some(
+        (f) =>
+          Math.abs((f.x1 + f.x2) / 2 - (w.x1 + w.x2) / 2 / 1400) < 0.02 &&
+          Math.abs((f.y1 + f.y2) / 2 - (w.y1 + w.y2) / 2 / 1000) < 0.02,
+      );
+      assert.ok(hit, `window ${JSON.stringify(w)}`);
+    }
+  });
+});

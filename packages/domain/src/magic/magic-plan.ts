@@ -332,6 +332,17 @@ export function magicPlan({ analysis, sheet, categories, pick }: MagicPlanInput)
         onSide(side, { x: (d.hingeU.x + d.latchU.x) / 2, y: (d.hingeU.y + d.latchU.y) / 2 }),
     );
 
+  /** True when one of the room's windows lies along this wall. */
+  const glazedOn = (room: Room, side: Side) =>
+    analysis.windows.some(
+      (wd) =>
+        (wd.roomId === null || wd.roomId === room.id) &&
+        onSide(side, {
+          x: ((wd.start.x + wd.end.x) / 2) * W,
+          y: ((wd.start.y + wd.end.y) / 2) * H,
+        }),
+    );
+
   const along = (sd: Side) => unit(sd.from, sd.to);
   const midOf = (sd: Side) => ({ x: (sd.from.x + sd.to.x) / 2, y: (sd.from.y + sd.to.y) / 2 });
 
@@ -455,22 +466,32 @@ export function magicPlan({ analysis, sheet, categories, pick }: MagicPlanInput)
 
     // LED strips in the L-box along the walls: 3–4 in the living room, up to 3 in the master
     // bedroom and up to 2 in other bedrooms, on the walls without the door first.
-    const runs = stripRuns(room);
+    // LED strips run close along the walls, in the L-box. Window walls come first: the strip
+    // becomes a curtain cove over the curtain track. A living room or bedroom with a window gets
+    // at least that one.
+    const windowWalls = sidesOf(room).filter((sd) => glazedOn(room, sd));
+    const runs = Math.max(
+      stripRuns(room),
+      windowWalls.length > 0 && CURTAIN_ROOMS.includes(room.type) && area(room) >= m(2.5) * m(2.5)
+        ? 1
+        : 0,
+    );
     if (runs > 0 && want.has('led-strips')) {
       const variantId = pick('led-strips');
       if (variantId) {
-        const inset = m(0.45);
+        const inset = m(0.3);
+        const rank = (sd: Side) => (glazedOn(room, sd) ? 0 : opensOn(room, sd) ? 2 : 1);
         const walls = sidesOf(room)
-          .filter((sd) => sd.length > m(1.5))
-          .sort(
-            (a, b) => Number(opensOn(room, a)) - Number(opensOn(room, b)) || b.length - a.length,
-          )
-          .slice(0, runs);
+          .filter((sd) => sd.length > m(1.2))
+          .sort((a, b) => rank(a) - rank(b) || b.length - a.length);
+        let placed = 0;
         for (const wall of walls) {
-          const dir = along(wall);
-          const start = add(add(wall.from, wall.inward, inset), dir, inset);
-          const end = add(add(wall.to, wall.inward, inset), dir, -inset);
-          if (owner(start)?.id !== room.id || owner(end)?.id !== room.id) continue;
+          if (placed >= runs) break;
+          // A curtain cove only needs to cover the window: 1 m will do there.
+          const run = wallRun(room, wall, inset, glazedOn(room, wall) ? m(1) : m(1.5));
+          if (!run) continue;
+          const [start, end] = run;
+          placed++;
           emit(
             {
               kind: 'led-strip',
@@ -577,6 +598,31 @@ export function magicPlan({ analysis, sheet, categories, pick }: MagicPlanInput)
    */
   function lightsFor(areaM2: number, m2PerLight: number, max: number): number {
     return clampN(Math.round(areaM2 / m2PerLight), areaM2 < 4 ? 1 : 2, max);
+  }
+
+  /**
+   * A strip `inset` in from a wall, trimmed to the longest stretch that stays in the room (clear
+   * of a toilet drawn inside a bedroom, say). Null when less than `minLength` is left.
+   */
+  function wallRun(room: Room, wall: Side, inset: number, minLength = m(1.5)): [Pt, Pt] | null {
+    const dir = along(wall);
+    const base = add(wall.from, wall.inward, inset);
+    const steps = Math.max(2, Math.ceil(wall.length / m(0.1)));
+    let best: [number, number] | null = null;
+    let runStart: number | null = null;
+    for (let i = 0; i <= steps; i++) {
+      const d = inset + ((wall.length - 2 * inset) * i) / steps;
+      const inside = owner(add(base, dir, d))?.id === room.id;
+      if (inside && runStart === null) runStart = d;
+      const prev = inset + ((wall.length - 2 * inset) * (i - 1)) / steps;
+      if ((!inside || i === steps) && runStart !== null) {
+        const stop = inside ? d : prev;
+        if (!best || stop - runStart > best[1] - best[0]) best = [runStart, stop];
+        runStart = null;
+      }
+    }
+    if (!best || best[1] - best[0] < minLength) return null;
+    return [add(base, dir, best[0]), add(base, dir, best[1])];
   }
 
   /** How many LED strip runs a room gets (more downlights, fewer strips). */

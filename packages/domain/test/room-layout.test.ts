@@ -193,3 +193,45 @@ describe('scale with only some rooms outlined', () => {
     assert.ok(livingM2 > 15 && livingM2 < 35, `${livingM2.toFixed(1)} m²`);
   });
 });
+
+describe('windows on outlined rooms', () => {
+  const hdb = sampleAnalysisFor('file_sample_plan_hdb')!;
+  const layout = layoutFromAnalysis(hdb, 1.4);
+  const analysis = analysisFromLayout(layout, 1.4);
+  const r = magicPlan({
+    analysis,
+    sheet: { width: 1000, height: 1000 / 1.4 },
+    categories: MAGIC_CATEGORIES.map((c) => c.id),
+    pick: (c) => c,
+  });
+  const el = (id: string) => [...r.smartHome, ...r.lighting].find((e) => e.id === id)!;
+
+  it('gives each window to the room whose wall it is on', () => {
+    const living = analysis.rooms.find((x) => x.name === 'Living / Dining')!;
+    const bed3 = analysis.rooms.find((x) => x.name === 'Bedroom 3')!;
+    // Living's west wall window, and Bedroom 3's south wall window.
+    assert.ok(analysis.windows.some((w) => w.roomId === living.id && w.start.x < 0.08));
+    assert.ok(analysis.windows.some((w) => w.roomId === bed3.id && w.start.y > 0.88));
+  });
+
+  it('runs a curtain cove strip along each living room and bedroom window, near the wall', () => {
+    for (const name of ['Living / Dining', 'Bedroom 3', 'Master Bedroom']) {
+      const room = analysis.rooms.find((x) => x.name === name)!;
+      const win = analysis.windows.find((w) => w.roomId === room.id)!;
+      const vertical = Math.abs(win.start.x - win.end.x) < 1e-6;
+      const wallAt = vertical ? win.start.x * 1000 : (win.start.y * 1000) / 1.4;
+      const strips = r.placements
+        .filter((p) => p.categoryId === 'led-strips' && p.roomId === room.id)
+        .map((p) => el(p.elementId))
+        .filter((e) => e.kind === 'led-strip');
+      const cove = strips.find((e) =>
+        e.points.every((p) => Math.abs((vertical ? p.x : p.y) - wallAt) < 0.5 * (1000 / 14)),
+      );
+      assert.ok(cove, `${name} has a strip within 0.5 m of its window wall`);
+      const curtains = r.placements.filter(
+        (p) => p.categoryId === 'curtains-blinds' && p.roomId === room.id,
+      );
+      assert.ok(curtains.length >= 1, `${name} has a curtain`);
+    }
+  });
+});

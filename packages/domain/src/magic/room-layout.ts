@@ -18,11 +18,22 @@ export interface DrawnRoom {
   door: { x: number; y: number } | null;
 }
 
+export interface DrawnWindow {
+  id: string;
+  /** Ends of the window along its wall, as fractions of the drawing. */
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+}
+
 export interface RoomLayout {
   presetId: string;
   /** Approximate floor area of the home (or this level) in m², for the drawing's scale. */
   floorAreaM2: number;
   rooms: DrawnRoom[];
+  /** Windows found on the drawing or marked by hand; absent until looked for. */
+  windows?: DrawnWindow[];
 }
 
 export interface FlatPreset {
@@ -247,9 +258,43 @@ export function analysisFromLayout(all: RoomLayout, aspect: number): FloorAnalys
   return {
     rooms,
     doors,
-    windows: [],
+    windows: windowsFor(all.windows ?? [], rooms, aspect, metres),
     imageWidthMetres: widthM ? Math.round(widthM * 10) / 10 : null,
   };
+}
+
+/**
+ * Windows on the walls of the outlined rooms: each is given to the room with a parallel wall
+ * running along it (within half a metre), preferring an indoor room over a balcony or outdoor area.
+ */
+function windowsFor(
+  windows: DrawnWindow[],
+  rooms: { id: string; type: RoomType; x: number; y: number; w: number; h: number }[],
+  aspect: number,
+  metres: number,
+): FloorAnalysis['windows'] {
+  const near = 0.5 / metres; // half a metre, as a fraction of the drawing's width
+  return windows.map((wd, i) => {
+    const horizontal = Math.abs(wd.y2 - wd.y1) * aspect < Math.abs(wd.x2 - wd.x1);
+    const mx = (wd.x1 + wd.x2) / 2;
+    const my = (wd.y1 + wd.y2) / 2;
+    const candidates = rooms.filter((r) => {
+      if (horizontal) {
+        if (mx < r.x || mx > r.x + r.w) return false;
+        return Math.min(Math.abs(my - r.y), Math.abs(my - (r.y + r.h))) * aspect <= near;
+      }
+      if (my < r.y || my > r.y + r.h) return false;
+      return Math.min(Math.abs(mx - r.x), Math.abs(mx - (r.x + r.w))) <= near;
+    });
+    const room =
+      candidates.find((r) => !['outdoor', 'balcony'].includes(r.type)) ?? candidates[0] ?? null;
+    return {
+      id: `w${i + 1}`,
+      start: { x: wd.x1, y: wd.y1 },
+      end: { x: wd.x2, y: wd.y2 },
+      roomId: room?.id ?? null,
+    };
+  });
 }
 
 /** A layout from an existing analysis (built-in samples, or rooms suggested by Claude). */
@@ -273,7 +318,14 @@ export function layoutFromAnalysis(a: FloorAnalysis, aspect: number): RoomLayout
   const drawn = rooms.reduce((s, r) => s + r.w * r.h, 0);
   const widthM = a.imageWidthMetres;
   const floorAreaM2 = widthM ? Math.round((drawn * widthM * widthM) / aspect / ROOMS_SHARE) : 90;
-  return { presetId: 'custom', floorAreaM2, rooms };
+  const windows = a.windows.map((w) => ({
+    id: w.id,
+    x1: w.start.x,
+    y1: w.start.y,
+    x2: w.end.x,
+    y2: w.end.y,
+  }));
+  return { presetId: 'custom', floorAreaM2, rooms, windows };
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
