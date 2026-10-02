@@ -1,17 +1,23 @@
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
-import { Hono } from 'hono';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { buildApp } from './app.ts';
+import { createAnalyser } from './magic/analyse.ts';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
+
+// Settings such as ANTHROPIC_API_KEY can live in a .env file in the project folder (never committed).
+for (const file of [path.resolve(here, '../../../.env'), path.resolve(here, '../.env')]) {
+  if (existsSync(file)) process.loadEnvFile(file);
+}
+
 const webDist = path.resolve(here, '../../web/dist');
 const port = Number(process.env.PORT ?? 3000);
+const configured = Boolean(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN);
 
-export const app = new Hono();
-
-app.get('/api/health', (c) => c.json({ ok: true }));
+export const app = buildApp({ analyse: configured ? createAnalyser() : undefined });
 
 if (existsSync(webDist)) {
   const root = path.relative(process.cwd(), webDist);
@@ -22,5 +28,8 @@ if (existsSync(webDist)) {
 if (process.env.NODE_ENV !== 'test') {
   serve({ fetch: app.fetch, port }, (info) => {
     console.log(`Maxsen Smart Home Planner server listening on http://localhost:${info.port}`);
+    console.log(
+      configured ? 'Magic Plan: ready' : 'Magic Plan: add ANTHROPIC_API_KEY to .env to enable it',
+    );
   });
 }
