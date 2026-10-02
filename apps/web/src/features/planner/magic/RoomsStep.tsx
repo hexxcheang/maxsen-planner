@@ -1,6 +1,13 @@
 import { useRef, useState, type PointerEvent } from 'react';
-import { Check, DoorOpen, PanelTop, RefreshCw, Sparkles, SquareDashed, Trash2 } from 'lucide-react';
-import { EXTRA_ROOMS, FLAT_PRESETS, newId, type DrawnRoom, type RoomLayout } from '@maxsen/domain';
+import { Check, DoorOpen, PanelTop, Sparkles, SquareDashed, Trash2, X } from 'lucide-react';
+import {
+  EXTRA_ROOMS,
+  FLAT_PRESETS,
+  newId,
+  type DrawnRoom,
+  type DrawnWindow,
+  type RoomLayout,
+} from '@maxsen/domain';
 import { Button, Field, IconButton, Input, Select } from '@/components/ui';
 import { cn } from '@/lib/cn';
 import { applyPreset, blank, drawn } from './room-layouts';
@@ -14,9 +21,8 @@ interface Props {
   /** Fills the rooms in with Claude, when it is set up. */
   onSuggest?: () => void;
   suggesting?: boolean;
-  /** Looks for windows on the drawing again. */
-  onFindWindows?: () => void;
-  findingWindows?: boolean;
+  /** The window on the drawing under an X marked at (x, y), or null when there's no line there. */
+  readWindow?: (x: number, y: number) => Promise<DrawnWindow | null>;
 }
 
 type Mode = 'draw' | 'door';
@@ -32,11 +38,12 @@ export function RoomsStep({
   onChange,
   onSuggest,
   suggesting,
-  onFindWindows,
-  findingWindows,
+  readWindow,
 }: Props) {
-  /** Drawing a window along a wall instead of outlining rooms. */
+  /** Marking windows instead of outlining rooms. */
   const [windowMode, setWindowMode] = useState(false);
+  const [reading, setReading] = useState(false);
+  const [windowNote, setWindowNote] = useState<string | null>(null);
   const windows = layout.windows ?? [];
   const firstTodo = layout.rooms.find((r) => !drawn(r) || !r.door);
   const [activeId, setActiveId] = useState<string | null>(firstTodo?.id ?? null);
@@ -84,16 +91,20 @@ export function RoomsStep({
   };
   const up = () => {
     if (box && windowMode) {
-      // A window runs along one wall: keep the longer direction, straight.
       const dx = Math.abs(box.x1 - box.x0);
       const dy = Math.abs(box.y1 - box.y0) / aspect;
       setBox(null);
-      if (Math.max(dx, dy) < 0.02) return;
+      if (Math.max(dx, dy) < 0.02) {
+        void mark(box.x0, box.y0);
+        return;
+      }
+      // Dragged along a wall: that's the window, straight along the longer direction.
       const win =
         dx >= dy
           ? { x1: Math.min(box.x0, box.x1), y1: box.y0, x2: Math.max(box.x0, box.x1), y2: box.y0 }
           : { x1: box.x0, y1: Math.min(box.y0, box.y1), x2: box.x0, y2: Math.max(box.y0, box.y1) };
-      onChange({ ...layout, windows: [...windows, { id: newId('room'), ...win }] });
+      onChange({ ...layout, windows: [...windows, { id: newId('room'), ...win, marked: true }] });
+      setWindowNote(null);
       return;
     }
     if (!box || !active) return;
@@ -107,9 +118,40 @@ export function RoomsStep({
     setMode('door');
   };
 
+  /** An X tapped on the drawing: removes the window it's on, or marks the window on that line. */
+  const mark = async (x: number, y: number) => {
+    const hit = windows.find((w) => {
+      const mx = (w.x1 + w.x2) / 2;
+      const my = (w.y1 + w.y2) / 2;
+      return Math.hypot(x - mx, (y - my) / aspect) < 0.02;
+    });
+    if (hit) {
+      onChange({ ...layout, windows: windows.filter((w) => w.id !== hit.id) });
+      setWindowNote(null);
+      return;
+    }
+    if (!readWindow) return;
+    setReading(true);
+    try {
+      const win = await readWindow(x, y);
+      if (win) {
+        onChange({ ...layout, windows: [...windows, win] });
+        setWindowNote(null);
+      } else {
+        setWindowNote('No window line there. Tap right on the line, or drag along the window.');
+      }
+    } catch {
+      setWindowNote('The drawing couldn’t be read here. Drag along the window instead.');
+    } finally {
+      setReading(false);
+    }
+  };
+
   const done = layout.rooms.filter((r) => drawn(r)).length;
   const prompt = windowMode
-    ? 'Drag along a wall from one end of the window to the other.'
+    ? reading
+      ? 'Finding the window…'
+      : 'Put an X on each window: tap its line. Tap an X again to remove it.'
     : !active
       ? done === layout.rooms.length && done > 0
         ? 'All rooms are outlined. Select a room to redraw it or move its door.'
@@ -226,26 +268,20 @@ export function RoomsStep({
         />
         <div className="flex items-center justify-between border-b border-rule pt-1 pb-1.5">
           <span className="text-control font-semibold text-ink">Windows ({windows.length})</span>
-          {onFindWindows && (
-            <Button
-              size="sm"
-              variant="ghost"
-              icon={<RefreshCw className="size-3.5" />}
-              loading={findingWindows}
-              onClick={onFindWindows}
-            >
-              Find again
+          {windows.length > 0 && (
+            <Button size="sm" variant="ghost" onClick={() => onChange({ ...layout, windows: [] })}>
+              Clear all
             </Button>
           )}
         </div>
         <p className="text-meta text-ink-2">
-          Found on the home’s outer walls: the glazing between the façade columns and the doors onto
-          a balcony. Smart curtains go only at these, in living rooms, bedrooms and the study, with
-          a curtain-cove LED strip above. A window between two outlined rooms is ignored.
+          Mark each window with an X on its line (on the home’s outer walls, and the glass doors
+          onto a balcony). The window is followed along its line to its ends. Smart curtains go only
+          at these, in living rooms, bedrooms and the study, with a curtain-cove LED strip above.
         </p>
-        {windows.length === 0 && !findingWindows && (
+        {windows.length === 0 && (
           <p className="text-meta text-ink-2">
-            No windows yet, so no curtains will be planned. Add them with “Add a window”.
+            No windows marked yet, so no curtains will be planned.
           </p>
         )}
         {windows.length > 0 && (
@@ -269,13 +305,14 @@ export function RoomsStep({
         <Button
           size="sm"
           aria-pressed={windowMode}
-          icon={<PanelTop className="size-4" />}
+          icon={<X className="size-4" />}
           onClick={() => {
             setWindowMode((v) => !v);
             setBox(null);
+            setWindowNote(null);
           }}
         >
-          {windowMode ? 'Done adding windows' : 'Add a window'}
+          {windowMode ? 'Done marking windows' : 'Mark windows'}
         </Button>
         {onSuggest && (
           <Button
@@ -291,9 +328,16 @@ export function RoomsStep({
 
       <div className="flex min-w-0 flex-col gap-2">
         <div className="flex min-h-8 items-center justify-between gap-3">
-          <p role="status" className="text-control text-ink">
-            {prompt}
-          </p>
+          <div className="flex flex-col">
+            <p role="status" className="text-control text-ink">
+              {prompt}
+            </p>
+            {windowMode && windowNote && (
+              <p role="alert" className="text-meta text-warn">
+                {windowNote}
+              </p>
+            )}
+          </div>
           {!windowMode && active && mode === 'door' && (
             <Button size="sm" onClick={() => advance(layout.rooms, active.id)}>
               Skip
@@ -363,17 +407,32 @@ export function RoomsStep({
                 );
               })}
               {windows.map((w) => (
-                <line
-                  key={w.id}
-                  x1={pct(w.x1)}
-                  y1={pct(w.y1)}
-                  x2={pct(w.x2)}
-                  y2={pct(w.y2)}
-                  stroke="#2F6FB3"
-                  strokeWidth={5}
-                  strokeLinecap="round"
-                  opacity={0.85}
-                />
+                <g key={w.id} data-testid="window-mark">
+                  <line
+                    x1={pct(w.x1)}
+                    y1={pct(w.y1)}
+                    x2={pct(w.x2)}
+                    y2={pct(w.y2)}
+                    stroke="#2F6FB3"
+                    strokeWidth={5}
+                    strokeLinecap="round"
+                    opacity={0.85}
+                  />
+                  <svg x={pct((w.x1 + w.x2) / 2)} y={pct((w.y1 + w.y2) / 2)} overflow="visible">
+                    <path
+                      d="M-7 -7 L7 7 M-7 7 L7 -7"
+                      stroke="#FFFFFF"
+                      strokeWidth={6}
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d="M-7 -7 L7 7 M-7 7 L7 -7"
+                      stroke="#B3412F"
+                      strokeWidth={3}
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </g>
               ))}
               {live && windowMode && (
                 <line
@@ -411,7 +470,7 @@ export function RoomsStep({
         </div>
         <p className="text-meta text-ink-2">
           Boxes can be rough: cover each room’s floor. The green dot is the door; the switch goes
-          beside it. Blue lines are windows.
+          beside it. Each X marks a window; its blue line shows how far it runs.
         </p>
       </div>
     </div>

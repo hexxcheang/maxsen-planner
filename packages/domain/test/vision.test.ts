@@ -175,4 +175,20 @@ describe('findWindows on a brochure-style plan', () => {
       ),
     );
   });
+
+  it('reads the window marked with an X on its line, out to its columns', async () => {
+    const { windowReader } = await import('../src/magic/vision/windows.ts');
+    const read = windowReader(image);
+    const px = (f: { x1: number; y1: number; x2: number; y2: number } | null) =>
+      f && [f.x1 * W, f.y1 * H, f.x2 * W, f.y2 * H].map(Math.round);
+    // A mark a little off the line still finds it; the window ends at the columns either side.
+    const top = px(read(540 / W, 112 / H))!;
+    assert.ok(Math.abs(top[0]! - 410) <= 3 && Math.abs(top[2]! - 670) <= 3, top.join());
+    assert.ok(Math.abs(top[1]! - 106) <= 4 && top[1] === top[3]);
+    const right = px(read(700 / W, 300 / H))!;
+    assert.ok(right[0] === right[2] && Math.abs(right[0]! - 694) <= 4, right.join());
+    assert.ok(Math.abs(right[1]! - 250) <= 3 && Math.abs(right[3]! - 420) <= 3, right.join());
+    // Nothing near the mark: no window.
+    assert.equal(read(250 / W, 420 / H), null);
+  });
 });

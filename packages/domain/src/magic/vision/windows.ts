@@ -374,3 +374,92 @@ function look(geo: Geometry, g: Glazing, dir: -1 | 1, found: Glazing[]): 'open' 
     if (!inside) return 'open';
   }
 }
+
+/**
+ * Reads the window someone has marked with a tap (an X) on its line: follows the glazing lines
+ * under the mark both ways until they stop or meet a solid wall or column, and returns that
+ * stretch. `null` when there's no line near the mark. Build it once per drawing; each mark is then
+ * quick.
+ */
+export function windowReader(img: GrayImage): (x: number, y: number) => FoundWindow | null {
+  const geo = geometry(img);
+  const { w, h, t, wall, ink, spacing } = geo;
+  // Windows can be short: any line two wall-thicknesses long counts here.
+  const lines = {
+    h: longLines(ink, w, h, 'h', Math.max(2 * t, 12)),
+    v: longLines(ink, w, h, 'v', Math.max(2 * t, 12)),
+  };
+  const reach = Math.round(Math.max(3 * t, 24));
+  const half = Math.round(reach / 2);
+
+  return (fx, fy) => {
+    const px = Math.round(fx * w);
+    const py = Math.round(fy * h);
+    // The nearest line to the mark, either way round.
+    let best: { axis: Axis; a: number; c: number; d: number } | null = null;
+    for (const axis of ['h', 'v'] as const) {
+      const at = indexer(w, axis);
+      const [a0, c0] = axis === 'h' ? [px, py] : [py, px];
+      const len = lengthOf(geo, axis);
+      const across = acrossOf(geo, axis);
+      for (let c = Math.max(0, c0 - reach); c <= Math.min(across - 1, c0 + reach); c++) {
+        for (let a = Math.max(0, a0 - half); a <= Math.min(len - 1, a0 + half); a++) {
+          if (!lines[axis][at(a, c)]) continue;
+          const d = Math.hypot(a - a0, c - c0);
+          if (!best || d < best.d) best = { axis, a, c, d };
+        }
+      }
+    }
+    if (!best) return null;
+    const { axis, a: start } = best;
+    const at = indexer(w, axis);
+    const len = lengthOf(geo, axis);
+    const across = acrossOf(geo, axis);
+    const mask = lines[axis];
+
+    // The window's lines: every line running alongside the marked one, closer than a wall is thick.
+    let b0 = best.c;
+    let b1 = best.c;
+    const hasLine = (c: number) => {
+      for (let a = start - t; a <= start + t; a++) {
+        if (a >= 0 && a < len && c >= 0 && c < across && mask[at(a, c)]) return true;
+      }
+      return false;
+    };
+    for (let c = b0 - 1, gap = 0; c >= 0 && gap <= spacing; c--, gap++) {
+      if (hasLine(c)) [b0, gap] = [c, 0];
+    }
+    for (let c = b1 + 1, gap = 0; c < across && gap <= spacing; c++, gap++) {
+      if (hasLine(c)) [b1, gap] = [c, 0];
+    }
+
+    // Follow them both ways until they stop, or a wall or column cuts across.
+    const on = (a: number) => {
+      let line = false;
+      for (let c = b0 - 1; c <= b1 + 1; c++) {
+        if (c < 0 || c >= across) continue;
+        if (wall[at(a, c)]) return false;
+        if (mask[at(a, c)]) line = true;
+      }
+      return line;
+    };
+    const ends = ([-1, 1] as const).map((dir) => {
+      let end = start;
+      let misses = 0;
+      for (let a = start + dir; a >= 0 && a < len; a += dir) {
+        if (on(a)) {
+          end = a;
+          misses = 0;
+        } else if (++misses > Math.max(3, t / 2)) break;
+      }
+      return end;
+    });
+    const [lo, hi] = [ends[0]!, ends[1]!];
+    if (hi - lo + 1 < Math.max(2 * t, 12)) return null;
+    const r = (n: number) => Math.round(n * 10000) / 10000;
+    const c = (b0 + b1 + 1) / 2;
+    return axis === 'h'
+      ? { x1: r(lo / w), y1: r(c / h), x2: r((hi + 1) / w), y2: r(c / h) }
+      : { x1: r(c / w), y1: r(lo / h), x2: r(c / w), y2: r((hi + 1) / h) };
+  };
+}

@@ -73,15 +73,14 @@ How rooms are planned (Singapore practice). Light counts follow the size of the 
 | Service yard, store, shelter  | One surface light                                     |                                           | Switched from outside           |
 | Corridor                      | A single centre row                                   |                                           |                                 |
 
-Windows are found on the home's outer walls when the Rooms step opens and shown in blue: the glazing
-drawn as thin parallel lines (or one grey band, on a blurry scan) between the solid façade walls and
-columns, with nothing but open air or dimension lines beyond it. Glazed doors behind a balcony railing
-count too. Thin walls inside the flat look the same, so a stretch with a wall or room on both sides is
-left out, and so is a window between two outlined rooms. Remove a wrong one, or draw a missing one along
-its wall with _Add a window_.
+Windows are marked by hand in the Rooms step: press _Mark windows_ and tap an X on each window's line
+(on the home's outer walls, and the glass doors onto a balcony). The app follows the glazing lines from
+the X both ways until they stop or meet a solid wall or column, and shows the window in blue. Tap an X
+again to remove it, or drag along a window to draw it yourself. A window between two outlined rooms is
+ignored. Windows the app used to guess by itself are dropped from saved plans, so mark them again.
 
 Smart curtains go only at windows, and only in living rooms, bedrooms and the study (not dining or
-family areas, kitchens or toilets). With no windows, no curtains are planned. A curtain room's window
+family areas, kitchens or toilets). With no windows marked, no curtains are planned. A curtain room's window
 wall also gets its first LED strip as a curtain cove. Strips run close along the walls, 0.3 m in.
 
 Room sizes come from the floor area, shared among the listed rooms by their typical sizes, so outlining

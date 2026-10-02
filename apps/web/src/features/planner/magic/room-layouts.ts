@@ -1,8 +1,9 @@
 import { loadImage } from '@/lib/images';
 import {
-  findWindows,
   toGray,
+  windowReader,
   type DrawnWindow,
+  type FoundWindow,
   FLAT_PRESETS,
   layoutFromAnalysis,
   newId,
@@ -42,26 +43,49 @@ export function applyPreset(layout: RoomLayout, presetId: string): RoomLayout {
  * drawing, or the 4-room flat checklist with nothing drawn yet.
  */
 export function startingLayout(plan: Plan): RoomLayout {
-  if (plan.magicLayout) return plan.magicLayout;
+  if (plan.magicLayout) {
+    // Windows the app once guessed by itself are dropped: they're marked by hand now.
+    const windows = plan.magicLayout.windows?.filter((w) => w.marked);
+    return { ...plan.magicLayout, windows };
+  }
   const builtIn = sample.sampleAnalysisFor(plan.background.fileId);
   if (builtIn) return layoutFromAnalysis(builtIn, plan.background.width / plan.background.height);
   return applyPreset({ presetId: 'hdb-4', floorAreaM2: 93, rooms: [] }, 'hdb-4');
 }
 
-/** Windows found on the plan's drawing, read on this computer. */
-export async function detectWindows(imageUrl: string): Promise<DrawnWindow[]> {
-  const img = await loadImage(imageUrl);
-  const k = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.max(1, Math.round(img.naturalWidth * k));
-  canvas.height = Math.max(1, Math.round(img.naturalHeight * k));
-  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
-  ctx.fillStyle = '#FFFFFF';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-  const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  return findWindows(toGray(data.data, canvas.width, canvas.height)).map((w) => ({
-    id: newId('room'),
-    ...w,
-  }));
+const readers = new Map<string, Promise<(x: number, y: number) => FoundWindow | null>>();
+
+/** The drawing read once (on this computer), ready to find the window under each mark. */
+function readerFor(imageUrl: string) {
+  let reader = readers.get(imageUrl);
+  if (!reader) {
+    reader = loadImage(imageUrl).then((img) => {
+      const k = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(img.naturalWidth * k));
+      canvas.height = Math.max(1, Math.round(img.naturalHeight * k));
+      const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      return windowReader(toGray(data.data, canvas.width, canvas.height));
+    });
+    reader.catch(() => readers.delete(imageUrl));
+    readers.set(imageUrl, reader);
+  }
+  return reader;
+}
+
+/**
+ * The window marked with an X at (x, y) on the drawing (fractions): the glazing line under the
+ * mark, followed to its ends. `null` when there's no line there.
+ */
+export async function windowAt(
+  imageUrl: string,
+  x: number,
+  y: number,
+): Promise<DrawnWindow | null> {
+  const found = (await readerFor(imageUrl))(x, y);
+  return found && { id: newId('room'), ...found, marked: true };
 }

@@ -25,6 +25,11 @@ export interface DrawnWindow {
   y1: number;
   x2: number;
   y2: number;
+  /**
+   * Marked by hand (an X on its line) or taken from a built-in drawing. Windows the app once found
+   * by itself don't have it, and are dropped.
+   */
+  marked?: boolean;
 }
 
 export interface RoomLayout {
@@ -32,7 +37,7 @@ export interface RoomLayout {
   /** Approximate floor area of the home (or this level) in m², for the drawing's scale. */
   floorAreaM2: number;
   rooms: DrawnRoom[];
-  /** Windows found on the drawing or marked by hand; absent until looked for. */
+  /** Windows marked on the drawing. */
   windows?: DrawnWindow[];
 }
 
@@ -354,6 +359,7 @@ export function layoutFromAnalysis(a: FloorAnalysis, aspect: number): RoomLayout
     y1: w.start.y,
     x2: w.end.x,
     y2: w.end.y,
+    marked: true,
   }));
   return { presetId: 'custom', floorAreaM2, rooms, windows };
 }

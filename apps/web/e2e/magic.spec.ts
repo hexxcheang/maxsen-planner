@@ -97,9 +97,9 @@ test.describe('Magic Plan', () => {
     await outline('Common Toilet', [720, 100, 160, 200], [795, 298]);
     await expect(dialog.getByText(/7 of 7 outlined/)).toBeVisible();
 
-    // The six windows on the outer walls were found on the drawing; add one by hand, then remove it.
-    await expect(dialog.getByText('Windows (6)')).toBeVisible();
-    await dialog.getByRole('button', { name: 'Add a window' }).click();
+    // Windows are marked by hand: an X on each window line finds the whole window.
+    await expect(dialog.getByText('Windows (0)')).toBeVisible();
+    await dialog.getByRole('button', { name: 'Mark windows' }).click();
     // Clicking may scroll the dialog: measure the drawing again.
     await canvas.scrollIntoViewIfNeeded();
     const box2 = (await canvas.boundingBox())!;
@@ -107,16 +107,36 @@ test.describe('Magic Plan', () => {
       x: box2.x + (x / 1400) * box2.width,
       y: box2.y + (y / 1000) * box2.height,
     });
-    const w1 = Q(1300, 700);
-    const w2 = Q(1300, 860);
+    const tap = async (x: number, y: number) => {
+      const q = Q(x, y);
+      await page.mouse.click(q.x, q.y);
+    };
+    await tap(100, 650); // Living / Dining, west wall
+    await expect(dialog.getByText('Windows (1)')).toBeVisible();
+    await tap(1075, 900); // Bedroom 3, south wall
+    await expect(dialog.getByText('Windows (2)')).toBeVisible();
+    await tap(1300, 380); // Master Bedroom, east wall
+    await expect(dialog.getByText('Windows (3)')).toBeVisible();
+    // The window runs out to its ends, not just where the X is.
+    const marks = dialog.getByTestId('window-mark');
+    await expect(marks).toHaveCount(3);
+    // Tapping an X again removes it; tapping the line again brings it back.
+    await tap(100, 650);
+    await expect(dialog.getByText('Windows (2)')).toBeVisible();
+    await tap(100, 650);
+    await expect(dialog.getByText('Windows (3)')).toBeVisible();
+    // A tap away from any line says so.
+    await tap(600, 620);
+    await expect(dialog.getByRole('alert')).toContainText('No window line there');
+    // Or drag along a window to draw it.
+    const w1 = Q(1300, 510);
+    const w2 = Q(1300, 630);
     await page.mouse.move(w1.x, w1.y);
     await page.mouse.down();
     await page.mouse.move(w2.x, w2.y, { steps: 4 });
     await page.mouse.up();
-    await expect(dialog.getByText('Windows (7)')).toBeVisible();
-    await dialog.getByRole('button', { name: 'Done adding windows' }).click();
-    await dialog.getByRole('button', { name: 'Remove window 7' }).click();
-    await expect(dialog.getByText('Windows (6)')).toBeVisible();
+    await expect(dialog.getByText('Windows (4)')).toBeVisible();
+    await dialog.getByRole('button', { name: 'Done marking windows' }).click();
     await page.screenshot({
       path: `test-results/screens/magic-rooms-drawn-${testInfo.project.name}.png`,
     });
