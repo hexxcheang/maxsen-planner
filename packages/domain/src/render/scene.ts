@@ -125,6 +125,8 @@ export interface SceneContext {
   height: number;
 }
 
+/** The name printed on every curtain track. */
+export const CURTAIN_LABEL = 'S. Curtains';
 const LABEL_OFFSET = 0.85;
 const LABEL_FONT = 0.5;
 const BADGE_FONT = 0.42;
@@ -227,6 +229,12 @@ export function buildScene(doc: PlanDocument, ctx: SceneContext, opts: SceneOpti
         color: style.color,
         dash: [0.001, strokeWidth * 1.9],
         heads: [],
+        // Named on the plan so the dotted line reads as smart curtains.
+        label: {
+          text: CURTAIN_LABEL,
+          ...pathMidpoint(el.points, false).point,
+          fontSize: style.size * LABEL_FONT,
+        },
       });
       continue;
     }

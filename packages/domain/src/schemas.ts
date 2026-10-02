@@ -130,6 +130,7 @@ export const categoryStyleOverrideSchema = z.object({
 export const settingsSchema = z.object({
   branding: z.object({
     logoFileId: z.string().nullable(),
+    proposalBackgroundFileId: z.string().nullable().optional(),
     whatsapp: z.string().max(40),
     website: z.string().max(200),
     showrooms: z.array(z.object({ name: z.string().max(80), address: z.string().max(200) })),

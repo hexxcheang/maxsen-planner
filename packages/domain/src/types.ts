@@ -297,6 +297,8 @@ export interface Showroom {
 
 export interface Branding {
   logoFileId: string | null;
+  /** Artwork behind the export covers and contact page (SVG, PNG or JPG); none for plain. */
+  proposalBackgroundFileId?: string | null;
   whatsapp: string;
   website: string;
   showrooms: Showroom[];

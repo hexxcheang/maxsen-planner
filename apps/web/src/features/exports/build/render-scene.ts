@@ -132,6 +132,8 @@ export async function renderPlanImage(
           {
             align: 'center',
             bg: 'rgba(255,255,255,0.88)',
+            // Curtain names take the curtain's colour, so they read with the dotted line.
+            ...(item.kind === 'curtain' ? { color: item.color, bold: true } : {}),
           },
         );
       }

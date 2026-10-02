@@ -168,6 +168,28 @@ export async function previewForCrop(
 }
 
 /** Rasterises any image URL (including SVG) to PNG data for PDF embedding. */
+/**
+ * An image as a JPEG for full-page artwork, `longEdge` pixels on its long side. Vector art (SVG)
+ * is drawn at that size, however small its own size is; on white, as JPEG has no transparency.
+ */
+export async function imageToArtwork(
+  url: string,
+  longEdge = 2400,
+): Promise<{ dataUrl: string; width: number; height: number }> {
+  const img = await loadImage(url);
+  const w = img.naturalWidth || longEdge;
+  const h = img.naturalHeight || Math.round(longEdge * 0.7);
+  const k = longEdge / Math.max(w, h);
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(w * k));
+  canvas.height = Math.max(1, Math.round(h * k));
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  return { dataUrl: canvas.toDataURL('image/jpeg', 0.9), width: canvas.width, height: canvas.height };
+}
+
 export async function imageToPngDataUrl(
   url: string,
   longEdge = 1200,

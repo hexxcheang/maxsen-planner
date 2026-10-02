@@ -144,7 +144,8 @@ function PathNode({ p, ...rest }: { p: ScenePath } & NodeProps) {
             text={p.label.text}
             fontSize={p.label.fontSize}
             fontFamily={FONT}
-            fill={INK}
+            fill={p.kind === 'curtain' ? p.color : INK}
+            fontStyle={p.kind === 'curtain' ? 'bold' : 'normal'}
             padding={p.label.fontSize * 0.25}
           />
         </Label>

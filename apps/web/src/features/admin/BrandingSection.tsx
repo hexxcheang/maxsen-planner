@@ -53,6 +53,44 @@ export function BrandingSection() {
       </div>
 
       <div>
+        <h3 className="text-control font-semibold text-ink">Proposal background</h3>
+        <p className="mt-1 text-meta text-ink-2">
+          Artwork behind the export covers and the contact page (SVG, PNG or JPG). It sits under a
+          dark veil so the text on it stays easy to read.
+        </p>
+      </div>
+      <div className="flex items-center gap-4">
+        <span className="relative flex h-24 w-40 items-center justify-center overflow-hidden border border-rule bg-[#1B1A18]">
+          {draft.proposalBackgroundFileId ? (
+            <>
+              <img
+                src={fileUrl(draft.proposalBackgroundFileId)}
+                alt="Current proposal background"
+                className="absolute inset-0 size-full object-cover"
+              />
+              <span className="absolute inset-0 bg-[#1B1A18]/65" />
+              <span className="relative text-meta font-semibold tracking-wide text-white">
+                Proposal
+              </span>
+            </>
+          ) : (
+            <span className="text-meta text-white/60">Plain charcoal</span>
+          )}
+        </span>
+        <div className="flex flex-col items-start gap-2">
+          <ImagePicker
+            label={draft.proposalBackgroundFileId ? 'Replace background' : 'Upload background'}
+            onPicked={(id) => set('proposalBackgroundFileId', id)}
+          />
+          {draft.proposalBackgroundFileId && (
+            <Button size="sm" variant="ghost" onClick={() => set('proposalBackgroundFileId', null)}>
+              Remove background
+            </Button>
+          )}
+        </div>
+      </div>
+
+      <div>
         <h3 className="text-control font-semibold text-ink">Contact details</h3>
         <p className="mt-1 text-meta text-ink-2">
           Printed on the product description’s contact page.

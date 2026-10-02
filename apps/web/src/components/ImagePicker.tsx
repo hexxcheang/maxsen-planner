@@ -22,6 +22,7 @@ export function ImagePicker({
         ref={input}
         type="file"
         accept="image/png,image/jpeg,image/svg+xml"
+        aria-label={typeof label === 'string' ? label : undefined}
         hidden
         onChange={async (e) => {
           const file = e.target.files?.[0];
