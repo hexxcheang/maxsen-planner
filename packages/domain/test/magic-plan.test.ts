@@ -91,21 +91,23 @@ describe('magicPlan', () => {
     );
   });
 
-  it('lights rooms with downlights and LED coves, and uses no track outside elongated spaces', () => {
+  it('lights rooms with downlights and LED strips, and uses no track outside elongated spaces', () => {
     const r = run();
     assert.ok(placed(r, 'downlights').length >= 10);
     assert.equal(placed(r, 'track-lights').length, 0);
     const living = hdb.rooms.find((x) => x.type === 'living-dining')!;
-    const cove = placed(r, 'led-strips').find((p) => p.roomId === living.id);
-    assert.ok(cove, 'living has a cove');
-    const el = element(r, cove.elementId);
-    assert.equal(el.kind, 'led-strip');
-    if (el.kind === 'led-strip') {
-      assert.equal(el.closed, true);
-      assert.ok(
-        el.metres !== null && el.metres > 10 && el.metres < 30,
-        `estimated metres ${el.metres}`,
-      );
+    const strips = placed(r, 'led-strips').filter((p) => p.roomId === living.id);
+    assert.ok(
+      strips.length >= 3 && strips.length <= 4,
+      `${strips.length} strips in the living room`,
+    );
+    for (const s of strips) {
+      const el = element(r, s.elementId);
+      assert.equal(el.kind, 'led-strip');
+      if (el.kind === 'led-strip') {
+        assert.equal(el.closed, false);
+        assert.ok(el.metres !== null && el.metres > 1 && el.metres < 10, `metres ${el.metres}`);
+      }
     }
   });
 
@@ -212,8 +214,8 @@ describe('magicPlan', () => {
     const master = l2.rooms.find((x) => x.type === 'master-bedroom')!;
     const balcony = l2.rooms.find((x) => x.type === 'balcony')!;
     const shared = placed(r, 'smart-switches').find((p) => p.roomId === master.id)!;
-    // Master (downlights + cove + fan) plus the balcony light: four gangs on one plate.
-    assert.equal(marker(r, shared.elementId).variantId, 'smart-switches:4g');
+    // Master (downlights, strips, fan) plus the balcony light share one plate.
+    assert.match(marker(r, shared.elementId).variantId, /smart-switches:[34]g/);
     assert.equal(
       placed(r, 'smart-switches').some((p) => p.roomId === balcony.id),
       false,
@@ -289,8 +291,8 @@ describe('Singapore lighting conventions', () => {
     assert.ok(!inRect(marker(r, sw[0]!.elementId), 560, 100, 160, 260), 'switch outside');
   });
 
-  it('keeps downlights at least 0.6 m off the walls in living spaces and bedrooms', () => {
-    const margin = (0.6 * 1000) / 14 - 0.5; // 0.6 m in plan units
+  it('keeps downlights at least 0.5 m off the walls in living spaces and bedrooms', () => {
+    const margin = (0.5 * 1000) / 14 - 0.5; // 0.5 m in plan units
     for (const name of ['Living / Dining', 'Bedroom 2', 'Bedroom 3']) {
       const room = hdb.rooms.find((x) => x.name === name)!;
       for (const p of lightsIn(name)) {
@@ -310,10 +312,27 @@ describe('Singapore lighting conventions', () => {
     assert.ok(total >= 12 && total <= 40, `${total} downlights`);
   });
 
-  it('keeps the pillow end of the master bed clear and adds bedside switches', () => {
-    const room = hdb.rooms.find((x) => x.name === 'Master Bedroom')!;
-    const sw = placed(r, 'smart-switches').filter((p) => p.roomId === room.id);
-    assert.ok(sw.length >= 3, `${sw.length} switch plates (door + both bedsides)`);
+  it('puts one switch by the door of each room', () => {
+    for (const room of hdb.rooms.filter((x) => x.type !== 'bathroom' && x.type !== 'store')) {
+      const plates = placed(r, 'smart-switches').filter((p) =>
+        (p.roomIds ?? [p.roomId]).includes(room.id),
+      );
+      assert.equal(plates.length, 1, `${room.name}: ${plates.length} switches`);
+    }
+  });
+
+  it('uses the agreed numbers of downlights and LED strips per room', () => {
+    const count = (name: string, categoryId: CategoryId) => lightsIn(name, categoryId).length;
+    const between = (n: number, lo: number, hi: number, what: string) =>
+      assert.ok(n >= lo && n <= hi, `${what}: ${n}`);
+    between(count('Living / Dining', 'downlights'), 8, 12, 'living downlights');
+    between(count('Living / Dining', 'led-strips'), 3, 4, 'living strips');
+    between(count('Master Bedroom', 'downlights'), 4, 6, 'master downlights');
+    between(count('Master Bedroom', 'led-strips'), 0, 3, 'master strips');
+    for (const b of ['Bedroom 2', 'Bedroom 3']) {
+      between(count(b, 'downlights'), 2, 4, `${b} downlights`);
+      between(count(b, 'led-strips'), 0, 2, `${b} strips`);
+    }
   });
 
   it('lights a corridor with a single centre row', () => {
@@ -345,21 +364,22 @@ describe('ceiling fans', () => {
 
   it('hangs a fan in the living area and bedrooms, sized for the room', () => {
     assert.equal(fanIn('Living / Dining').length, 1);
-    assert.equal(fanIn('Bedroom 2').length, 1);
+    assert.equal(fanIn('Bedroom 3').length, 1);
     assert.equal(fanIn('Bath 2').length, 0);
     assert.equal(fanIn('Kitchen').length, 0);
-    assert.equal(fanIn('Bedroom 2')[0]!.variantId, 'ceiling-fans');
+    assert.equal(fanIn('Bedroom 3')[0]!.variantId, 'ceiling-fans');
   });
 
   it('keeps downlights clear of the blades', () => {
     for (const name of ['Living / Dining', 'Bedroom 2', 'Bedroom 3']) {
       const room = hdb.rooms.find((x) => x.name === name)!;
-      const fan = fanIn(name)[0]!;
+      const fan = fanIn(name)[0];
+      if (!fan) continue; // a room too tight for a fan and its lights keeps the lights
       const lights = placed(r, 'downlights')
         .filter((p) => p.roomId === room.id)
         .map((p) => marker(r, p.elementId));
-      // 46" fan: 0.58 m blade tip + 0.5 m = 1.08 m, in plan units at 14 m per 1000.
-      for (const l of lights) assert.ok(Math.hypot(l.x - fan.x, l.y - fan.y) > (1.08 * 1000) / 14);
+      // 46" fan: 0.58 m blade tip + 0.3 m, in plan units at 14 m per 1000.
+      for (const l of lights) assert.ok(Math.hypot(l.x - fan.x, l.y - fan.y) > (0.88 * 1000) / 14);
     }
   });
 

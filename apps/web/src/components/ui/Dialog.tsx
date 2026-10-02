@@ -10,11 +10,16 @@ interface DialogProps {
   description?: ReactNode;
   children?: ReactNode;
   footer?: ReactNode;
-  width?: 'sm' | 'md' | 'lg';
+  width?: 'sm' | 'md' | 'lg' | 'xl';
   role?: 'dialog' | 'alertdialog';
 }
 
-const WIDTHS = { sm: 'max-w-[420px]', md: 'max-w-[560px]', lg: 'max-w-[760px]' } as const;
+const WIDTHS = {
+  sm: 'max-w-[420px]',
+  md: 'max-w-[560px]',
+  lg: 'max-w-[760px]',
+  xl: 'max-w-[1040px]',
+} as const;
 
 /** Modal dialog: traps focus, closes on Escape, returns focus to whatever opened it. */
 export function Dialog({

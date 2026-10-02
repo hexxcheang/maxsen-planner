@@ -21,8 +21,8 @@
  *   only in elongated spaces (long, narrow walkways). A ceiling fan with light in living areas and
  *   bedrooms (52" in living and master, 46" in common bedrooms), with downlights kept clear of the
  *   blades by 0.5 m; the fan takes a gang on the room's switch.
- * - Bathrooms, stores, the shelter and service yards are switched from outside; the master bedroom
- *   also gets a switch each side of the bed.
+ * - One switch per room, by its door. Bathrooms, stores, the shelter and service yards are switched
+ *   from outside.
  * - Control panels at the main entrance and in the master bedroom; curtains at living and bedroom
  *   windows; a router and gateway in the main living space plus mesh nodes for larger homes;
  *   optional aircon controllers, sensors, camera and lock.
@@ -127,13 +127,13 @@ const FAN_ROOMS: RoomType[] = [
   'master-bedroom',
   'study',
 ];
-const COVE_ROOMS: RoomType[] = ['living', 'living-dining', 'family', 'master-bedroom'];
 /** Rooms whose downlights should line up with each other where the rooms meet. */
 const ALIGNED_ROOMS: RoomType[] = [...LIVING, 'corridor', 'foyer', 'kitchen', 'study'];
 /** Household shelters may not be hacked or drilled: one surface light, no false ceiling. */
 const isShelter = (r: { type: RoomType; name: string }) =>
   r.type === 'store' && /shelter|bunker|household/i.test(r.name);
 
+const clampN = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
 const round1 = (n: number) => Math.round(n * 10) / 10;
 const dist = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.y - b.y);
 const add = (a: Pt, b: Pt, k = 1): Pt => ({ x: a.x + b.x * k, y: a.y + b.y * k });
@@ -331,43 +331,9 @@ export function magicPlan({ analysis, sheet, categories, pick }: MagicPlanInput)
         d.sides.includes(room.id) &&
         onSide(side, { x: (d.hingeU.x + d.latchU.x) / 2, y: (d.hingeU.y + d.latchU.y) / 2 }),
     );
-  const glazedOn = (room: Room, side: Side) =>
-    analysis.windows.some(
-      (wd) =>
-        wd.roomId === room.id &&
-        onSide(side, {
-          x: ((wd.start.x + wd.end.x) / 2) * W,
-          y: ((wd.start.y + wd.end.y) / 2) * H,
-        }),
-    );
 
-  /**
-   * Where the bed most likely stands: headboard against a solid wall (no door or window), the
-   * longest first, slid along it until the bed and bedsides fit inside the room (clear of an
-   * ensuite drawn inside it). Null when no wall fits a bed.
-   */
-  const bedSpot = (room: Room, bedW: number): { wall: Side; mid: Pt } | null => {
-    const walls = sidesOf(room)
-      .filter((sd) => sd.length >= m(bedW + 0.6) && !opensOn(room, sd))
-      .sort((a, b) => Number(glazedOn(room, a)) - Number(glazedOn(room, b)) || b.length - a.length);
-    for (const wall of walls) {
-      const dir = unit(wall.from, wall.to);
-      for (const f of [0.5, 0.4, 0.6, 0.3, 0.7, 0.2, 0.8]) {
-        const mid = add(wall.from, dir, wall.length * f);
-        const half = m(bedW / 2 + 0.3);
-        const probes = [-half, 0, half].flatMap((k) =>
-          [0.1, 1, 2].map((d) => add(add(mid, dir, k), wall.inward, m(d))),
-        );
-        if (probes.every((p) => owner(p)?.id === room.id)) return { wall, mid };
-      }
-    }
-    return null;
-  };
   const along = (sd: Side) => unit(sd.from, sd.to);
   const midOf = (sd: Side) => ({ x: (sd.from.x + sd.to.x) / 2, y: (sd.from.y + sd.to.y) / 2 });
-
-  /** Bedside switch spots for the master bedroom, filled in while lighting it. */
-  const bedsides = new Map<string, Pt[]>();
 
   const elongated = (room: Room) => {
     const long = Math.max(room.rect.w, room.rect.h);
@@ -445,7 +411,7 @@ export function magicPlan({ analysis, sheet, categories, pick }: MagicPlanInput)
     } else if (main) {
       const areaM2 = area(room) / (u * u);
       const fan = fanSpot(room);
-      const willCove = coveCorners(room) !== null;
+      const fanClear = fan ? { at: fan.at, clear: m(fan.inches * 0.0127 + 0.3) } : null;
       const cap = (perM2: number) => Math.max(1, Math.round(areaM2 / perM2));
       let pts: Pt[];
       if (isShelter(room)) pts = [centre(r)];
@@ -455,39 +421,25 @@ export function magicPlan({ analysis, sheet, categories, pick }: MagicPlanInput)
       else if (WALKWAYS.includes(room.type) && Math.min(r.w, r.h) < m(2))
         pts = row(room, m(1.1), m(0.5), cap(1.2));
       else if (room.type === 'kitchen') pts = kitchenLights(room);
-      else if (LIVING.includes(room.type))
-        pts = grid(room, m(willCove ? 1.8 : 1.5), m(0.6), cap(willCove ? 2.2 : 1.5));
-      else if (room.type === 'bedroom' || room.type === 'master-bedroom') {
-        pts = grid(room, m(1.4), m(0.6), cap(willCove ? 2.5 : 1.8));
-        const bedW = room.type === 'master-bedroom' ? 1.8 : 1.2;
-        const bed = bedSpot(room, bedW);
-        if (bed) {
-          // Keep the pillow end of the bed clear; put a switch each side of a master bed.
-          const { wall, mid } = bed;
-          const dir = along(wall);
-          const inZone = (p: Pt) => {
-            const dx = (p.x - mid.x) * dir.x + (p.y - mid.y) * dir.y;
-            const dy = (p.x - mid.x) * wall.inward.x + (p.y - mid.y) * wall.inward.y;
-            return Math.abs(dx) < m(bedW / 2 + 0.3) && dy < m(1.2);
-          };
-          const clear = pts.filter((p) => !inZone(p));
-          pts = clear.length ? clear : pts;
-          if (room.type === 'master-bedroom') {
-            bedsides.set(
-              room.id,
-              [-1, 1].map((k) => add(add(mid, dir, k * m(bedW / 2 + 0.3)), wall.inward, m(0.15))),
-            );
-          }
-        }
-      } else pts = grid(room, m(1.3), m(0.6), cap(1.5));
+      else if (LIVING.includes(room.type) && room.type !== 'dining')
+        pts = spread(room, clampN(Math.round(areaM2 / 2.5), 8, 12), fanClear);
+      else if (room.type === 'master-bedroom')
+        pts = spread(room, clampN(Math.round(areaM2 / 3.5), 4, 6), fanClear);
+      else if (room.type === 'bedroom')
+        pts = spread(room, clampN(Math.round(areaM2 / 4), 2, 4), fanClear);
+      else if (room.type === 'dining' || room.type === 'study')
+        pts = spread(room, clampN(Math.round(areaM2 / 3), 2, 6), fanClear);
+      else pts = grid(room, m(1.3), m(0.6), cap(1.5));
       // Leave the dining table to the pendant, and keep clear of the fan's blades.
       const pendantAt = want.has('pendant-lights') ? diningSpot(room) : null;
       if (pendantAt) pts = pts.filter((p) => dist(p, pendantAt) > m(0.9));
       if (fan) {
-        const clear = pts.filter((p) => dist(p, fan.at) > m(fan.inches * 0.0127 + 0.5));
-        pts = clear.length || pts.length === 0 ? clear : [];
-        markerAt('ceiling-fans', fan.at, room.id, { fanInches: fan.inches });
-        lit(room, 'ceiling-fans');
+        // Downlights must stay clear of the blades; in a room too tight for both, the lights win.
+        const clearOfBlades = pts.every((p) => dist(p, fan.at) > m(fan.inches * 0.0127 + 0.3));
+        if (clearOfBlades) {
+          markerAt('ceiling-fans', fan.at, room.id, { fanInches: fan.inches });
+          lit(room, 'ceiling-fans');
+        }
       }
       for (const p of pts) queued.push({ categoryId: main, at: p, room });
       if (pts.length) lit(room, main);
@@ -502,29 +454,41 @@ export function magicPlan({ analysis, sheet, categories, pick }: MagicPlanInput)
       }
     }
 
-    // LED cove (in the L-box) around living spaces and the master bedroom.
-    const corners = coveCorners(room);
-    if (corners) {
-      const inset = m(0.45);
+    // LED strips in the L-box along the walls: 3–4 in the living room, up to 3 in the master
+    // bedroom and up to 2 in other bedrooms, on the walls without the door first.
+    const runs = stripRuns(room);
+    if (runs > 0 && want.has('led-strips')) {
       const variantId = pick('led-strips');
       if (variantId) {
-        const metres = Math.ceil((2 * (r.w + r.h - 4 * inset)) / u / 0.5) * 0.5;
-        emit(
-          {
-            kind: 'led-strip',
-            id: newId('el'),
-            z: 0,
-            variantId,
-            points: corners.map(clamp),
-            closed: true,
-            smooth: false,
-            metres,
-            showLabel: true,
-          },
-          'led-strips',
-          room.id,
-        );
-        lit(room, 'led-strips');
+        const inset = m(0.45);
+        const walls = sidesOf(room)
+          .filter((sd) => sd.length > m(1.5))
+          .sort(
+            (a, b) => Number(opensOn(room, a)) - Number(opensOn(room, b)) || b.length - a.length,
+          )
+          .slice(0, runs);
+        for (const wall of walls) {
+          const dir = along(wall);
+          const start = add(add(wall.from, wall.inward, inset), dir, inset);
+          const end = add(add(wall.to, wall.inward, inset), dir, -inset);
+          if (owner(start)?.id !== room.id || owner(end)?.id !== room.id) continue;
+          emit(
+            {
+              kind: 'led-strip',
+              id: newId('el'),
+              z: 0,
+              variantId,
+              points: [clamp(start), clamp(end)],
+              closed: false,
+              smooth: false,
+              metres: Math.ceil(dist(start, end) / u / 0.5) * 0.5,
+              showLabel: true,
+            },
+            'led-strips',
+            room.id,
+          );
+          lit(room, 'led-strips');
+        }
       } else missing.add('led-strips');
     }
 
@@ -588,20 +552,81 @@ export function magicPlan({ analysis, sheet, categories, pick }: MagicPlanInput)
     return { at, inches };
   }
 
-  /** The cove outline for a room that gets one, or null. */
-  function coveCorners(room: Room): Pt[] | null {
-    if (!want.has('led-strips') || !COVE_ROOMS.includes(room.type)) return null;
-    if (area(room) < m(3) * m(3)) return null;
+  /**
+   * The part of a room clear of rooms drawn inside it (an ensuite in a master bedroom): the
+   * largest strip of the room beside the inner room.
+   */
+  function freeRect(room: Room): Rect {
     const r = room.rect;
-    const inset = m(0.45);
-    const corners = [
-      { x: r.x + inset, y: r.y + inset },
-      { x: r.x + r.w - inset, y: r.y + inset },
-      { x: r.x + r.w - inset, y: r.y + r.h - inset },
-      { x: r.x + inset, y: r.y + r.h - inset },
+    const inner = rooms.find(
+      (o) => o !== room && area(o) < area(room) && contains(r, centre(o.rect)),
+    );
+    if (!inner) return r;
+    const i = inner.rect;
+    const strips: Rect[] = [
+      { x: r.x, y: r.y, w: i.x - r.x, h: r.h },
+      { x: i.x + i.w, y: r.y, w: r.x + r.w - (i.x + i.w), h: r.h },
+      { x: r.x, y: r.y, w: r.w, h: i.y - r.y },
+      { x: r.x, y: i.y + i.h, w: r.w, h: r.y + r.h - (i.y + i.h) },
     ];
-    // Skip the cove when a room drawn inside this one (an ensuite) would sit under it.
-    return corners.every((c) => owner(c)?.id === room.id) ? corners : null;
+    return strips.filter((s) => s.w > 0 && s.h > 0).sort((a, b) => b.w * b.h - a.w * a.h)[0] ?? r;
+  }
+
+  /** How many LED strip runs a room gets (more downlights, fewer strips). */
+  function stripRuns(room: Room): number {
+    const areaM2 = area(room) / (u * u);
+    if (LIVING.includes(room.type) && room.type !== 'dining') return areaM2 >= 20 ? 4 : 3;
+    if (room.type === 'master-bedroom') return areaM2 >= 18 ? 3 : areaM2 >= 12 ? 2 : 1;
+    if (room.type === 'bedroom') return areaM2 >= 13 ? 2 : areaM2 >= 9 ? 1 : 0;
+    return 0;
+  }
+
+  /**
+   * `count` downlights spread evenly and symmetrically over the room, 0.5 m or more off the walls.
+   * With a ceiling fan in the middle they go round the edge of the grid instead (the usual
+   * Singapore layout of a central fan ringed by downlights).
+   */
+  function spread(room: Room, count: number, fan: { at: Pt; clear: number } | null): Pt[] {
+    const r = freeRect(room);
+    const ring = fan !== null;
+    const inset = Math.min(m(0.6), r.w / 4, r.h / 4);
+    const iw = r.w - 2 * inset;
+    const ih = r.h - 2 * inset;
+    const ratio = iw / ih;
+    const layout = (nx: number, ny: number): Pt[] => {
+      const pts: Pt[] = [];
+      for (let i = 0; i < nx; i++) {
+        for (let j = 0; j < ny; j++) {
+          const onEdge = i === 0 || j === 0 || i === nx - 1 || j === ny - 1;
+          if (ring && nx >= 2 && ny >= 2 && !onEdge) continue;
+          // A ring hugs the inset rectangle's edges; a full grid sits in the middle of each cell.
+          const fx = ring && nx >= 2 ? i / (nx - 1) : (i + 0.5) / nx;
+          const fy = ring && ny >= 2 ? j / (ny - 1) : (j + 0.5) / ny;
+          pts.push({ x: r.x + inset + iw * fx, y: r.y + inset + ih * fy });
+        }
+      }
+      return pts.filter((p) => owner(p)?.id === room.id);
+    };
+    // Grid shapes whose count is close to the target and whose proportions suit the room; with a
+    // fan, only those that keep every light clear of its blades.
+    const shapes: { nx: number; ny: number; score: number }[] = [];
+    for (let nx = 1; nx <= 6; nx++) {
+      for (let ny = 1; ny <= 6; ny++) {
+        const n = ring && nx >= 2 && ny >= 2 ? 2 * (nx + ny) - 4 : nx * ny;
+        shapes.push({
+          nx,
+          ny,
+          score: Math.abs(n - count) * 3 + Math.abs(Math.log(nx / ny / ratio)),
+        });
+      }
+    }
+    shapes.sort((a, b) => a.score - b.score);
+    for (const { nx, ny } of shapes.slice(0, 8)) {
+      const pts = layout(nx, ny);
+      if (!fan || pts.every((p) => dist(p, fan.at) > fan.clear)) return pts;
+    }
+    // Too tight for a fan: keep the lights (the fan is left out below).
+    return layout(shapes[0]!.nx, shapes[0]!.ny);
   }
 
   /** The wall the kitchen cabinets run along: the longest one without an opening. */
@@ -730,6 +755,18 @@ export function magicPlan({ analysis, sheet, categories, pick }: MagicPlanInput)
     } else plates.push({ at, gangs, roomIds: [roomId] });
   };
 
+  /** A wall spot just outside a door, beside it at the end with more wall. */
+  const outsideDoor = (door: Door, room: Room): Pt => {
+    const ab = unit(door.hingeU, door.latchU);
+    const ba = { x: -ab.x, y: -ab.y };
+    const bFirst = wallBeyond(door.latchU, ab, room) >= wallBeyond(door.hingeU, ba, room);
+    const [end, dir] = bFirst ? [door.latchU, ab] : [door.hingeU, ba];
+    const mid = { x: (door.hingeU.x + door.latchU.x) / 2, y: (door.hingeU.y + door.latchU.y) / 2 };
+    const n = { x: -ab.y, y: ab.x };
+    const outward = owner(add(mid, n, m(0.15)))?.id === room.id ? { x: -n.x, y: -n.y } : n;
+    return add(add(end, dir, m(0.25)), outward, m(0.15));
+  };
+
   const switchAnchors = new Map<string, { door: Door; side: Room }>();
   const placeSwitch = (room: Room, door: Door, side: Room, gangs: number) => {
     const at = besideLatch(door, side);
@@ -779,14 +816,18 @@ export function magicPlan({ analysis, sheet, categories, pick }: MagicPlanInput)
       const door = ds[0];
       const side = door && other(door, room);
       if (door && side && side.type !== 'outdoor') placeSwitch(room, door, side, gangsFor(room));
-      else openPlanSwitch(room);
+      else if (door && !side) {
+        // The space outside the door wasn't outlined: switch on the wall just outside it anyway.
+        const at = outsideDoor(door, room);
+        addPlate(at, gangsFor(room), room.id);
+      } else openPlanSwitch(room);
       continue;
     }
 
     if (ds.length && WALKWAYS.includes(room.type)) {
-      // Two-way switching where the walkway meets other walkways, living spaces or the entrance.
-      const ends = ds.filter((d) => walkable(other(d, room)));
-      for (const d of ends.length ? ends : [ds[0]!]) placeSwitch(room, d, room, 1);
+      // One switch, where the walkway is entered from a living space or the entrance.
+      const d = ds.find((x) => walkable(other(x, room))) ?? ds[0]!;
+      placeSwitch(room, d, room, 1);
       continue;
     }
 
@@ -798,12 +839,6 @@ export function magicPlan({ analysis, sheet, categories, pick }: MagicPlanInput)
     else if (ds.length && !LIVING.includes(room.type))
       placeSwitch(room, ds[0]!, room, gangsFor(room));
     else openPlanSwitch(room);
-  }
-
-  // Two-way switching from each side of the master bed.
-  for (const [roomId, spots] of bedsides) {
-    if (planningLights && !circuits.has(roomId)) continue;
-    for (const at of spots) if (owner(at)?.id === roomId) addPlate(at, 1, roomId);
   }
 
   if (want.has('smart-switches')) {
@@ -863,6 +898,32 @@ export function magicPlan({ analysis, sheet, categories, pick }: MagicPlanInput)
   }
 
   // --- curtains ----------------------------------------------------------------------------------
+  // Without windows on the drawing, curtains go on each living room and bedroom's longest outside
+  // wall (one with no other room beyond it).
+  if (want.has('curtains-blinds') && analysis.windows.length === 0) {
+    for (const room of rooms.filter((r) => CURTAIN_ROOMS.includes(r.type))) {
+      const outside = sidesOf(room)
+        .filter((sd) =>
+          // Clear of any outlined room for 2.2 m beyond (so not a wall onto a corridor).
+          [0.25, 0.5, 0.75].every((f) =>
+            [0.5, 1.2, 2.2].every(
+              (d) => !owner(add(add(sd.from, along(sd), sd.length * f), sd.inward, -m(d))),
+            ),
+          ),
+        )
+        .sort((a, b) => b.length - a.length)[0];
+      if (!outside) continue;
+      const at = add(midOf(outside), outside.inward, m(0.25));
+      const horizontal = outside.from.y === outside.to.y;
+      markerAt(
+        'curtains-blinds',
+        at,
+        room.id,
+        { wide: outside.length >= m(3) },
+        horizontal ? 0 : 90,
+      );
+    }
+  }
   if (want.has('curtains-blinds')) {
     for (const w of analysis.windows) {
       const a = toUnits(w.start);

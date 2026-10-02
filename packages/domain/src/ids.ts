@@ -1,5 +1,5 @@
 export type IdPrefix =
-  'proj' | 'lvl' | 'plan' | 'el' | 'prod' | 'var' | 'file' | 'src' | 'page' | 'tpl';
+  'proj' | 'lvl' | 'plan' | 'el' | 'prod' | 'var' | 'file' | 'src' | 'page' | 'tpl' | 'room';
 
 const ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
 const ID_LENGTH = 12;

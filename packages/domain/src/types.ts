@@ -6,6 +6,7 @@
  * widths and note font sizes are all expressed in plan units.
  */
 import type { BadgeStyle, CategoryId, PlanType } from './categories.ts';
+import type { RoomLayout } from './magic/room-layout.ts';
 
 export type { BadgeStyle, CategoryId, PlanType };
 
@@ -208,6 +209,8 @@ export interface Plan {
   /** Incremented on every saved document change; used for optimistic concurrency. */
   revision: number;
   updatedAt: string;
+  /** Rooms outlined on the drawing for Magic Plan, kept so it can be run again. */
+  magicLayout?: RoomLayout;
 }
 
 export interface SourceFile {

@@ -50,47 +50,42 @@ states; `/dev/styleguide` (dev server only) shows every UI primitive and categor
 7. **Admin:** catalogue editing with product images, branding with logo upload, icon styles, favourites,
    and _Your data_ (restore samples or erase everything).
 
-**Magic Plan:** in the Plan tab, _Magic Plan_ reads the level's drawing (rooms, the openings between
-them, windows, scale) and places devices by fixed rules based on Singapore renovation practice:
-- **Downlights** go in a symmetric grid at least 0.6 m off the walls, about 1.5 m apart in living
-  areas and 1.4 m in bedrooms. There is roughly one per 1.5 m² at most, so ceilings aren't
-  over-lit, and rows line up across adjoining rooms.
-- **Bedrooms** keep the pillow end of the bed clear. The master bedroom also gets a switch on each
-  side of the bed.
-- **Kitchens** get a row of downlights over the worktop and an under-cabinet LED strip.
-- **Corridors** get a single centre row.
-- **Bathrooms** get one to three downlights.
-- **Service yards, stores and balconies** get one surface light. The household shelter gets exactly
-  one surface light, because it may not be hacked.
-- **LED coves** go in living areas and the master bedroom, with fewer downlights there. Dining
-  gets a pendant. Track lights are used only in long, narrow spaces.
-- **Ceiling fans** (with light) go in living areas and bedrooms: 52" in the living room and master
-  bedroom, 46" in common bedrooms. Downlights stay 0.5 m clear of the blades, and the fan gets a
-  gang on the room's switch.
-- **Switches** go inside each room, beside the opening, on the side with more wall (which way a
-  door swings isn't needed). Bathrooms, stores, the shelter and the service yard are switched from
-  outside.
-- **Smart devices:** control panels at the entrance and in the master bedroom, curtains at living
-  and bedroom windows, and a router, gateway and mesh nodes.
+**Magic Plan:** in the Plan tab, _Magic Plan_ places devices for you in two steps.
 
-Tick or untick categories before it runs; review the counts; one Undo
-removes the result. The sample drawings work straight away.
+1. **Rooms.** Choose the type of home: a 2- to 5-room flat, an executive flat, a 2- or 3-bedroom condo,
+   or "Other". The app lists the rooms that home has. A 5-room flat, for example, has a master bedroom,
+   3 bedrooms, the living/dining room, the kitchen and 2 toilets. For each room, drag a rough box over
+   it on the drawing, then tap where its door is. Add or remove rooms as needed, for example a service
+   yard, shelter, study or corridor. The floor area sets the drawing's scale, for spacing. Your outlines
+   are kept, so the next run starts from them. The sample drawings come already outlined.
+2. **What to place.** Tick the categories, then review the counts and place everything. One Undo
+   removes it all.
 
-Uploaded drawings are read **on this computer** by default; nothing is sent anywhere. Magic Plan finds the
-thick wall lines, closes the door and window gaps to get the rooms, finds the openings between rooms and
-the windows on outside walls, and works out the scale from the door widths. It doesn't try to tell which
-room is which: each room is planned by its size and shape. Long narrow rooms are planned as corridors
-and tiny ones as stores. Small rooms are planned like bathrooms and switched from outside. The largest
-room is planned as the living area, with a cove and a fan, and the rest like bedrooms, with a fan,
-downlights and curtains. Move or delete anything that doesn't suit a room once it's placed. Magic Plan
-reads clean architectural plans with solid walls best.
+How rooms are planned (Singapore practice):
 
-**Optional: reading with Claude.** For unusual or hand-drawn plans you can let Claude (vision) read the
-drawing instead, on the app's server. This needs an Anthropic API key; once set up, choose _With Claude_ in
-the Magic Plan window:
+| Room | Downlights | LED strips | Also |
+|---|---|---|---|
+| Living / dining | 8–12 | 3–4, in the L-box along the walls | 52" ceiling fan; dining pendant |
+| Master bedroom | 4–6 | 0–3 | 52" ceiling fan |
+| Other bedrooms | 2–4 | 0–2 | 46" ceiling fan |
+| Kitchen | A row over the worktop | Under-cabinet strip | |
+| Toilets | 1–2 | | Switched from outside |
+| Service yard, store, shelter | One surface light | | Switched from outside |
+| Corridor | A single centre row | | |
 
-1. Create a key at https://console.anthropic.com/settings/keys (this is billed to your Anthropic account;
-   reading one drawing usually costs well under US$1).
+- **Spacing:** downlights are spread evenly and symmetrically, at least 0.5 m off the walls. With a fan
+  they ring the fan and stay clear of its blades. Track lights are used only in long, narrow spaces.
+- **Switches:** each room gets one switch, beside its door on the side with more wall.
+- **Smart devices:**
+  - control panels at the entrance and in the master bedroom;
+  - curtains on each living room's and bedroom's outside wall;
+  - a router, gateway and mesh nodes.
+
+**Optional: Claude.** If an Anthropic API key is set up, the Rooms step has a _Suggest rooms with Claude_
+button that outlines the rooms for you to check:
+
+1. Create a key at https://console.anthropic.com/settings/keys (billed to your Anthropic account; one
+   drawing usually costs well under US$1).
 2. In the `maxsen-planner` folder, copy `.env.example` to a new file named `.env` and paste the key after
    `ANTHROPIC_API_KEY=`. The `.env` file is never uploaded to GitHub.
 3. Restart the app (Control + C, then `pnpm dev`). The Terminal shows `Magic Plan: ready`.

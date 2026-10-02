@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Loader2, Sparkles, TriangleAlert } from 'lucide-react';
+import { ArrowRight, Sparkles, TriangleAlert } from 'lucide-react';
 import {
+  analysisFromLayout,
   categoryById,
   createVariantPicker,
-  FloorReadError,
+  layoutFromAnalysis,
   magicPlan,
   MAGIC_CATEGORIES,
   resolveCategoryStyle,
@@ -14,20 +15,15 @@ import {
   type MagicPlanResult,
   type Plan,
   type PlanType,
+  type RoomLayout,
 } from '@maxsen/domain';
 import { CategoryGlyph } from '@/components/CategoryGlyph';
-import {
-  Button,
-  Checkbox,
-  Dialog,
-  Field,
-  SegmentedControl,
-  Switch,
-  Textarea,
-} from '@/components/ui';
-import { useCatalogue, useSettings } from '@/lib/data/hooks';
+import { Button, Checkbox, Dialog, Switch } from '@/components/ui';
+import { useActions, useCatalogue, useSettings } from '@/lib/data/hooks';
+import { fileUrl } from '@/lib/files';
 import { analyseBackground, magicPlanConfigured, MagicPlanError } from './analysis-source';
-import { readPlanLocally } from './local-reader';
+import { drawn, startingLayout } from './room-layouts';
+import { RoomsStep } from './RoomsStep';
 
 export interface MagicPlanOutcome {
   result: MagicPlanResult;
@@ -43,21 +39,10 @@ interface Props {
   onApply: (outcome: MagicPlanOutcome) => void;
 }
 
-type Method = 'local' | 'claude';
-
 type Step =
-  | { kind: 'options'; error?: string }
-  | { kind: 'working'; stage: 'reading' | 'claude' | 'planning' }
+  | { kind: 'rooms'; error?: string }
+  | { kind: 'options' }
   | { kind: 'review'; analysis: FloorAnalysis; result: MagicPlanResult };
-
-const WORKING: Record<Extract<Step, { kind: 'working' }>['stage'], [string, string?]> = {
-  reading: ['Finding the rooms…', 'Reading the walls and openings on this computer.'],
-  claude: [
-    'Reading the drawing…',
-    'Finding rooms, doors and windows. This can take up to a minute.',
-  ],
-  planning: ['Planning…'],
-};
 
 const PLAN_TITLES: Record<PlanType, string> = {
   'smart-home': 'Smart Home Plan',
@@ -65,28 +50,64 @@ const PLAN_TITLES: Record<PlanType, string> = {
 };
 
 export function MagicPlanDialog({ open, onOpenChange, level, plans, onApply }: Props) {
+  const actions = useActions();
   const { data: catalogue } = useCatalogue();
   const { data: settings } = useSettings();
   const [selected, setSelected] = useState<Set<CategoryId>>(
     () => new Set(MAGIC_CATEGORIES.filter((c) => c.defaultOn).map((c) => c.id)),
   );
-  const [notes, setNotes] = useState('');
   const hasContent = Object.values(plans).some((p) => p && p.document.elements.length > 0);
   const [replace, setReplace] = useState(hasContent);
-  const [step, setStep] = useState<Step>({ kind: 'options' });
-  const [configured, setConfigured] = useState<boolean | null>(null);
-  const [method, setMethod] = useState<Method>('local');
+  const [step, setStep] = useState<Step>({ kind: 'rooms' });
+  const [configured, setConfigured] = useState(false);
+  const [suggesting, setSuggesting] = useState(false);
 
-  // The drawing Magic Plan reads: the Smart Home Plan's, else the Lighting Plan's.
+  // The drawing the rooms are outlined on: the Smart Home Plan's, else the Lighting Plan's.
   const source = plans['smart-home'] ?? plans.lighting;
+  const aspect = source ? source.background.width / source.background.height : 1.4;
   const builtIn = source ? Boolean(sample.sampleAnalysisFor(source.background.fileId)) : false;
+  const [layout, setLayout] = useState<RoomLayout | null>(null);
 
   useEffect(() => {
-    if (!open) return;
-    setStep({ kind: 'options' });
+    if (!open || !source) return;
+    setStep({ kind: 'rooms' });
     setReplace(hasContent);
+    setLayout(startingLayout(source));
     if (!builtIn) void magicPlanConfigured().then(setConfigured);
-  }, [open, builtIn, hasContent]);
+    // Only when the window opens: later saves of the layout must not reset it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  const changeLayout = (next: RoomLayout) => {
+    setLayout(next);
+    if (source) actions.setMagicLayout(source.id, next);
+  };
+
+  const suggest = async () => {
+    if (!source || !layout) return;
+    setSuggesting(true);
+    try {
+      const { analysis } = await analyseBackground(source.background.fileId, '');
+      const next = layoutFromAnalysis(analysis, aspect);
+      changeLayout({
+        ...next,
+        presetId: layout.presetId,
+        floorAreaM2: analysis.imageWidthMetres ? next.floorAreaM2 : layout.floorAreaM2,
+      });
+      setStep({ kind: 'rooms' });
+    } catch (e) {
+      console.error(e);
+      setStep({
+        kind: 'rooms',
+        error:
+          e instanceof MagicPlanError
+            ? e.message
+            : 'Claude couldn’t suggest the rooms. Outline them yourself.',
+      });
+    } finally {
+      setSuggesting(false);
+    }
+  };
 
   const available = (planType: PlanType) => Boolean(plans[planType]);
   const chosen = MAGIC_CATEGORIES.filter(
@@ -110,45 +131,38 @@ export function MagicPlanDialog({ open, onOpenChange, level, plans, onApply }: P
     [catalogue.products, catalogue.variants, settings.favouriteVariantIds],
   );
 
-  const plan = (analysis: FloorAnalysis, issues: string[] = []) => {
-    if (!source) return;
-    const sheet = {
-      width: 1000,
-      height: (1000 * source.background.height) / source.background.width,
-    };
+  const outlined = layout?.rooms.filter(drawn) ?? [];
+  const run = () => {
+    if (!source || !layout) return;
+    const analysis = analysisFromLayout(layout, aspect);
+    const sheet = { width: 1000, height: 1000 / aspect };
     const result = magicPlan({ analysis, sheet, categories: chosen, pick });
-    result.warnings.unshift(...issues);
+    const skipped = layout.rooms.filter((r) => !drawn(r)).map((r) => r.name);
+    if (skipped.length)
+      result.warnings.unshift(`Not outlined, so not planned: ${skipped.join(', ')}.`);
+    const noDoor = outlined.filter((r) => !r.door).map((r) => r.name);
+    if (noDoor.length) {
+      result.warnings.unshift(
+        `No door marked for ${noDoor.join(', ')}, so the switch went on the wall nearest the entrance.`,
+      );
+    }
     setStep({ kind: 'review', analysis, result });
   };
 
-  const run = async () => {
-    if (!source) return;
-    try {
-      if (builtIn || method === 'claude') {
-        setStep({ kind: 'working', stage: builtIn ? 'planning' : 'claude' });
-        const { analysis } = await analyseBackground(source.background.fileId, notes);
-        plan(analysis);
-        return;
-      }
-      setStep({ kind: 'working', stage: 'reading' });
-      const { analysis, issues } = await readPlanLocally(source);
-      plan(analysis, issues);
-    } catch (e) {
-      console.error(e);
-      setStep({
-        kind: 'options',
-        error:
-          e instanceof MagicPlanError || e instanceof FloorReadError
-            ? e.message
-            : 'Something went wrong while planning. Try again.',
-      });
-    }
-  };
-
-  const blocked = !builtIn && method === 'claude' && configured === false;
-
   const footer =
-    step.kind === 'review' ? (
+    step.kind === 'rooms' ? (
+      <>
+        <Button onClick={() => onOpenChange(false)}>Cancel</Button>
+        <Button
+          variant="primary"
+          icon={<ArrowRight className="size-4" />}
+          disabledReason={outlined.length === 0 ? 'Outline at least one room first.' : undefined}
+          onClick={() => setStep({ kind: 'options' })}
+        >
+          Next
+        </Button>
+      </>
+    ) : step.kind === 'review' ? (
       <>
         <Button onClick={() => setStep({ kind: 'options' })}>Back</Button>
         <Button
@@ -165,13 +179,12 @@ export function MagicPlanDialog({ open, onOpenChange, level, plans, onApply }: P
       </>
     ) : (
       <>
-        <Button onClick={() => onOpenChange(false)}>Cancel</Button>
+        <Button onClick={() => setStep({ kind: 'rooms' })}>Back</Button>
         <Button
           variant="primary"
           icon={<Sparkles className="size-4" />}
-          loading={step.kind === 'working'}
-          disabled={chosen.length === 0 || blocked}
-          onClick={() => void run()}
+          disabled={chosen.length === 0}
+          onClick={run}
         >
           Create Magic Plan
         </Button>
@@ -182,23 +195,17 @@ export function MagicPlanDialog({ open, onOpenChange, level, plans, onApply }: P
     <Dialog
       open={open}
       onOpenChange={onOpenChange}
-      width="lg"
+      width={step.kind === 'rooms' ? 'xl' : 'lg'}
       title="Magic Plan"
-      description={`Reads the ${level.name} drawing and places devices for you. Everything stays editable afterwards.`}
+      description={
+        step.kind === 'rooms'
+          ? `Step 1 of 2: outline the rooms on the ${level.name} drawing so Magic Plan knows what each one is.`
+          : `Step 2 of 2: choose what to place. Everything stays editable afterwards.`
+      }
       footer={footer}
     >
-      {step.kind === 'working' && (
-        <div role="status" className="flex flex-col items-center gap-3 py-16 text-center">
-          <Loader2 aria-hidden className="size-6 animate-spin text-brass" />
-          <p className="text-body text-ink">{WORKING[step.stage][0]}</p>
-          {WORKING[step.stage][1] && (
-            <p className="text-meta text-ink-2">{WORKING[step.stage][1]}</p>
-          )}
-        </div>
-      )}
-
-      {step.kind === 'options' && (
-        <div className="flex flex-col gap-5">
+      {step.kind === 'rooms' && source && layout && (
+        <div className="flex flex-col gap-3">
           {step.error && (
             <p
               role="alert"
@@ -208,28 +215,19 @@ export function MagicPlanDialog({ open, onOpenChange, level, plans, onApply }: P
               {step.error}
             </p>
           )}
-          {!builtIn && (
-            <Field
-              label="Read the drawing"
-              hint={
-                method === 'local'
-                  ? 'Read on this computer; nothing is uploaded. Rooms are planned by their size and shape.'
-                  : configured
-                    ? 'Sent to Claude to read. Better with unusual or hand-drawn plans.'
-                    : 'Claude needs an Anthropic API key in the project’s .env file (see the README), then restart the app.'
-              }
-            >
-              <SegmentedControl
-                label="Read the drawing"
-                value={method}
-                onChange={setMethod}
-                options={[
-                  { value: 'local', label: 'On this computer' },
-                  { value: 'claude', label: 'With Claude', disabled: configured !== true },
-                ]}
-              />
-            </Field>
-          )}
+          <RoomsStep
+            imageUrl={fileUrl(source.background.fileId)}
+            aspect={aspect}
+            layout={layout}
+            onChange={changeLayout}
+            onSuggest={!builtIn && configured ? () => void suggest() : undefined}
+            suggesting={suggesting}
+          />
+        </div>
+      )}
+
+      {step.kind === 'options' && (
+        <div className="flex flex-col gap-5">
           <div className="grid grid-cols-2 gap-6 max-[700px]:grid-cols-1">
             {(['smart-home', 'lighting'] as const).map((pt) => {
               const cats = MAGIC_CATEGORIES.filter((c) => categoryById(c.id).planType === pt);
@@ -287,15 +285,6 @@ export function MagicPlanDialog({ open, onOpenChange, level, plans, onApply }: P
               );
             })}
           </div>
-          {!builtIn && method === 'claude' && (
-            <Field
-              label="Notes for Magic Plan"
-              optional
-              hint="Helps Claude read the drawing, for example “the room at the top right is the master bedroom”."
-            >
-              <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
-            </Field>
-          )}
           <Switch
             checked={replace}
             onCheckedChange={setReplace}

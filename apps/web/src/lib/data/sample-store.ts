@@ -15,6 +15,7 @@ import {
   setAdjustment,
   type CategoryId,
   type CropRect,
+  type RoomLayout,
   type ExportSettings,
   type Level,
   type Orientation,
@@ -571,6 +572,13 @@ export function createSampleStore(
         touchProject(d, projectId);
       });
       return id;
+    },
+
+    setMagicLayout(planId: string, layout: RoomLayout) {
+      update((d) => {
+        const plan = d.plans.find((p) => p.id === planId);
+        if (plan) plan.magicLayout = structuredClone(layout) as Draft<RoomLayout>;
+      });
     },
 
     setPlanDocument(planId: string, document: PlanDocument) {

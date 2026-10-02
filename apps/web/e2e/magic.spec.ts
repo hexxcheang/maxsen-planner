@@ -10,6 +10,12 @@ test.describe('Magic Plan', () => {
     await page.goto('/projects/proj_sample_tan/plan?level=lvl_tan_1&type=lighting');
     await page.getByRole('button', { name: 'Magic Plan' }).click();
     const dialog = page.getByRole('dialog', { name: 'Magic Plan' });
+    // The sample drawing comes with its rooms already outlined.
+    await expect(dialog.getByText(/10 of 10 outlined/)).toBeVisible();
+    await page.screenshot({
+      path: `test-results/screens/magic-rooms-sample-${testInfo.project.name}.png`,
+    });
+    await dialog.getByRole('button', { name: 'Next' }).click();
     await expect(dialog.getByRole('group', { name: 'Smart Home Plan categories' })).toBeVisible();
 
     // Leave curtains out.
@@ -45,38 +51,73 @@ test.describe('Magic Plan', () => {
     });
   });
 
-  test('reads an uploaded drawing on this computer and plans it by room size', async ({
-    page,
-  }, testInfo) => {
+  test('outlines the rooms of an uploaded drawing, then plans them', async ({ page }, testInfo) => {
     test.setTimeout(120_000);
     await page.route('**/api/magic-plan/status', (route) =>
       route.fulfill({ json: { configured: false } }),
     );
-    // A real drawing as a customer would send it: the sample 4-room plan as a PNG scan.
-    await uploadAndOpen(page, drawHdbPng, { lighting: true });
+    // The sample 4-room plan as a customer's PNG scan, used whole so drawing coordinates match.
+    await uploadAndOpen(page, drawHdbPng, { lighting: true, wholePage: true });
 
     await page.getByRole('button', { name: 'Magic Plan' }).click();
     const dialog = page.getByRole('dialog', { name: 'Magic Plan' });
-    await expect(dialog.getByRole('radio', { name: 'On this computer' })).toBeChecked();
-    await expect(dialog.getByRole('radio', { name: 'With Claude' })).toBeDisabled();
-    await dialog.getByRole('button', { name: 'Create Magic Plan' }).click();
+    await expect(dialog.getByRole('combobox', { name: 'Type of home' })).toHaveValue('hdb-4');
+    await expect(dialog.getByText(/0 of 7 outlined/)).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Next' })).toBeDisabled();
 
-    // Straight to the summary: rooms aren't named or classified, so there is nothing to check.
-    await expect(dialog.getByText(/Found 10 rooms/)).toBeVisible({ timeout: 60_000 });
-    await expect(dialog.getByText(/planned by its size and shape/)).toBeVisible();
-    await expect(dialog.getByRole('list', { name: 'Rooms' })).toHaveCount(0);
-    await expect(dialog.getByRole('cell', { name: /Ceiling Fans/ })).toBeVisible();
+    const canvas = dialog.getByTestId('room-canvas');
+    const box = (await canvas.boundingBox())!;
+    // Drawing units (1400 × 1000) to screen points.
+    const P = (x: number, y: number) => ({
+      x: box.x + (x / 1400) * box.width,
+      y: box.y + (y / 1000) * box.height,
+    });
+    const outline = async (
+      name: string,
+      [x, y, w, h]: [number, number, number, number],
+      door: [number, number],
+    ) => {
+      await dialog.getByRole('button', { name: new RegExp(`^${name}:`) }).click();
+      const a = P(x + 8, y + 8);
+      const b = P(x + w - 8, y + h - 8);
+      await page.mouse.move(a.x, a.y);
+      await page.mouse.down();
+      await page.mouse.move(b.x, b.y, { steps: 5 });
+      await page.mouse.up();
+      await expect(dialog.getByText(new RegExp(`Tap where the ${name}’s door is`))).toBeVisible();
+      const d = P(door[0], door[1]);
+      await page.mouse.click(d.x, d.y);
+    };
+    await outline('Master Bedroom', [880, 100, 420, 360], [882, 360]);
+    await outline('Bedroom 2', [880, 460, 420, 220], [882, 540]);
+    await outline('Bedroom 3', [720, 680, 580, 220], [810, 682]);
+    await outline('Living / Dining', [100, 360, 620, 540], [305, 898]);
+    await outline('Kitchen', [280, 100, 280, 260], [480, 358]);
+    await outline('Master Toilet', [1140, 100, 160, 200], [1142, 255]);
+    await outline('Common Toilet', [720, 100, 160, 200], [795, 298]);
+    await expect(dialog.getByText(/7 of 7 outlined/)).toBeVisible();
+    await page.screenshot({
+      path: `test-results/screens/magic-rooms-drawn-${testInfo.project.name}.png`,
+    });
+
+    await dialog.getByRole('button', { name: 'Next' }).click();
+    await dialog.getByRole('button', { name: 'Create Magic Plan' }).click();
+    await expect(dialog.getByText(/Found 7 rooms/)).toBeVisible();
     await dialog.getByRole('button', { name: /Place \d+ items/ }).click();
     await expect(page.getByText(/Magic Plan placed \d+ items/)).toBeVisible();
     await page.waitForTimeout(400);
     await page.screenshot({
-      path: `test-results/screens/magic-local-${testInfo.project.name}.png`,
+      path: `test-results/screens/magic-drawn-smart-home-${testInfo.project.name}.png`,
     });
     await page.getByRole('radio', { name: 'Lighting' }).click();
     await page.waitForTimeout(400);
     await page.screenshot({
-      path: `test-results/screens/magic-local-lighting-${testInfo.project.name}.png`,
+      path: `test-results/screens/magic-drawn-lighting-${testInfo.project.name}.png`,
     });
+
+    // The outlines are kept for next time.
+    await page.getByRole('button', { name: 'Magic Plan' }).click();
+    await expect(dialog.getByText(/7 of 7 outlined/)).toBeVisible();
   });
 
   test('suggests a crop to the floor plan and lets you adjust it', async ({ page }, testInfo) => {
@@ -125,31 +166,6 @@ test.describe('Magic Plan', () => {
       path: `test-results/screens/crop-planner-${testInfo.project.name}.png`,
     });
   });
-
-  test('explains when an uploaded page has no plan it can read', async ({ page }) => {
-    await page.route('**/api/magic-plan/status', (route) =>
-      route.fulfill({ json: { configured: false } }),
-    );
-    await uploadAndOpen(page, () => {
-      const c = document.createElement('canvas');
-      c.width = 800;
-      c.height = 600;
-      const ctx = c.getContext('2d')!;
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(0, 0, 800, 600);
-      ctx.strokeRect(50, 50, 700, 500);
-      return Promise.resolve(c.toDataURL('image/png').split(',')[1]!);
-    });
-    await page.getByRole('button', { name: 'Magic Plan' }).click();
-    const dialog = page.getByRole('dialog', { name: 'Magic Plan' });
-    await expect(
-      dialog.getByText('No Lighting Plan on Level 1. Set one up in Setup to include these.'),
-    ).toBeVisible();
-    await dialog.getByRole('button', { name: 'Create Magic Plan' }).click();
-    await expect(dialog.getByRole('alert')).toContainText('Couldn’t find any rooms', {
-      timeout: 60_000,
-    });
-  });
 });
 
 /** The sample 4-room plan as a customer's PNG scan. */
@@ -186,7 +202,7 @@ async function createProjectWithUpload(page: Page, drawPng: () => Promise<string
 async function uploadAndOpen(
   page: Page,
   drawPng: () => Promise<string>,
-  { lighting = false }: { lighting?: boolean } = {},
+  { lighting = false, wholePage = false }: { lighting?: boolean; wholePage?: boolean } = {},
 ) {
   await createProjectWithUpload(page, drawPng);
   for (const name of lighting ? ['Lighting Plan', 'Smart Home Plan'] : ['Smart Home Plan']) {
@@ -196,6 +212,10 @@ async function uploadAndOpen(
       .getByRole('dialog')
       .getByRole('radio', { name: /plan.png, page 1/ })
       .click();
+    if (wholePage) {
+      await expect(page.getByRole('dialog').getByRole('group', { name: 'Crop' })).toBeVisible();
+      await page.getByRole('dialog').getByRole('button', { name: 'Whole page' }).click();
+    }
     await page.getByRole('dialog').getByRole('button', { name: 'Use this drawing' }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
   }
