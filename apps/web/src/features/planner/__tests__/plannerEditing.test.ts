@@ -96,6 +96,40 @@ describe('planner editing', () => {
     expect(s.getState().document.elements.map((e) => e.id)).toEqual([dup]);
   });
 
+  it('copies the selection and pastes it beside the original, further along each time', () => {
+    const s = fresh();
+    const a = s.getState().addMarker('var_a', { x: 100, y: 50 });
+    s.getState().select([a], 'replace');
+    expect(s.getState().paste()).toEqual([]);
+    expect(s.getState().copySelection()).toBe(1);
+    const [first] = s.getState().paste();
+    const at = (id: string) => s.getState().document.elements.find((e) => e.id === id)!;
+    expect(at(first!)).toMatchObject({ kind: 'marker', variantId: 'var_a', y: 50 });
+    const x1 = (at(first!) as { x: number }).x;
+    expect(x1).toBeGreaterThan(100);
+    expect(s.getState().selection).toEqual([first]);
+    const [second] = s.getState().paste();
+    expect((at(second!) as { x: number }).x - x1).toBeCloseTo(x1 - 100);
+    // One undo takes one paste off.
+    s.getState().undo();
+    expect(s.getState().document.elements).toHaveLength(2);
+  });
+
+  it('draws a curtain as a track of points', () => {
+    const s = fresh();
+    s.getState().arm({ kind: 'path', variantId: 'var_curtain', elementKind: 'curtain' });
+    s.getState().addDraftPoint({ x: 10, y: 10 }, false);
+    s.getState().addDraftPoint({ x: 110, y: 10 }, false);
+    const id = s.getState().finishDraft()!;
+    expect(s.getState().document.elements.find((e) => e.id === id)).toMatchObject({
+      kind: 'curtain',
+      points: [
+        { x: 10, y: 10 },
+        { x: 110, y: 10 },
+      ],
+    });
+  });
+
   it('adds a closed smooth LED loop for the circle tool', () => {
     const s = fresh();
     const id = s.getState().addLoop('var_led', { x: 100, y: 100 }, 40);

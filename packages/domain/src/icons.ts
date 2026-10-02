@@ -27,9 +27,10 @@ export type IconShape =
   | 'fan'
   | 'track'
   | 'strip'
-  | 'magnetic';
+  | 'magnetic'
+  | 'curtain';
 
-export const PATH_SHAPES: readonly IconShape[] = ['track', 'strip', 'magnetic'];
+export const PATH_SHAPES: readonly IconShape[] = ['track', 'strip', 'magnetic', 'curtain'];
 
 /** Clockwise circle (SVG screen coordinates) centred on the origin. */
 const circle = (r: number, clockwise = true): string => {
@@ -98,6 +99,7 @@ const SHAPES: Record<IconShape, string> = {
   track: LEGEND_LINE,
   strip: LEGEND_LINE,
   magnetic: LEGEND_LINE,
+  curtain: LEGEND_LINE,
 };
 
 export const ICON_SHAPES: readonly IconShape[] = Object.keys(SHAPES) as IconShape[];

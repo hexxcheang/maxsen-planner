@@ -168,7 +168,19 @@ describe('magicPlan', () => {
     assert.ok(!curtains.some((c) => c.roomId === kitchen.id));
     const bed3 = hdb.rooms.find((x) => x.name === 'Bedroom 3')!;
     const wide = curtains.find((c) => c.roomId === bed3.id)!;
-    assert.equal(marker(r, wide.elementId).variantId, 'curtains-blinds:wide');
+    const track = r.smartHome.find((e) => e.id === wide.elementId)!;
+    assert.equal(track.kind, 'curtain');
+    if (track.kind !== 'curtain') return;
+    assert.equal(track.variantId, 'curtains-blinds:wide');
+    // A dotted track the length of the window it covers.
+    const win = hdb.windows.find((w) => w.roomId === bed3.id)!;
+    const len = (a: { x: number; y: number }, b: { x: number; y: number }) =>
+      Math.hypot(a.x - b.x, a.y - b.y);
+    const winLen = len(
+      { x: win.start.x * SHEET.width, y: win.start.y * SHEET.height },
+      { x: win.end.x * SHEET.width, y: win.end.y * SHEET.height },
+    );
+    assert.ok(Math.abs(len(track.points[0]!, track.points[1]!) - winLen) < 2);
   });
 
   it('adds a router, a gateway and enough mesh coverage', () => {
@@ -180,10 +192,12 @@ describe('magicPlan', () => {
 
   it('keeps every element on the sheet and splits elements by plan type', () => {
     const r = run();
+    const onSheet = (p: { x: number; y: number }) =>
+      p.x >= 0 && p.x <= SHEET.width && p.y >= 0 && p.y <= SHEET.height;
     for (const el of r.smartHome) {
-      assert.equal(el.kind, 'marker');
-      if (el.kind === 'marker')
-        assert.ok(el.x >= 0 && el.x <= SHEET.width && el.y >= 0 && el.y <= SHEET.height);
+      assert.ok(el.kind === 'marker' || el.kind === 'curtain', el.kind);
+      if (el.kind === 'marker') assert.ok(onSheet(el));
+      if (el.kind === 'curtain') assert.ok(el.points.every(onSheet));
     }
     for (const p of r.placements) {
       const inLighting = r.lighting.some((e) => e.id === p.elementId);

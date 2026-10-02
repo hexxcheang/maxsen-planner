@@ -57,6 +57,13 @@ export const trackPathSchema = z.object({
   showLabel: z.boolean(),
 });
 
+export const curtainPathSchema = z.object({
+  kind: z.literal('curtain'),
+  ...elementBase,
+  variantId: z.string().min(1),
+  points: pathPoints,
+});
+
 export const textNoteSchema = z.object({
   kind: z.literal('note'),
   ...elementBase,
@@ -73,6 +80,7 @@ export const planElementSchema = z.discriminatedUnion('kind', [
   pointMarkerSchema,
   ledStripPathSchema,
   trackPathSchema,
+  curtainPathSchema,
   textNoteSchema,
 ]) satisfies z.ZodType<PlanElement>;
 

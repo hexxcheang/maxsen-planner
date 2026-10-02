@@ -55,14 +55,16 @@ describe('CATEGORIES', () => {
     assert.ok(categoriesForPlan('lighting').every((c) => c.planType === 'lighting'));
   });
 
-  it('kinds: led-strips is led-strip, track-lights and magnetic-track-lights are track, all others point', () => {
+  it('kinds: led-strips is led-strip, tracks are track, curtains are curtain, all others point', () => {
     for (const c of CATEGORIES) {
       const expected =
         c.id === 'led-strips'
           ? 'led-strip'
           : c.id === 'track-lights' || c.id === 'magnetic-track-lights'
             ? 'track'
-            : 'point';
+            : c.id === 'curtains-blinds'
+              ? 'curtain'
+              : 'point';
       assert.equal(c.kind, expected, `${c.id} kind`);
     }
   });

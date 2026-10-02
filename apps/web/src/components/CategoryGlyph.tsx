@@ -57,6 +57,8 @@ export function CategoryGlyph({
           stroke={s.color}
           strokeWidth={s.shape === 'strip' ? 0.14 : 0.1}
           strokeLinecap={s.shape === 'track' ? 'square' : 'round'}
+          // Curtains are a dotted line.
+          {...(s.shape === 'curtain' ? { strokeDasharray: '0.001 0.19' } : {})}
           fill="none"
         />
         {heads}

@@ -7,6 +7,7 @@ import { SYSTEM_VARIANT_IDS } from '../categories.ts';
 import { circlePoints } from '../geometry/path.ts';
 import { defaultExportSettings } from '../plan-document.ts';
 import type {
+  CurtainPath,
   LedStripPath,
   Level,
   Plan,
@@ -110,6 +111,30 @@ class DocBuilder {
     return this;
   }
 
+  /** A curtain track centred on (x, y), `length` long, across (0°) or down (90°) the drawing. */
+  curtain(variantId: string, x: number, y: number, length: number, rotation = 0): this {
+    const half = length / 2;
+    const ends: [number, number][] =
+      rotation === 90
+        ? [
+            [x, y - half],
+            [x, y + half],
+          ]
+        : [
+            [x - half, y],
+            [x + half, y],
+          ];
+    const el: CurtainPath = {
+      kind: 'curtain',
+      id: this.id(),
+      z: this.elements.length,
+      variantId,
+      points: ends.map(([px, py]) => P(px, py)),
+    };
+    this.elements.push(el);
+    return this;
+  }
+
   note(
     x: number,
     y: number,
@@ -159,9 +184,9 @@ const tanSmartHome = new DocBuilder('tan_sh')
   .marker('var_nova_pro_1g_black', 868, 710)
   .marker('var_nova_pro_1g_black', 744, 322)
   .marker('var_ark_1g', 262, 322)
-  .marker('var_curtain_single', 124, 650, { rotation: 90, label: 'Living window' })
-  .marker('var_curtain_double', 1276, 380, { rotation: 90 })
-  .marker('var_curtain_single', 1276, 570, { rotation: 90 })
+  .curtain('var_curtain_single', 124, 650, 160, 90)
+  .curtain('var_curtain_double', 1276, 380, 240, 90)
+  .curtain('var_curtain_single', 1276, 570, 160, 90)
   .marker('var_ir_aircon', 600, 400)
   .marker('var_ir_aircon', 1100, 130)
   .marker('var_ir_aircon', 1100, 486)
@@ -248,7 +273,7 @@ const limL1SmartHome = new DocBuilder('lim1_sh')
   .marker('var_lusano_1g', 1000, 640)
   .marker('var_lusano_2g', 140, 640)
   .marker('var_lusano_1g', 440, 640)
-  .marker('var_curtain_double', 730, 268, { label: 'Living garden window' })
+  .curtain('var_curtain_double', 730, 268, 240)
   .marker('var_ir_aircon', 940, 290)
   .marker('var_ir_aircon', 1260, 290)
   .marker('var_ir_aircon', 400, 650)
@@ -330,9 +355,9 @@ const limL2SmartHome = new DocBuilder('lim2_sh')
   .marker('var_lusano_2g', 620, 650)
   .marker('var_lusano_2g', 970, 650)
   .marker('var_nova_s1', 820, 140, { label: 'Family area' })
-  .marker('var_curtain_double', 320, 250, { label: 'Balcony' })
-  .marker('var_curtain_single', 124, 430, { rotation: 90 })
-  .marker('var_curtain_single', 1276, 340, { rotation: 90 })
+  .curtain('var_curtain_double', 320, 250, 240)
+  .curtain('var_curtain_single', 124, 430, 160, 90)
+  .curtain('var_curtain_single', 1276, 340, 160, 90)
   .marker('var_ir_aircon', 400, 270)
   .marker('var_ir_aircon', 1060, 130)
   .marker('var_ir_aircon', 300, 650)
@@ -412,8 +437,8 @@ const marinaSmartHome = new DocBuilder('mar_sh')
   .marker('var_filo_2g', 130, 680)
   .marker('var_filo_2g', 830, 300)
   .marker('var_filo_1g', 830, 700)
-  .marker('var_curtain_double', 450, 236, { label: 'Balcony' })
-  .marker('var_curtain_single', 1276, 300, { rotation: 90 })
+  .curtain('var_curtain_double', 450, 236, 240)
+  .curtain('var_curtain_single', 1276, 300, 160, 90)
   .marker('var_ir_aircon', 760, 250)
   .marker('var_ir_aircon', 1260, 130)
   .marker('var_ir_aircon', 1070, 530)

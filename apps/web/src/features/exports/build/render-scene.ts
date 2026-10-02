@@ -99,7 +99,9 @@ export async function renderPlanImage(
       ctx.lineJoin = 'round';
       ctx.lineCap = item.kind === 'track' && item.shape !== 'magnetic' ? 'square' : 'round';
       ctx.globalAlpha = item.kind === 'led-strip' ? 0.9 : 1;
+      if (item.dash) ctx.setLineDash(item.dash);
       ctx.stroke(new Path2D(item.d));
+      ctx.setLineDash([]);
       ctx.globalAlpha = 1;
       for (const h of item.heads) {
         ctx.fillStyle = item.color;
@@ -160,11 +162,14 @@ export function glyphImage(style: CategoryStyle, px = 64): string {
     ctx.strokeStyle = style.color;
     ctx.lineWidth = px * (style.shape === 'strip' ? 0.16 : 0.1);
     ctx.lineCap = style.shape === 'track' ? 'square' : 'round';
+    // Curtains are a dotted line.
+    if (style.shape === 'curtain') ctx.setLineDash([0.001, px * 0.19]);
     ctx.beginPath();
     ctx.moveTo(-px * 0.42, 0);
     ctx.lineTo(px * 0.42, 0);
     ctx.stroke();
-    if (style.shape !== 'strip') {
+    ctx.setLineDash([]);
+    if (style.shape !== 'strip' && style.shape !== 'curtain') {
       ctx.fillStyle = style.color;
       for (const x of [-0.19, 0.19]) {
         if (style.shape === 'magnetic') {

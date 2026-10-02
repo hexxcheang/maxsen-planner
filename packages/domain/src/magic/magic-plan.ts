@@ -996,13 +996,23 @@ export function magicPlan({ analysis, sheet, categories, pick }: MagicPlanInput)
         return r && (w.roomId ? r.id === w.roomId : true) && CURTAIN_ROOMS.includes(r.type);
       });
       if (!at) continue;
-      const horizontal = Math.abs(along.x) >= Math.abs(along.y);
-      markerAt(
+      // The track runs the length of the window, just inside the room.
+      const variantId = pick('curtains-blinds', { wide: dist(a, b) >= m(2.4) });
+      if (!variantId) {
+        missing.add('curtains-blinds');
+        continue;
+      }
+      const inward = { x: at.x - mid.x, y: at.y - mid.y };
+      emit(
+        {
+          kind: 'curtain',
+          id: newId('el'),
+          z: 0,
+          variantId,
+          points: [clamp(add(a, inward)), clamp(add(b, inward))],
+        },
         'curtains-blinds',
-        at,
         owner(at)!.id,
-        { wide: dist(a, b) >= m(2.4) },
-        horizontal ? 0 : 90,
       );
     }
   }

@@ -335,6 +335,13 @@ export function PlannerScreen() {
       } else if (mod && key === 'd') {
         e.preventDefault();
         s.duplicateSelection(20);
+      } else if (mod && key === 'c') {
+        if (s.selection.length) {
+          e.preventDefault();
+          s.copySelection();
+        }
+      } else if (mod && key === 'v') {
+        if (s.paste().length) e.preventDefault();
       } else if (mod && key === 'a') {
         e.preventDefault();
         s.selectAll();
@@ -522,7 +529,12 @@ export function PlannerScreen() {
                 {armed.kind === 'path' &&
                   (draft.length === 0 ? (
                     <>
-                      Click the start of the {armed.elementKind === 'track' ? 'track' : 'LED strip'}{' '}
+                      Click the start of the{' '}
+                      {armed.elementKind === 'track'
+                        ? 'track'
+                        : armed.elementKind === 'curtain'
+                          ? 'curtain (one end of the window)'
+                          : 'LED strip'}{' '}
                       ({nameOf(armed.variantId)}).
                     </>
                   ) : (

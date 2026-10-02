@@ -59,7 +59,7 @@ const round1 = (n: number): number => Math.round(n * 10) / 10;
 
 /**
  * Deterministic project-wide quantities (product spec §9–§10):
- * one unit per point marker; LED-strip metres summed per variant; track heads summed per
+ * one unit per point marker and per curtain track; LED-strip metres summed per variant; track heads summed per
  * variant; one Smart LED Driver per LED run and one Track Driver per track. Consolidated across
  * every document (all levels, both plan types); editor visibility never affects the result.
  */
@@ -94,6 +94,9 @@ export function computeTotals(documents: PlanDocument[], resolve: VariantResolve
         case 'track':
           bump(el.variantId, 'pcs', el.headCount);
           bump(SYSTEM_VARIANT_IDS.trackDriver, 'pcs', 1, true);
+          break;
+        case 'curtain':
+          bump(el.variantId, 'pcs', 1);
           break;
         case 'note':
           break;

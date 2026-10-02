@@ -22,7 +22,7 @@ export type PlannerTool = 'select' | 'pan';
 /** What a click on the canvas will create. */
 export type Armed =
   | { kind: 'marker'; variantId: string }
-  | { kind: 'path'; variantId: string; elementKind: 'led-strip' | 'track' }
+  | { kind: 'path'; variantId: string; elementKind: 'led-strip' | 'track' | 'curtain' }
   | { kind: 'loop'; variantId: string }
   | { kind: 'note' };
 
@@ -69,6 +69,13 @@ export interface PlannerState {
   updateElement: (id: string, patch: ElementPatch) => void;
   deleteSelection: () => void;
   duplicateSelection: (offset: number) => string | null;
+  /** Copies the selection (Ctrl/Cmd+C). Returns how many items were copied. */
+  copySelection: () => number;
+  /**
+   * Pastes what was copied beside it (Ctrl/Cmd+V), further along each time, and selects it.
+   * Returns the new ids; none when nothing was copied or it was copied on the other plan type.
+   */
+  paste: () => string[];
   reorder: (mode: 'front' | 'forward' | 'backward' | 'back') => void;
   setView: (patch: Partial<PlanViewState>) => void;
   /** Replaces the whole document as one undoable step (Magic Plan). */
@@ -88,6 +95,30 @@ const EMPTY: PlanDocument = {
   view: { hiddenCategories: [], legendVisible: true },
 };
 const HISTORY_LIMIT = 100;
+/** Gap left between a copied item and its pasted copy, in plan units. */
+const PASTE_GAP = 10;
+/** Width a single icon is given when working out where its copy goes (the largest icon size). */
+const ICON_ROOM = 30;
+
+/**
+ * What was copied, shared by every plan so items can be pasted on another level too. `pastes`
+ * counts the copies made so far, so each lands beside the last.
+ */
+let clipboard: { planType: PlanType; elements: PlanElement[]; pastes: number } | null = null;
+
+/** Left and right edges of the elements, in plan units. */
+function spanX(elements: PlanElement[]): { left: number; right: number } {
+  let left = Infinity;
+  let right = -Infinity;
+  for (const el of elements) {
+    const xs = el.kind === 'marker' || el.kind === 'note' ? [el.x] : el.points.map((p) => p.x);
+    for (const x of xs) {
+      left = Math.min(left, x);
+      right = Math.max(right, x);
+    }
+  }
+  return { left, right };
+}
 const round = (n: number) => Math.round(n * 10) / 10;
 const rpt = (p: Pt): Pt => ({ x: round(p.x), y: round(p.y) });
 
@@ -252,6 +283,46 @@ export function createPlannerStore() {
         return add(copy);
       },
 
+      copySelection: () => {
+        const { selection, document, planType } = get();
+        const ids = new Set(selection);
+        const elements = document.elements
+          .filter((e) => ids.has(e.id))
+          .sort((a, b) => a.z - b.z)
+          .map((e) => structuredClone(e));
+        if (elements.length === 0) return 0;
+        clipboard = { planType, elements, pastes: 0 };
+        return elements.length;
+      },
+
+      paste: () => {
+        const { document, planType } = get();
+        if (!clipboard || clipboard.planType !== planType) return [];
+        const { left, right } = spanX(clipboard.elements);
+        // Beside the copied items: one width (an icon's, at least) plus a gap to the right of the
+        // last copy, or to the left when that would run off the drawing.
+        const step = Math.max(right - left, 0) + ICON_ROOM + PASTE_GAP;
+        let n = clipboard.pastes + 1;
+        if (right + step * n > 1000) n = -n;
+        clipboard.pastes = Math.abs(n);
+        let z = nextZ(document);
+        const copies = clipboard.elements.map((el) =>
+          produce(el, (c) => {
+            c.id = newId('el');
+            c.z = z++;
+            shift(c, step * n, 0);
+          }),
+        );
+        const ids = copies.map((c) => c.id);
+        commit(
+          (d) => {
+            d.elements.push(...(copies as Draft<PlanElement>[]));
+          },
+          { selection: ids },
+        );
+        return ids;
+      },
+
       reorder: (mode) => {
         const ids = new Set(get().selection);
         if (ids.size === 0) return;
@@ -346,7 +417,9 @@ export function createPlannerStore() {
                 metres: null,
                 showLabel: false,
               })
-            : add({ ...base, kind: 'track', headCount: 3, showLabel: true });
+            : armed.elementKind === 'curtain'
+              ? add({ ...base, kind: 'curtain' })
+              : add({ ...base, kind: 'track', headCount: 3, showLabel: true });
         set({ draft: [] });
         return id;
       },

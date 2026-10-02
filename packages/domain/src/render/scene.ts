@@ -70,7 +70,7 @@ export interface ScenePath {
   elementId: string;
   z: number;
   categoryId: CategoryId;
-  kind: 'led-strip' | 'track';
+  kind: 'led-strip' | 'track' | 'curtain';
   shape: IconShape;
   d: string;
   points: Pt[];
@@ -78,6 +78,8 @@ export interface ScenePath {
   smooth: boolean;
   strokeWidth: number;
   color: string;
+  /** Dot pattern (dash, gap) for a dotted line (curtains); absent for a solid one. */
+  dash?: [number, number];
   heads: SceneHead[];
   label?: SceneLabel;
 }
@@ -207,6 +209,28 @@ export function buildScene(doc: PlanDocument, ctx: SceneContext, opts: SceneOpti
       continue;
     }
 
+    if (el.kind === 'curtain') {
+      // A curtain track: a dotted line along the window, a little heavier than an LED strip.
+      const strokeWidth = style.size * STROKE_FACTOR * 1.1;
+      items.push({
+        type: 'path',
+        elementId: el.id,
+        z: el.z,
+        categoryId,
+        kind: 'curtain',
+        shape: style.shape,
+        d: polylineToSvgPath(el.points, false),
+        points: el.points,
+        closed: false,
+        smooth: false,
+        strokeWidth,
+        color: style.color,
+        dash: [0.001, strokeWidth * 1.9],
+        heads: [],
+      });
+      continue;
+    }
+
     const isLed = el.kind === 'led-strip';
     const closed = isLed ? el.closed : false;
     const smooth = isLed ? el.smooth : false;
@@ -262,8 +286,9 @@ export function buildScene(doc: PlanDocument, ctx: SceneContext, opts: SceneOpti
 }
 
 /** Category used when a variant cannot be resolved, so the element is still drawn. */
-function fallbackCategory(kind: 'marker' | 'led-strip' | 'track'): CategoryId {
+function fallbackCategory(kind: 'marker' | 'led-strip' | 'track' | 'curtain'): CategoryId {
   if (kind === 'led-strip') return 'led-strips';
+  if (kind === 'curtain') return 'curtains-blinds';
   if (kind === 'track') return 'track-lights';
   return 'misc-smart-home';
 }

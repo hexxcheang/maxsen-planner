@@ -60,6 +60,15 @@ export interface TrackPath {
   showLabel: boolean;
 }
 
+/** A curtain or blind track, drawn as a dotted line along the window it covers. */
+export interface CurtainPath {
+  kind: 'curtain';
+  id: string;
+  z: number;
+  variantId: string;
+  points: Pt[];
+}
+
 export interface TextNote {
   kind: 'note';
   id: string;
@@ -76,7 +85,7 @@ export interface TextNote {
   highlight: string | null;
 }
 
-export type PlanElement = PointMarker | LedStripPath | TrackPath | TextNote;
+export type PlanElement = PointMarker | LedStripPath | TrackPath | CurtainPath | TextNote;
 export type PlanElementKind = PlanElement['kind'];
 
 /** Editor view state: saved with the plan but not part of undo history. */

@@ -6,6 +6,7 @@ import { LedInspector } from './LedInspector';
 import { MarkerInspector } from './MarkerInspector';
 import { MultiInspector } from './MultiInspector';
 import { NoteInspector } from './NoteInspector';
+import { CurtainInspector } from './CurtainInspector';
 import { TrackInspector } from './TrackInspector';
 
 interface InspectorProps {
@@ -56,5 +57,7 @@ export function Inspector({ document, selection, resolve, settings, planType }: 
     return <MarkerInspector el={el} snapshot={snapshot} style={style} variantOptions={options} />;
   if (el.kind === 'led-strip')
     return <LedInspector el={el} snapshot={snapshot} style={style} variantOptions={options} />;
+  if (el.kind === 'curtain')
+    return <CurtainInspector el={el} snapshot={snapshot} style={style} variantOptions={options} />;
   return <TrackInspector el={el} snapshot={snapshot} style={style} variantOptions={options} />;
 }

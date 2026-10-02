@@ -39,6 +39,43 @@ export function migratePlanDocument(raw: unknown): PlanDocument {
   return result.data;
 }
 
+/** Length in plan units of the curtain track that replaces an older curtain icon (about 1.5 m). */
+const CURTAIN_LENGTH = 100;
+
+/**
+ * Curtains used to be single icons; they're now dotted tracks along the window. Turns each curtain
+ * icon (one whose variant is in `curtainVariants`) into a track of a typical window's length,
+ * centred where the icon was and turned the same way. Returns the same document when there were
+ * none.
+ */
+export function curtainIconsToTracks(
+  doc: PlanDocument,
+  curtainVariants: Set<string>,
+): PlanDocument {
+  if (!doc.elements.some((e) => e.kind === 'marker' && curtainVariants.has(e.variantId)))
+    return doc;
+  return {
+    ...doc,
+    elements: doc.elements.map((e) => {
+      if (e.kind !== 'marker' || !curtainVariants.has(e.variantId)) return e;
+      const a = (e.rotation * Math.PI) / 180;
+      const dx = (Math.cos(a) * CURTAIN_LENGTH) / 2;
+      const dy = (Math.sin(a) * CURTAIN_LENGTH) / 2;
+      const r = (n: number) => Math.round(n * 10) / 10;
+      return {
+        kind: 'curtain' as const,
+        id: e.id,
+        z: e.z,
+        variantId: e.variantId,
+        points: [
+          { x: r(e.x - dx), y: r(e.y - dy) },
+          { x: r(e.x + dx), y: r(e.y + dy) },
+        ],
+      };
+    }),
+  };
+}
+
 /** The z value a newly added element should take so that it renders on top. */
 export function nextZ(doc: PlanDocument): number {
   let max = -1;

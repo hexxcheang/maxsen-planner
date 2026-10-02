@@ -42,8 +42,12 @@ states; `/dev/styleguide` (dev server only) shows every UI primitive and categor
    and notes), and you can drag the box or its handles to adjust it.
 4. **Planner:** click a library item then click the plan (or drag it on) to place devices; draw LED strips
    and tracks by clicking points (Shift for straight runs, double-click or Enter to finish); circle LED loops;
-   text notes. Edit everything in Details: variant, label, rotation, LED metres, head counts, note styling,
-   layer order, duplicate, delete. Undo/redo, Ctrl/Cmd+A, Delete, Esc. Live totals update as you go.
+   text notes. Curtains are dotted lines along the window, drawn like an LED strip (click one end of the
+   window, then the other) and adjusted the same way: drag the ends, or + to add a bend. Control panels
+   are drawn larger than switches. Edit everything in Details: variant, label, rotation, LED metres, head
+   counts, note styling, layer order, duplicate, delete. Ctrl/Cmd+C copies the selection and Ctrl/Cmd+V
+   pastes it beside the original (further along each time, on any level of the same plan type).
+   Undo/redo, Ctrl/Cmd+A, Delete, Esc. Live totals update as you go.
 5. **Review totals:** adjust export quantities; warnings if plans change afterwards.
 6. **Exports:** generate the marked floor plan PDF, the product description PDF and the quantity Excel
    file, one at a time or all together, then download them.

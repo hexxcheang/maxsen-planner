@@ -3,7 +3,7 @@ import type { IconShape } from './icons.ts';
 export type PlanType = 'smart-home' | 'lighting';
 
 /** How elements of a category are drawn and counted. */
-export type ElementKind = 'point' | 'led-strip' | 'track';
+export type ElementKind = 'point' | 'led-strip' | 'track' | 'curtain';
 
 export type CategoryId =
   | 'smart-switches'
@@ -73,8 +73,12 @@ const def = (
 const ORDERED: Omit<CategoryDef, 'order'>[] = [
   // Smart Home Plan categories (product spec §8.1)
   def('smart-switches', 'smart-home', 'Smart Switches', 'point', 'square', '#2F5FB3', 'SW'),
-  def('control-panels', 'smart-home', 'Control Panels', 'point', 'panel', '#5B3FA6', 'CP'),
-  def('curtains-blinds', 'smart-home', 'Curtains / Blinds', 'point', 'pill', '#177A68', 'CB'),
+  // Control panels are drawn larger than the switches around them.
+  {
+    ...def('control-panels', 'smart-home', 'Control Panels', 'point', 'panel', '#5B3FA6', 'CP'),
+    defaults: { color: '#5B3FA6', badge: 'CP', badgeStyle: 'filled', size: 30 },
+  },
+  def('curtains-blinds', 'smart-home', 'Curtains / Blinds', 'curtain', 'curtain', '#177A68', 'CB'),
   def(
     'aircon-controllers',
     'smart-home',

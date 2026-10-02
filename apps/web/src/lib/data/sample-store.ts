@@ -5,6 +5,7 @@
  */
 import { produce, type Draft } from 'immer';
 import {
+  curtainIconsToTracks,
   categoryById,
   createEmptyPlanDocument,
   SYSTEM_VARIANT_IDS,
@@ -52,9 +53,14 @@ export type SampleSeed = 'sample' | 'empty';
 /**
  * Brings a saved workspace up to date: variants saved before prices existed take the catalogue
  * price, and products of a category the saved catalogue has never had are added from the sample
- * catalogue. Products the user deleted from an existing category are not brought back.
+ * catalogue. Products the user deleted from an existing category are not brought back. Curtains
+ * saved as icons become dotted curtain tracks.
  */
 export function addNewSampleCategories(saved: SampleState): SampleState {
+  return addNewCategories(curtainsAsTracks(saved));
+}
+
+function addNewCategories(saved: SampleState): SampleState {
   // Variants saved before prices existed take the catalogue price.
   const priced = new Map(sample.SAMPLE_VARIANTS.map((v) => [v.id, v.price ?? null]));
   const state = saved.variants.some((v) => v.price === undefined)
@@ -68,6 +74,27 @@ export function addNewSampleCategories(saved: SampleState): SampleState {
   const known = new Set(state.products.map((p) => p.categoryId));
   const fresh = sample.SAMPLE_PRODUCTS.filter((p) => !known.has(p.categoryId));
   if (fresh.length === 0 || state.products.length === 0) return state;
+  return withNewCategories(state, fresh);
+}
+
+/** Curtains saved as icons become dotted curtain tracks. */
+function curtainsAsTracks(state: SampleState): SampleState {
+  const products = new Set(
+    state.products.filter((p) => p.categoryId === 'curtains-blinds').map((p) => p.id),
+  );
+  const curtains = new Set(state.variants.filter((v) => products.has(v.productId)).map((v) => v.id));
+  if (curtains.size === 0) return state;
+  let changed = false;
+  const plans = state.plans.map((p) => {
+    const document = curtainIconsToTracks(p.document, curtains);
+    if (document === p.document) return p;
+    changed = true;
+    return { ...p, document };
+  });
+  return changed ? { ...state, plans } : state;
+}
+
+function withNewCategories(state: SampleState, fresh: Product[]): SampleState {
   const ids = new Set(fresh.map((p) => p.id));
   const maxOrder = Math.max(0, ...state.products.map((p) => p.sortOrder));
   return {

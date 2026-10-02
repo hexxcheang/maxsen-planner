@@ -97,6 +97,7 @@ function PathNode({ p, ...rest }: { p: ScenePath } & NodeProps) {
         lineJoin="round"
         hitStrokeWidth={Math.max(p.strokeWidth * 3, 12)}
         opacity={p.kind === 'led-strip' ? 0.9 : 1}
+        {...(p.dash ? { dash: p.dash } : {})}
       />
       {p.heads.map((h, i) =>
         magnetic ? (
