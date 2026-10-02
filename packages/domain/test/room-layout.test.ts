@@ -235,3 +235,62 @@ describe('windows on outlined rooms', () => {
     }
   });
 });
+
+describe('windows only on the outside', () => {
+  // Square drawing: a living room on the left, a bedroom top right, a dining area bottom right.
+  const layout: RoomLayout = {
+    presetId: 'custom',
+    floorAreaM2: 60,
+    rooms: [
+      { id: 'a', type: 'living', name: 'Living', x: 0.1, y: 0.1, w: 0.4, h: 0.8, door: null },
+      { id: 'b', type: 'bedroom', name: 'Bedroom', x: 0.5, y: 0.1, w: 0.4, h: 0.4, door: null },
+      { id: 'c', type: 'dining', name: 'Dining', x: 0.5, y: 0.5, w: 0.4, h: 0.4, door: null },
+    ],
+    windows: [
+      // On the living room's outer (left) wall.
+      { id: 'w1', x1: 0.1, y1: 0.3, x2: 0.1, y2: 0.6 },
+      // On the wall between the living room and the bedroom: inside the home.
+      { id: 'w2', x1: 0.5, y1: 0.2, x2: 0.5, y2: 0.4 },
+      // On the bedroom's outer (top) wall.
+      { id: 'w3', x1: 0.6, y1: 0.1, x2: 0.8, y2: 0.1 },
+      // Nowhere near an outlined room.
+      { id: 'w4', x1: 0.95, y1: 0.95, x2: 0.99, y2: 0.95 },
+      // On the dining area's outer (right) wall.
+      { id: 'w5', x1: 0.9, y1: 0.6, x2: 0.9, y2: 0.8 },
+    ],
+  };
+  const analysis = analysisFromLayout(layout, 1);
+  const rooms = Object.fromEntries(analysis.rooms.map((r) => [r.name, r.id]));
+
+  it('keeps windows on outside walls and drops ones between rooms or on no room', () => {
+    assert.deepEqual(
+      analysis.windows.map((w) => [w.id, w.roomId]),
+      [
+        ['w1', rooms.Living],
+        ['w3', rooms.Bedroom],
+        ['w5', rooms.Dining],
+      ],
+    );
+  });
+
+  it('puts curtains only in living rooms, bedrooms and studies', () => {
+    const r = magicPlan({
+      analysis,
+      sheet: { width: 1000, height: 1000 },
+      categories: ['curtains-blinds'],
+      pick: (c) => c,
+    });
+    const curtains = r.placements.filter((p) => p.categoryId === 'curtains-blinds');
+    assert.deepEqual(curtains.map((c) => c.roomId).sort(), [rooms.Bedroom, rooms.Living].sort());
+  });
+
+  it('plans no curtains when there are no windows', () => {
+    const r = magicPlan({
+      analysis: analysisFromLayout({ ...layout, windows: [] }, 1),
+      sheet: { width: 1000, height: 1000 },
+      categories: ['curtains-blinds'],
+      pick: (c) => c,
+    });
+    assert.equal(r.placements.filter((p) => p.categoryId === 'curtains-blinds').length, 0);
+  });
+});

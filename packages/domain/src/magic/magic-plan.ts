@@ -23,8 +23,9 @@
  *   blades by 0.5 m; the fan takes a gang on the room's switch.
  * - One switch per room, by its door. Bathrooms, stores, the shelter and service yards are switched
  *   from outside.
- * - Control panels at the main entrance and in the master bedroom; curtains at living and bedroom
- *   windows; a router and gateway in the main living space plus mesh nodes for larger homes;
+ * - Control panels at the main entrance and in the master bedroom; curtains only at the windows of
+ *   living rooms, bedrooms and the study; a router and gateway in the main living space plus mesh
+ *   nodes for larger homes;
  *   optional aircon controllers, sensors, camera and lock.
  */
 import { categoryById, type CategoryId } from '../categories.ts';
@@ -102,15 +103,8 @@ const WALKWAYS: RoomType[] = ['corridor', 'foyer', 'staircase'];
 const LIVING: RoomType[] = ['living', 'living-dining', 'family', 'dining'];
 const SWITCHED_FROM_OUTSIDE: RoomType[] = ['bathroom', 'balcony', 'store', 'utility'];
 const SURFACE_ROOMS: RoomType[] = ['balcony', 'utility', 'store', 'staircase', 'garage'];
-const CURTAIN_ROOMS: RoomType[] = [
-  'living',
-  'living-dining',
-  'dining',
-  'family',
-  'bedroom',
-  'master-bedroom',
-  'study',
-];
+/** Smart curtains go in living rooms, bedrooms and the study, and nowhere else. */
+const CURTAIN_ROOMS: RoomType[] = ['living', 'living-dining', 'bedroom', 'master-bedroom', 'study'];
 const AIRCON_ROOMS: RoomType[] = [
   'living',
   'living-dining',
@@ -955,32 +949,8 @@ export function magicPlan({ analysis, sheet, categories, pick }: MagicPlanInput)
   }
 
   // --- curtains ----------------------------------------------------------------------------------
-  // Without windows on the drawing, curtains go on each living room and bedroom's longest outside
-  // wall (one with no other room beyond it).
-  if (want.has('curtains-blinds') && analysis.windows.length === 0) {
-    for (const room of rooms.filter((r) => CURTAIN_ROOMS.includes(r.type))) {
-      const outside = sidesOf(room)
-        .filter((sd) =>
-          // Clear of any outlined room for 2.2 m beyond (so not a wall onto a corridor).
-          [0.25, 0.5, 0.75].every((f) =>
-            [0.5, 1.2, 2.2].every(
-              (d) => !owner(add(add(sd.from, along(sd), sd.length * f), sd.inward, -m(d))),
-            ),
-          ),
-        )
-        .sort((a, b) => b.length - a.length)[0];
-      if (!outside) continue;
-      const at = add(midOf(outside), outside.inward, m(0.25));
-      const horizontal = outside.from.y === outside.to.y;
-      markerAt(
-        'curtains-blinds',
-        at,
-        room.id,
-        { wide: outside.length >= m(3) },
-        horizontal ? 0 : 90,
-      );
-    }
-  }
+  // Only where there's a window: windows are on the outside of the home, so a curtain never lands
+  // on a wall onto a corridor or another room.
   if (want.has('curtains-blinds')) {
     for (const w of analysis.windows) {
       const a = toUnits(w.start);

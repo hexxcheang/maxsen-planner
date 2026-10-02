@@ -239,8 +239,15 @@ export function RoomsStep({
           )}
         </div>
         <p className="text-meta text-ink-2">
-          Found on the drawing’s outer walls. Curtains and curtain-cove LED strips go along them.
+          Found on the home’s outer walls: the glazing between the façade columns and the doors onto
+          a balcony. Smart curtains go only at these, in living rooms, bedrooms and the study, with
+          a curtain-cove LED strip above. A window between two outlined rooms is ignored.
         </p>
+        {windows.length === 0 && !findingWindows && (
+          <p className="text-meta text-ink-2">
+            No windows yet, so no curtains will be planned. Add them with “Add a window”.
+          </p>
+        )}
         {windows.length > 0 && (
           <ul aria-label="Windows" className="flex max-h-[140px] flex-col gap-0.5 overflow-y-auto">
             {windows.map((w, i) => (

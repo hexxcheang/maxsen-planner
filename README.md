@@ -63,20 +63,26 @@ states; `/dev/styleguide` (dev server only) shows every UI primitive and categor
 
 How rooms are planned (Singapore practice). Light counts follow the size of the box you draw:
 
-| Room | Downlights | LED strips | Also |
-|---|---|---|---|
+| Room                          | Downlights                                            | LED strips                                | Also                            |
+| ----------------------------- | ----------------------------------------------------- | ----------------------------------------- | ------------------------------- |
 | Living / family / dining area | 1 per 2.5 m², 2–12 (about 8–12 in a full living room) | 1–4 by size, in the L-box along the walls | 52" ceiling fan; dining pendant |
-| Master bedroom | 1 per 3.5 m², 2–6 | 1–3 by size | 52" ceiling fan |
-| Other bedrooms | 1 per 4 m², 2–4 | 0–2 by size | 46" ceiling fan |
-| Kitchen | A row over the worktop | Under-cabinet strip | |
-| Toilets | 1–2 | | Switched from outside |
-| Service yard, store, shelter | One surface light | | Switched from outside |
-| Corridor | A single centre row | | |
+| Master bedroom                | 1 per 3.5 m², 2–6                                     | 1–3 by size                               | 52" ceiling fan                 |
+| Other bedrooms                | 1 per 4 m², 2–4                                       | 0–2 by size                               | 46" ceiling fan                 |
+| Kitchen                       | A row over the worktop                                | Under-cabinet strip                       |                                 |
+| Toilets                       | 1–2                                                   |                                           | Switched from outside           |
+| Service yard, store, shelter  | One surface light                                     |                                           | Switched from outside           |
+| Corridor                      | A single centre row                                   |                                           |                                 |
 
-Windows are found on the drawing's outer walls (the thin, glazed breaks) when the Rooms step opens and
-shown in blue. Remove a wrong one, or draw a missing one along its wall with _Add a window_. Each window
-in a living room or bedroom gets a curtain, and its wall gets the room's first LED strip as a curtain
-cove. Strips run close along the walls, 0.3 m in.
+Windows are found on the home's outer walls when the Rooms step opens and shown in blue: the glazing
+drawn as thin parallel lines (or one grey band, on a blurry scan) between the solid façade walls and
+columns, with nothing but open air or dimension lines beyond it. Glazed doors behind a balcony railing
+count too. Thin walls inside the flat look the same, so a stretch with a wall or room on both sides is
+left out, and so is a window between two outlined rooms. Remove a wrong one, or draw a missing one along
+its wall with _Add a window_.
+
+Smart curtains go only at windows, and only in living rooms, bedrooms and the study (not dining or
+family areas, kitchens or toilets). With no windows, no curtains are planned. A curtain room's window
+wall also gets its first LED strip as a curtain cove. Strips run close along the walls, 0.3 m in.
 
 Room sizes come from the floor area, shared among the listed rooms by their typical sizes, so outlining
 only some rooms doesn't inflate them.
@@ -86,7 +92,7 @@ only some rooms doesn't inflate them.
 - **Switches:** each room gets one switch, beside its door on the side with more wall.
 - **Smart devices:**
   - control panels at the entrance and in the master bedroom;
-  - curtains on each living room's and bedroom's outside wall;
+  - curtains at the windows of living rooms, bedrooms and the study;
   - a router, gateway and mesh nodes.
 
 **Optional: Claude.** If an Anthropic API key is set up, the Rooms step has a _Suggest rooms with Claude_
@@ -102,11 +108,11 @@ button that outlines the rooms for you to check:
 (`apps/web/public/templates/invoice-template.xlsx`). Quantities come from Review totals and are grouped
 into packages:
 
-| Package | Contents | Price |
-|---|---|---|
-| Switch | every 10 smart switches (includes 4 IR blasters and 1 gateway) | S$1,990 |
-| Light | every 12 downlights / surface lights | S$988 |
-| LED | every 30 m of LED strip with 6 drivers | S$988 |
+| Package | Contents                                                       | Price   |
+| ------- | -------------------------------------------------------------- | ------- |
+| Switch  | every 10 smart switches (includes 4 IR blasters and 1 gateway) | S$1,990 |
+| Light   | every 12 downlights / surface lights                           | S$988   |
+| LED     | every 30 m of LED strip with 6 drivers                         | S$988   |
 
 Anything beyond a package is charged at the add-on rates. Integration per light and per driver is listed
 and waived. Every other device is charged at its catalogue price, and the invoice adds the total and a

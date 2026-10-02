@@ -101,3 +101,78 @@ describe('findWindows', () => {
     }
   });
 });
+
+describe('findWindows on a brochure-style plan', () => {
+  // An 800×600 plan drawn the HDB way: solid 12 px walls and columns, glazing as two soft grey
+  // lines between the façade columns, thin double-line walls inside, a balcony with glazed doors
+  // behind its railing, and a dimension line outside.
+  const W = 800;
+  const H = 600;
+  const data = new Uint8Array(W * H).fill(252);
+  const fill = (x0: number, y0: number, x1: number, y1: number, lum: number) => {
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) data[y * W + x] = lum;
+  };
+  const hLine = (x0: number, x1: number, y: number) => fill(x0, y, x1, y + 2, 120);
+  const vLine = (y0: number, y1: number, x: number) => fill(x, y0, x + 2, y1, 120);
+  // Façade: solid left and bottom walls, columns along the top and right.
+  fill(100, 100, 112, 500, 20);
+  fill(100, 488, 700, 500, 20);
+  for (const x of [100, 380, 670]) fill(x, 100, x + 30, 130, 20);
+  fill(688, 100, 700, 250, 20);
+  fill(688, 420, 700, 500, 20);
+  // Glazing between the columns: the balcony railing (130–380), Bedroom's window (410–670), and
+  // a window on the right wall (250–420).
+  for (const [a, b] of [
+    [130, 380],
+    [410, 670],
+  ] as const) {
+    hLine(a, b, 102);
+    hLine(a, b, 109);
+  }
+  vLine(250, 420, 690);
+  vLine(250, 420, 697);
+  // Glazed doors from the living room onto the balcony.
+  hLine(112, 380, 196);
+  hLine(112, 380, 204);
+  // Thin double-line walls inside: between balcony/living and the bedroom, and along a corridor.
+  vLine(130, 300, 395);
+  vLine(130, 300, 403);
+  hLine(112, 688, 300);
+  hLine(112, 688, 308);
+  // A dimension line above the plan, with ticks.
+  hLine(100, 700, 60);
+  for (const x of [100, 380, 700]) vLine(52, 68, x);
+  const image: GrayImage = { width: W, height: H, data };
+
+  it('finds the glazing on the outside, and the balcony doors behind the railing', async () => {
+    const { findWindows } = await import('../src/magic/vision/windows.ts');
+    const found = findWindows(image).map((f) => ({
+      x: ((f.x1 + f.x2) / 2) * W,
+      y: ((f.y1 + f.y2) / 2) * H,
+      horizontal: Math.abs(f.y1 - f.y2) < 1e-9,
+    }));
+    const near = (x: number, y: number) =>
+      found.some((f) => Math.abs(f.x - x) < 20 && Math.abs(f.y - y) < 10);
+    assert.ok(near(255, 106), 'balcony railing');
+    assert.ok(near(540, 106), 'bedroom window');
+    assert.ok(near(694, 335), 'window on the right wall');
+    assert.ok(near(246, 200), 'balcony doors');
+    // Not the walls inside the home.
+    assert.ok(!found.some((f) => f.horizontal && Math.abs(f.y - 304) < 10), 'corridor wall');
+    assert.ok(!found.some((f) => !f.horizontal && Math.abs(f.x - 399) < 10), 'bedroom wall');
+    assert.equal(found.length, 4);
+  });
+
+  it('reads glazing that has blurred into one grey band', async () => {
+    const { findWindows } = await import('../src/magic/vision/windows.ts');
+    const blurred = Uint8Array.from(data);
+    // Merge the right-wall window's two lines into one band, as a low-resolution scan does.
+    for (let y = 250; y < 420; y++) for (let x = 689; x < 700; x++) blurred[y * W + x] = 130;
+    const found = findWindows({ width: W, height: H, data: blurred });
+    assert.ok(
+      found.some(
+        (f) => Math.abs(f.x1 * W - 694) < 8 && Math.abs(((f.y1 + f.y2) / 2) * H - 335) < 20,
+      ),
+    );
+  });
+});

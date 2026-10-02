@@ -208,13 +208,13 @@ export function analysisFromLayout(all: RoomLayout, aspect: number): FloorAnalys
     // Snap the tap to the nearest wall of the room.
     const edges = [
       {
-        d: Math.abs(p.y - y) * aspect,
+        d: Math.abs(p.y - y) / aspect,
         at: { x: clamp(p.x, x, x + w), y },
         horizontal: true,
         out: -1,
       },
       {
-        d: Math.abs(p.y - (y + h)) * aspect,
+        d: Math.abs(p.y - (y + h)) / aspect,
         at: { x: clamp(p.x, x, x + w), y: y + h },
         horizontal: true,
         out: 1,
@@ -266,6 +266,8 @@ export function analysisFromLayout(all: RoomLayout, aspect: number): FloorAnalys
 /**
  * Windows on the walls of the outlined rooms: each is given to the room with a parallel wall
  * running along it (within half a metre), preferring an indoor room over a balcony or outdoor area.
+ * Windows only ever look outside, so one with another indoor room just beyond it is an inside wall
+ * and is left out, as is one on no outlined room's wall.
  */
 function windowsFor(
   windows: DrawnWindow[],
@@ -274,27 +276,55 @@ function windowsFor(
   metres: number,
 ): FloorAnalysis['windows'] {
   const near = 0.5 / metres; // half a metre, as a fraction of the drawing's width
-  return windows.map((wd, i) => {
-    const horizontal = Math.abs(wd.y2 - wd.y1) * aspect < Math.abs(wd.x2 - wd.x1);
+  const beyond = 0.6 / metres;
+  const outdoor = (r: { type: RoomType }) => ['outdoor', 'balcony'].includes(r.type);
+  const out: FloorAnalysis['windows'] = [];
+  windows.forEach((wd, i) => {
+    const horizontal = Math.abs(wd.y2 - wd.y1) / aspect < Math.abs(wd.x2 - wd.x1);
     const mx = (wd.x1 + wd.x2) / 2;
     const my = (wd.y1 + wd.y2) / 2;
-    const candidates = rooms.filter((r) => {
+    // Distance (as a fraction of the width) from the window to the room's nearer parallel edge,
+    // and which way is out of the room there.
+    const edge = (r: (typeof rooms)[number]) => {
       if (horizontal) {
-        if (mx < r.x || mx > r.x + r.w) return false;
-        return Math.min(Math.abs(my - r.y), Math.abs(my - (r.y + r.h))) * aspect <= near;
+        if (mx < r.x || mx > r.x + r.w) return null;
+        const top = Math.abs(my - r.y) / aspect;
+        const bottom = Math.abs(my - (r.y + r.h)) / aspect;
+        return top <= bottom ? { d: top, out: -1 } : { d: bottom, out: 1 };
       }
-      if (my < r.y || my > r.y + r.h) return false;
-      return Math.min(Math.abs(mx - r.x), Math.abs(mx - (r.x + r.w))) <= near;
+      if (my < r.y || my > r.y + r.h) return null;
+      const left = Math.abs(mx - r.x);
+      const right = Math.abs(mx - (r.x + r.w));
+      return left <= right ? { d: left, out: -1 } : { d: right, out: 1 };
+    };
+    const candidates = rooms.filter((r) => {
+      const e = edge(r);
+      return e !== null && e.d <= near;
     });
-    const room =
-      candidates.find((r) => !['outdoor', 'balcony'].includes(r.type)) ?? candidates[0] ?? null;
-    return {
+    const room = candidates.find((r) => !outdoor(r)) ?? candidates[0];
+    if (!room) return;
+    const out1 = edge(room)!.out;
+    const looksIntoRoom = [0.25, 0.5, 0.75].some((f) => {
+      const px = horizontal
+        ? wd.x1 + (wd.x2 - wd.x1) * f
+        : (out1 < 0 ? room.x : room.x + room.w) + out1 * beyond;
+      const py = horizontal
+        ? (out1 < 0 ? room.y : room.y + room.h) + out1 * beyond * aspect
+        : wd.y1 + (wd.y2 - wd.y1) * f;
+      return rooms.some(
+        (r) =>
+          r !== room && !outdoor(r) && px > r.x && px < r.x + r.w && py > r.y && py < r.y + r.h,
+      );
+    });
+    if (looksIntoRoom) return;
+    out.push({
       id: `w${i + 1}`,
       start: { x: wd.x1, y: wd.y1 },
       end: { x: wd.x2, y: wd.y2 },
-      roomId: room?.id ?? null,
-    };
+      roomId: room.id,
+    });
   });
+  return out;
 }
 
 /** A layout from an existing analysis (built-in samples, or rooms suggested by Claude). */
