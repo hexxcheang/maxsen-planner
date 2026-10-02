@@ -20,6 +20,7 @@ import { fileUrl } from '@/lib/files';
 import { formatDate, formatQuantity } from '@/lib/format';
 import { imageToArtwork, imageToPngDataUrl } from '@/lib/images';
 import { floorPlanPages, productSections, quantitySections } from './content';
+import { monogramUrl } from './monogram';
 import { glyphImage, renderPlanImage } from './render-scene';
 
 export interface ExportContext {
@@ -46,6 +47,8 @@ const BRASS_LIGHT: Rgb = [214, 186, 121];
 const WHITE: Rgb = [255, 255, 255];
 const ON_DARK: Rgb = [214, 209, 199];
 const PAPER = { A4: [210, 297], A3: [297, 420] } as const;
+/** Size of the monogram on the page: 2400 px across ≈ 190 mm, so one repeat is about 12 mm. */
+const MONOGRAM_MM_PER_PX = 0.08;
 
 // --- Excel ---------------------------------------------------------------------------------------
 
@@ -124,7 +127,19 @@ async function artwork(settings: Settings): Promise<Picture> {
 
 interface Assets {
   logo: Picture;
+  /** The uploaded proposal background, if any. */
   art: Picture;
+  /** Maxsen's monogram canvas, for dark panels (and the covers when nothing is uploaded). */
+  monogram: Picture;
+}
+
+async function loadAssets(settings: Settings): Promise<Assets> {
+  const [l, art, monogram] = await Promise.all([
+    logo(settings),
+    artwork(settings),
+    imageToArtwork(monogramUrl()).catch(() => null),
+  ]);
+  return { logo: l, art, monogram };
 }
 
 function drawLogo(doc: JsPdf, img: Picture, x: number, y: number, h: number, alignRight = false) {
@@ -133,24 +148,56 @@ function drawLogo(doc: JsPdf, img: Picture, x: number, y: number, h: number, ali
   doc.addImage(img.dataUrl, 'PNG', alignRight ? x - w : x, y, w, h);
 }
 
-/** Fills a box with the artwork, cropped to fill it, under a charcoal veil so text stays legible. */
-function darkPanel(doc: JsPdf, art: Picture, x: number, y: number, w: number, h: number) {
+/**
+ * A dark panel. `full` panels (covers, the contact page) show the uploaded background under a
+ * charcoal veil so text on them stays legible; without one, and on the smaller panels inside the
+ * documents, they carry the monogram canvas at its natural scale.
+ */
+function darkPanel(
+  doc: JsPdf,
+  assets: Assets,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  full = false,
+) {
   doc.setFillColor(...CHARCOAL);
   doc.rect(x, y, w, h, 'F');
+  const art = full && assets.art ? assets.art : assets.monogram;
   if (!art) return;
-  const k = Math.max(w / art.width, h / art.height);
-  const iw = art.width * k;
-  const ih = art.height * k;
   doc.saveGraphicsState();
   doc.rect(x, y, w, h, null);
   doc.clip();
   doc.discardPath();
-  doc.addImage(art.dataUrl, 'JPEG', x + (w - iw) / 2, y + (h - ih) / 2, iw, ih);
+  if (art === assets.art) {
+    // Cropped to fill the panel.
+    const k = Math.max(w / art.width, h / art.height);
+    doc.addImage(
+      art.dataUrl,
+      'JPEG',
+      x + (w - art.width * k) / 2,
+      y + (h - art.height * k) / 2,
+      art.width * k,
+      art.height * k,
+    );
+  } else {
+    // The monogram keeps one size everywhere, anchored to the page, so its repeat lines up.
+    const k = MONOGRAM_MM_PER_PX;
+    for (let ty = 0; ty < y + h; ty += art.height * k) {
+      for (let tx = 0; tx < x + w; tx += art.width * k) {
+        if (tx + art.width * k < x || ty + art.height * k < y) continue;
+        doc.addImage(art.dataUrl, 'JPEG', tx, ty, art.width * k, art.height * k, 'monogram');
+      }
+    }
+  }
   doc.restoreGraphicsState();
-  withOpacity(doc, 0.66, () => {
-    doc.setFillColor(...CHARCOAL);
-    doc.rect(x, y, w, h, 'F');
-  });
+  if (art === assets.art) {
+    withOpacity(doc, 0.66, () => {
+      doc.setFillColor(...CHARCOAL);
+      doc.rect(x, y, w, h, 'F');
+    });
+  }
 }
 
 /** Small capitals, spaced out: the label above a heading. `x` is the right edge when `right`. */
@@ -215,7 +262,7 @@ function cover(
     doc.text('MAXSEN', M, band / 2 + 2, { charSpace: 2.4 });
   }
   eyebrow(doc, 'Smart home proposal', W - M, band / 2 + 1.5, INK_2, 7.5, true);
-  darkPanel(doc, assets.art, 0, band, W, H - band);
+  darkPanel(doc, assets, 0, band, W, H - band, true);
   doc.setFillColor(...BRASS);
   doc.rect(0, band, W, 1.1, 'F');
 
@@ -331,7 +378,7 @@ export async function buildFloorPlanPdf({
   const size = (l?: Level) => PAPER[l?.paperSize ?? 'A3'];
   const landscape = (l?: Level) => (l?.orientation ?? 'landscape') === 'landscape';
   const doc = await newPdf(size(first), landscape(first));
-  const assets: Assets = { logo: await logo(settings), art: await artwork(settings) };
+  const assets = await loadAssets(settings);
   const customer = customerLines(project, fp);
   cover(doc, assets, 'Marked Floor Plan', project, customer, settings);
 
@@ -431,7 +478,7 @@ export async function buildFloorPlanPdf({
     const tb = wide
       ? { x: panel.x, y: panel.y + panel.h - blockH, w: blockW, h: blockH }
       : { x: panel.x + panel.w - blockW, y: panel.y, w: blockW, h: panel.h };
-    darkPanel(doc, null, tb.x, tb.y, tb.w, tb.h);
+    darkPanel(doc, assets, tb.x, tb.y, tb.w, tb.h);
     doc.setFillColor(...BRASS);
     doc.rect(tb.x, tb.y, tb.w, 0.9, 'F');
     eyebrow(doc, 'Project', tb.x + 5, tb.y + 8, BRASS_LIGHT, 6.5);
@@ -490,7 +537,7 @@ export async function buildProductPdf({
 }: ExportContext): Promise<Blob> {
   const pd = project.exportSettings.productDescription;
   const doc = await newPdf(PAPER.A4, false);
-  const assets: Assets = { logo: await logo(settings), art: await artwork(settings) };
+  const assets = await loadAssets(settings);
   cover(doc, assets, 'Product Description', project, customerLines(project, pd), settings);
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
@@ -519,8 +566,7 @@ export async function buildProductPdf({
     y += intro.length * 5 + 8;
     for (const section of sections) {
       ensure(24, 'Overview', 'Your home at a glance');
-      doc.setFillColor(...CHARCOAL);
-      doc.rect(M, y, W - M * 2, 9, 'F');
+      darkPanel(doc, assets, M, y, W - M * 2, 9);
       eyebrow(doc, section.title, M + 4, y + 5.8, BRASS_LIGHT, 7.5);
       y += 13;
       for (const cat of section.categories) {
@@ -638,7 +684,7 @@ export async function buildProductPdf({
 
   // Contact page: the artwork again, under the same veil as the cover.
   doc.addPage();
-  darkPanel(doc, assets.art, 0, 0, W, H);
+  darkPanel(doc, assets, 0, 0, W, H, true);
   const b = settings.branding;
   let cy = H * 0.3;
   eyebrow(doc, 'Get in touch', M, cy, BRASS_LIGHT, 9);
