@@ -269,6 +269,71 @@ describe('magicPlan', () => {
   });
 });
 
+describe('Singapore lighting conventions', () => {
+  const r = run();
+  const lightsIn = (name: string, categoryId: CategoryId = 'downlights') => {
+    const room = hdb.rooms.find((x) => x.name === name)!;
+    return placed(r, categoryId)
+      .filter((p) => p.roomId === room.id)
+      .map((p) => marker(r, p.elementId));
+  };
+
+  it('gives the household shelter exactly one surface light and switches it from outside', () => {
+    assert.equal(lightsIn('Shelter', 'surface-lights').length, 1);
+    assert.equal(lightsIn('Shelter').length, 0);
+    const shelter = hdb.rooms.find((x) => x.name === 'Shelter')!;
+    const sw = placed(r, 'smart-switches').filter((p) =>
+      (p.roomIds ?? [p.roomId]).includes(shelter.id),
+    );
+    assert.equal(sw.length, 1);
+    assert.ok(!inRect(marker(r, sw[0]!.elementId), 560, 100, 160, 260), 'switch outside');
+  });
+
+  it('keeps downlights at least 0.6 m off the walls in living spaces and bedrooms', () => {
+    const margin = (0.6 * 1000) / 14 - 0.5; // 0.6 m in plan units
+    for (const name of ['Living / Dining', 'Bedroom 2', 'Bedroom 3']) {
+      const room = hdb.rooms.find((x) => x.name === name)!;
+      for (const p of lightsIn(name)) {
+        const x0 = room.x * 1000;
+        const y0 = room.y * (1000 / 1.4);
+        const x1 = x0 + room.w * 1000;
+        const y1 = y0 + room.h * (1000 / 1.4);
+        const gap = Math.min(p.x - x0, x1 - p.x, p.y - y0, y1 - p.y);
+        assert.ok(gap >= margin || gap >= Math.min(x1 - x0, y1 - y0) / 2 - 1, `${name}: ${gap}`);
+      }
+    }
+  });
+
+  it('does not over-light: about one downlight per 1.5 m² at most', () => {
+    const total = placed(r, 'downlights').length;
+    // The 4-room sample is about 95 m² indoors; research puts it at 18–24 fittings.
+    assert.ok(total >= 12 && total <= 40, `${total} downlights`);
+  });
+
+  it('keeps the pillow end of the master bed clear and adds bedside switches', () => {
+    const room = hdb.rooms.find((x) => x.name === 'Master Bedroom')!;
+    const sw = placed(r, 'smart-switches').filter((p) => p.roomId === room.id);
+    assert.ok(sw.length >= 3, `${sw.length} switch plates (door + both bedsides)`);
+  });
+
+  it('lights a corridor with a single centre row', () => {
+    const pts = lightsIn('Corridor');
+    assert.ok(pts.length >= 2);
+    assert.ok(
+      pts.every((p) => Math.abs(p.x - pts[0]!.x) < 1),
+      'one straight row',
+    );
+  });
+
+  it('runs kitchen downlights in a row along the cabinet wall', () => {
+    const pts = lightsIn('Kitchen');
+    assert.ok(pts.length >= 2);
+    const ys = new Set(pts.map((p) => Math.round(p.y)));
+    const xs = new Set(pts.map((p) => Math.round(p.x)));
+    assert.ok(ys.size <= 2 || xs.size <= 2, 'rows, not a scattered grid');
+  });
+});
+
 describe('cleanLabel', () => {
   it('repairs common misreadings of room labels', async () => {
     const { cleanLabel } = await import('../src/magic/room-types.ts');

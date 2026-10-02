@@ -48,12 +48,27 @@ states; `/dev/styleguide` (dev server only) shows every UI primitive and categor
 7. **Admin:** catalogue editing with product images, branding with logo upload, icon styles, favourites,
    and _Your data_ (restore samples or erase everything).
 
-**Magic Plan:** in the Plan tab, _Magic Plan_ reads the level's drawing (rooms, doors and which way they
-swing, windows, scale) and places devices by fixed planning rules: switches beside the handle side of each
-door (bathrooms and balconies switched from outside, two-way switches where walkways meet), downlight grids,
-surface lights in service spaces, LED coves and kitchen strips, a dining pendant, track lights only in long
-narrow spaces, control panels at the entrance and master bedroom, curtains at living and bedroom windows,
-router, gateway and mesh nodes. Tick or untick categories before it runs; review the counts; one Undo
+**Magic Plan:** in the Plan tab, _Magic Plan_ reads the level's drawing (rooms, the openings between
+them, windows, scale) and places devices by fixed rules based on Singapore renovation practice:
+- **Downlights** go in a symmetric grid at least 0.6 m off the walls, about 1.5 m apart in living
+  areas and 1.4 m in bedrooms. There is roughly one per 1.5 m² at most, so ceilings aren't
+  over-lit, and rows line up across adjoining rooms.
+- **Bedrooms** keep the pillow end of the bed clear. The master bedroom also gets a switch on each
+  side of the bed.
+- **Kitchens** get a row of downlights over the worktop and an under-cabinet LED strip.
+- **Corridors** get a single centre row.
+- **Bathrooms** get one to three downlights.
+- **Service yards, stores and balconies** get one surface light. The household shelter gets exactly
+  one surface light, because it may not be hacked.
+- **LED coves** go in living areas and the master bedroom, with fewer downlights there. Dining
+  gets a pendant. Track lights are used only in long, narrow spaces.
+- **Switches** go inside each room, beside the opening, on the side with more wall (which way a
+  door swings isn't needed). Bathrooms, stores, the shelter and the service yard are switched from
+  outside.
+- **Smart devices:** control panels at the entrance and in the master bedroom, curtains at living
+  and bedroom windows, and a router, gateway and mesh nodes.
+
+Tick or untick categories before it runs; review the counts; one Undo
 removes the result. The sample drawings work straight away.
 
 Uploaded drawings are read **on this computer** by default; nothing is sent anywhere. Magic Plan finds the
