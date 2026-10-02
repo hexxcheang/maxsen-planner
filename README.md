@@ -59,7 +59,8 @@ states; `/dev/styleguide` (dev server only) shows every UI primitive and categor
    legend with how many of each device and a title block; an at-a-glance overview, product cards, and
    a contact page. Curtains are marked
    "S. Curtains" on the plans.
-7. **Admin:** catalogue editing with product images, branding with logo upload, icon styles, favourites,
+7. **Admin:** catalogue editing with product images (delete a variant, or a whole series with its
+   variants; projects already using them keep them), branding with logo upload, icon styles, favourites,
    and _Your data_ (restore samples or erase everything).
 
 **Magic Plan:** in the Plan tab, _Magic Plan_ places devices for you in two steps.

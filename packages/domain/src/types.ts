@@ -309,6 +309,8 @@ export interface Settings {
   branding: Branding;
   categoryStyles: Partial<Record<CategoryId, CategoryStyleOverride>>;
   favouriteVariantIds: string[];
+  /** Categories whose every product was deleted on purpose, so sample products aren't re-added. */
+  emptiedCategories?: CategoryId[];
   /** Packages, add-on rates and invoice details; defaults apply where absent. */
   pricing?: PricingSettings;
 }

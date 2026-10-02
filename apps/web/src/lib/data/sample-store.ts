@@ -71,7 +71,11 @@ function addNewCategories(saved: SampleState): SampleState {
         ),
       }
     : saved;
-  const known = new Set(state.products.map((p) => p.categoryId));
+  // Categories with products, or emptied on purpose, aren't topped up from the samples.
+  const known = new Set([
+    ...state.products.map((p) => p.categoryId),
+    ...(state.settings.emptiedCategories ?? []),
+  ]);
   const fresh = sample.SAMPLE_PRODUCTS.filter((p) => !known.has(p.categoryId));
   if (fresh.length === 0 || state.products.length === 0) return state;
   return withNewCategories(state, fresh);
@@ -82,7 +86,9 @@ function curtainsAsTracks(state: SampleState): SampleState {
   const products = new Set(
     state.products.filter((p) => p.categoryId === 'curtains-blinds').map((p) => p.id),
   );
-  const curtains = new Set(state.variants.filter((v) => products.has(v.productId)).map((v) => v.id));
+  const curtains = new Set(
+    state.variants.filter((v) => products.has(v.productId)).map((v) => v.id),
+  );
   if (curtains.size === 0) return state;
   let changed = false;
   const plans = state.plans.map((p) => {
@@ -524,6 +530,62 @@ export function createSampleStore(
           d.settings.favouriteVariantIds = d.settings.favouriteVariantIds.filter(
             (id) => id !== variantId,
           );
+        }
+      });
+    },
+
+    /**
+     * Deletes variants from the catalogue. Projects that already use one keep it: each gets a
+     * snapshot of it first, so their plans, totals and exports still name it. It just can't be
+     * placed any more. Drivers the totals add by themselves can't be deleted.
+     */
+    deleteVariants(variantIds: string[]) {
+      const resolve = resolverFor(undefined, state);
+      update((d) => {
+        const system = new Set(d.products.filter((p) => p.system).map((p) => p.id));
+        const ids = new Set(
+          variantIds.filter((id) => {
+            const v = d.variants.find((x) => x.id === id);
+            return v && !system.has(v.productId);
+          }),
+        );
+        if (ids.size === 0) return;
+        for (const project of d.projects) {
+          const used = new Set(
+            d.plans
+              .filter((pl) => pl.projectId === project.id)
+              .flatMap((pl) => pl.document.elements)
+              .flatMap((el) => ('variantId' in el && ids.has(el.variantId) ? [el.variantId] : [])),
+          );
+          for (const id of used) {
+            if (project.catalogueSnapshot[id]) continue;
+            const snap = resolve(id);
+            if (snap) project.catalogueSnapshot[id] = snap;
+          }
+          project.recentVariantIds = project.recentVariantIds.filter((id) => !ids.has(id));
+        }
+        d.variants = d.variants.filter((v) => !ids.has(v.id));
+        d.settings.favouriteVariantIds = d.settings.favouriteVariantIds.filter(
+          (id) => !ids.has(id),
+        );
+      });
+    },
+
+    /** Deletes a whole product (series) and its variants, keeping them in projects that use them. */
+    deleteProduct(productId: string) {
+      const product = state.products.find((p) => p.id === productId);
+      if (!product || product.system) return;
+      actions.deleteVariants(
+        state.variants.filter((v) => v.productId === productId).map((v) => v.id),
+      );
+      update((d) => {
+        d.products = d.products.filter((p) => p.id !== productId);
+        // The last series of a category gone: remember, so the samples aren't brought back.
+        if (!d.products.some((p) => p.categoryId === product.categoryId)) {
+          d.settings.emptiedCategories = [
+            ...(d.settings.emptiedCategories ?? []),
+            product.categoryId,
+          ];
         }
       });
     },

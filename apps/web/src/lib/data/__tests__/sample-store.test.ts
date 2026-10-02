@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { createSampleStore, filterProjects, visibleVariantsFor } from '../sample-store';
+import {
+  addNewSampleCategories,
+  createSampleStore,
+  filterProjects,
+  visibleVariantsFor,
+} from '../sample-store';
 
 describe('sample store', () => {
   it('useProjects filters by title, customer name and address case-insensitively', () => {
@@ -72,5 +77,63 @@ describe('createProject from a template', () => {
     expect(project.exportSettings.floorPlan.levels).toEqual({
       [level.id]: { smartHome: true, lighting: false },
     });
+  });
+
+  it('deletes a variant from the catalogue but keeps it in projects that use it', () => {
+    const store = createSampleStore();
+    // A new variant, placed on a plan without the project having a snapshot of it yet.
+    const id = store.actions.addVariant('prod_luna_downlight', {
+      name: 'Trial',
+      description: 'For the test',
+    });
+    store.actions.updateSettings((st) => {
+      st.favouriteVariantIds.push(id);
+    });
+    const plan = store.getState().plans.find((p) => p.projectId === 'proj_sample_tan')!;
+    store.actions.setPlanDocument(plan.id, {
+      ...plan.document,
+      elements: [
+        ...plan.document.elements,
+        {
+          kind: 'marker',
+          id: 'el_trial',
+          z: 99,
+          variantId: id,
+          x: 10,
+          y: 10,
+          rotation: 0,
+          label: '',
+        },
+      ],
+    });
+    store.actions.deleteVariants([id]);
+    const s = store.getState();
+    expect(s.variants.some((v) => v.id === id)).toBe(false);
+    expect(s.settings.favouriteVariantIds).not.toContain(id);
+    const tan = s.projects.find((p) => p.id === 'proj_sample_tan')!;
+    expect(tan.catalogueSnapshot[id]).toMatchObject({
+      productName: 'Luna Downlight',
+      variantName: 'Trial',
+    });
+  });
+
+  it('deletes a whole series, but never the drivers added to totals', () => {
+    const store = createSampleStore();
+    const product = store.getState().products.find((p) => p.id === 'prod_luna_downlight')!;
+    store.actions.deleteProduct(product.id);
+    const s = store.getState();
+    expect(s.products.some((p) => p.id === product.id)).toBe(false);
+    expect(s.variants.some((v) => v.productId === product.id)).toBe(false);
+    const driver = s.products.find((p) => p.system)!;
+    store.actions.deleteProduct(driver.id);
+    expect(store.getState().products.some((p) => p.id === driver.id)).toBe(true);
+  });
+
+  it('does not bring back sample products of a category that was emptied on purpose', () => {
+    const store = createSampleStore();
+    for (const p of store.getState().products.filter((x) => x.categoryId === 'ceiling-fans'))
+      store.actions.deleteProduct(p.id);
+    const after = addNewSampleCategories(store.getState());
+    expect(after.products.some((p) => p.categoryId === 'ceiling-fans')).toBe(false);
   });
 });

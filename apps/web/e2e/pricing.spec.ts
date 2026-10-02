@@ -51,4 +51,23 @@ test.describe('pricing', () => {
     await dialog.getByRole('button', { name: 'Save variant' }).click();
     await expect(page.getByText('S$459.00')).toBeVisible();
   });
+
+  test('variants and whole series can be deleted from the catalogue', async ({ page }) => {
+    await page.goto('/catalogue');
+    await page.getByRole('button', { name: /^Ceiling Fans/ }).click();
+    await page.getByRole('button', { name: 'Show variants of Breeze DC Ceiling Fan' }).click();
+    const variants = page.getByRole('button', { name: /^Delete Breeze DC Ceiling Fan, / });
+    const before = await variants.count();
+    expect(before).toBeGreaterThan(1);
+    await variants.first().click();
+    const confirm = page.getByRole('alertdialog');
+    await expect(confirm).toContainText('Projects that already use it keep it');
+    await confirm.getByRole('button', { name: 'Delete variant' }).click();
+    await expect(variants).toHaveCount(before - 1);
+
+    await page.getByRole('button', { name: 'Delete Breeze DC Ceiling Fan', exact: true }).click();
+    await page.getByRole('alertdialog').getByRole('button', { name: 'Delete series' }).click();
+    await expect(page.getByText('Breeze DC Ceiling Fan')).toHaveCount(0);
+    await expect(page.getByText('No products in this category yet.')).toBeVisible();
+  });
 });

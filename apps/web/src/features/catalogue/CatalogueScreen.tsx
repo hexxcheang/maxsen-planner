@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronRight, Eye, EyeOff, Lock, Package, PencilLine, Plus } from 'lucide-react';
+import { ChevronRight, Eye, EyeOff, Lock, Package, PencilLine, Plus, Trash2 } from 'lucide-react';
 import {
   CATEGORIES,
   resolveCategoryStyle,
@@ -8,7 +8,15 @@ import {
   type Variant,
 } from '@maxsen/domain';
 import { CategoryGlyph } from '@/components/CategoryGlyph';
-import { Badge, Button, EmptyState, IconButton, PageHeader } from '@/components/ui';
+import {
+  Badge,
+  Button,
+  ConfirmDialog,
+  EmptyState,
+  IconButton,
+  PageHeader,
+  useToast,
+} from '@/components/ui';
 import { Page } from '@/components/Page';
 import { cn } from '@/lib/cn';
 import { formatMoney } from '@/lib/format';
@@ -33,6 +41,13 @@ export function CatalogueScreen() {
   const [categoryId, setCategoryId] = useState<CategoryId>('smart-switches');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [editing, setEditing] = useState<Editing>(null);
+  /** A product (series) or one variant waiting for the delete to be confirmed. */
+  const [deleting, setDeleting] = useState<
+    | { kind: 'product'; product: Product }
+    | { kind: 'variant'; product: Product; variant: Variant }
+    | null
+  >(null);
+  const { toast } = useToast();
   const category = CATEGORIES.find((c) => c.id === categoryId)!;
 
   const products = catalogue.products
@@ -180,6 +195,18 @@ export function CatalogueScreen() {
                           }
                         />
                         {!p.system && (
+                          <IconButton
+                            size="sm"
+                            label={`Delete ${p.name}`}
+                            icon={<Trash2 />}
+                            onClick={() =>
+                              asAdmin('delete from the catalogue', () =>
+                                setDeleting({ kind: 'product', product: p }),
+                              )
+                            }
+                          />
+                        )}
+                        {!p.system && (
                           <Button
                             size="sm"
                             variant="ghost"
@@ -242,6 +269,18 @@ export function CatalogueScreen() {
                                     }
                                   />
                                 )}
+                                {!p.system && (
+                                  <IconButton
+                                    size="sm"
+                                    label={`Delete ${p.name}, ${v.name}`}
+                                    icon={<Trash2 />}
+                                    onClick={() =>
+                                      asAdmin('delete from the catalogue', () =>
+                                        setDeleting({ kind: 'variant', product: p, variant: v }),
+                                      )
+                                    }
+                                  />
+                                )}
                                 <IconButton
                                   size="sm"
                                   label={`Edit ${p.name}, ${v.name}`}
@@ -265,6 +304,35 @@ export function CatalogueScreen() {
           </section>
         </div>
       )}
+      <ConfirmDialog
+        open={deleting !== null}
+        destructive
+        title={
+          deleting?.kind === 'product'
+            ? `Delete ${deleting.product.name}?`
+            : deleting
+              ? `Delete ${deleting.product.name}, ${deleting.variant.name}?`
+              : ''
+        }
+        body={
+          deleting?.kind === 'product'
+            ? `The whole series and its ${variantsOf(deleting.product).length} ${variantsOf(deleting.product).length === 1 ? 'variant' : 'variants'} leave the catalogue and the planner library. Projects that already use them keep them on their plans, totals and exports.`
+            : 'It leaves the catalogue and the planner library. Projects that already use it keep it on their plans, totals and exports.'
+        }
+        confirmLabel={deleting?.kind === 'product' ? 'Delete series' : 'Delete variant'}
+        onCancel={() => setDeleting(null)}
+        onConfirm={() => {
+          if (!deleting) return;
+          if (deleting.kind === 'product') {
+            actions.deleteProduct(deleting.product.id);
+            toast({ title: `${deleting.product.name} deleted` });
+          } else {
+            actions.deleteVariants([deleting.variant.id]);
+            toast({ title: `${deleting.product.name}, ${deleting.variant.name} deleted` });
+          }
+          setDeleting(null);
+        }}
+      />
       <ProductEditorDialog
         open={editing?.kind === 'product'}
         product={editing?.kind === 'product' ? editing.product : null}

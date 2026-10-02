@@ -138,6 +138,7 @@ export const settingsSchema = z.object({
   }),
   categoryStyles: z.partialRecord(categoryIdSchema, categoryStyleOverrideSchema),
   favouriteVariantIds: z.array(z.string()),
+  emptiedCategories: z.array(categoryIdSchema).optional(),
 }) satisfies z.ZodType<Settings>;
 
 const optionalText = z.string().trim().max(200);
