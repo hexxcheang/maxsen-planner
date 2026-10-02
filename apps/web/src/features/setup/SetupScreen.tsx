@@ -93,6 +93,7 @@ export function SetupScreen() {
                     file={sources.files.find((f) => f.id === page?.sourceFileId)}
                     files={sources.files}
                     pages={sources.pages}
+                    otherPlan={levelPlans.find((p) => p.type !== type)}
                     adjusting={adjusting === type}
                     onAdjust={() => setAdjusting((a) => (a === type ? null : type))}
                   />

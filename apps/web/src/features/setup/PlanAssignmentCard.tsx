@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { Crop, ImagePlus, PencilRuler, Trash2 } from 'lucide-react';
+import { Copy, Crop, ImagePlus, PencilRuler, Trash2 } from 'lucide-react';
 import type { Level, Plan, PlanType, SourceFile, SourcePage } from '@maxsen/domain';
 import { Button, buttonClass, ConfirmDialog } from '@/components/ui';
 import { ChooseDrawingDialog } from './ChooseDrawingDialog';
@@ -20,6 +20,8 @@ interface PlanAssignmentCardProps {
   onAdjust: () => void;
   files: SourceFile[];
   pages: SourcePage[];
+  /** The level's other plan, whose drawing (turned and cropped the same) can be reused. */
+  otherPlan?: Plan;
 }
 
 const isFullCrop = (c: Plan['background']['crop']) =>
@@ -36,6 +38,7 @@ export function PlanAssignmentCard({
   onAdjust,
   files,
   pages,
+  otherPlan,
 }: PlanAssignmentCardProps) {
   const actions = useActions();
   const [confirming, setConfirming] = useState(false);
@@ -132,9 +135,41 @@ export function PlanAssignmentCard({
               Choose one of the uploaded pages as this plan’s drawing.
             </p>
           </div>
-          <Button size="sm" variant="primary" onClick={() => setChoosing(true)}>
-            Choose a drawing
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {otherPlan && (
+              <Button
+                size="sm"
+                variant="primary"
+                icon={<Copy className="size-3.5" />}
+                onClick={() => {
+                  const { sourcePageId, rotation, crop, fileId, width, height } =
+                    otherPlan.background;
+                  actions.assignPlan(projectId, level.id, type, {
+                    sourcePageId,
+                    rotation,
+                    crop,
+                    fileId,
+                    width,
+                    height,
+                  });
+                }}
+              >
+                Use the {PLAN_LABELS[otherPlan.type]}’s drawing
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant={otherPlan ? 'secondary' : 'primary'}
+              onClick={() => setChoosing(true)}
+            >
+              Choose a drawing
+            </Button>
+          </div>
+          {otherPlan && (
+            <p className="text-meta text-ink-2">
+              Same page, turned and cropped the same, so both plans line up exactly.
+            </p>
+          )}
           <ChooseDrawingDialog
             open={choosing}
             onOpenChange={setChoosing}

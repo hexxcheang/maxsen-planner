@@ -205,19 +205,29 @@ async function uploadAndOpen(
   { lighting = false, wholePage = false }: { lighting?: boolean; wholePage?: boolean } = {},
 ) {
   await createProjectWithUpload(page, drawPng);
-  for (const name of lighting ? ['Lighting Plan', 'Smart Home Plan'] : ['Smart Home Plan']) {
-    const card = page.getByRole('region', { name });
-    await card.getByRole('button', { name: 'Choose a drawing' }).click();
+  const card = page.getByRole('region', { name: 'Smart Home Plan' });
+  await card.getByRole('button', { name: 'Choose a drawing' }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('radio', { name: /plan.png, page 1/ })
+    .click();
+  if (wholePage) {
+    await expect(page.getByRole('dialog').getByRole('group', { name: 'Crop' })).toBeVisible();
+    await page.getByRole('dialog').getByRole('button', { name: 'Whole page' }).click();
+  }
+  await page.getByRole('dialog').getByRole('button', { name: 'Use this drawing' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  if (lighting) {
+    // The Lighting Plan reuses the Smart Home Plan's drawing, cropped the same.
     await page
-      .getByRole('dialog')
-      .getByRole('radio', { name: /plan.png, page 1/ })
+      .getByRole('region', { name: 'Lighting Plan' })
+      .getByRole('button', { name: 'Use the Smart Home Plan’s drawing' })
       .click();
-    if (wholePage) {
-      await expect(page.getByRole('dialog').getByRole('group', { name: 'Crop' })).toBeVisible();
-      await page.getByRole('dialog').getByRole('button', { name: 'Whole page' }).click();
-    }
-    await page.getByRole('dialog').getByRole('button', { name: 'Use this drawing' }).click();
-    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(
+      page
+        .getByRole('region', { name: 'Lighting Plan' })
+        .getByRole('link', { name: 'Open in planner' }),
+    ).toBeVisible();
   }
   await page
     .getByRole('region', { name: 'Smart Home Plan' })
