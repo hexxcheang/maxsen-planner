@@ -20,7 +20,7 @@ import { fileUrl } from '@/lib/files';
 import { formatDate, formatQuantity } from '@/lib/format';
 import { imageToArtwork, imageToPngDataUrl } from '@/lib/images';
 import { floorPlanPages, productSections, quantitySections } from './content';
-import { monogramUrl } from './monogram';
+import { monogramUrl, type PatternKind } from './monogram';
 import { glyphImage, renderPlanImage } from './render-scene';
 
 export interface ExportContext {
@@ -35,20 +35,23 @@ export interface ExportContext {
 }
 
 type Rgb = [number, number, number];
-// A quiet, premium palette: warm charcoal and ivory with a brushed-brass accent.
-const CHARCOAL: Rgb = [27, 26, 24];
-const INK: Rgb = [31, 29, 26];
-const INK_2: Rgb = [92, 88, 81];
-const MUTED: Rgb = [138, 132, 122];
-const RULE: Rgb = [222, 216, 205];
-const IVORY: Rgb = [248, 245, 239];
-const BRASS: Rgb = [168, 135, 58];
-const BRASS_LIGHT: Rgb = [214, 186, 121];
+// Champagne, after the Maxsen brand artwork: white fading to warm sand, fine rose-gold lines, and
+// deep bronze-brown type so everything stays easy to read.
+const DEEP: Rgb = [58, 44, 30];
+const INK: Rgb = [45, 38, 31];
+const INK_2: Rgb = [99, 84, 68];
+const MUTED: Rgb = [150, 135, 117];
+const RULE: Rgb = [229, 216, 196];
+const IVORY: Rgb = [251, 247, 241];
+const ROSE: Rgb = [197, 138, 98];
+const BRONZE: Rgb = [126, 86, 49];
 const WHITE: Rgb = [255, 255, 255];
-const ON_DARK: Rgb = [214, 209, 199];
+const SAND: Rgb = [239, 225, 203];
 const PAPER = { A4: [210, 297], A3: [297, 420] } as const;
-/** Size of the monogram on the page: 2400 px across ≈ 190 mm, so one repeat is about 12 mm. */
-const MONOGRAM_MM_PER_PX = 0.08;
+/** The monogram canvas is drawn at this many pixels per millimetre… */
+const PATTERN_PX_PER_MM = 6;
+/** …with one repeat (a hexagon and a sparkle) this wide, on every page and panel alike. */
+const PATTERN_TILE_MM = 24;
 
 // --- Excel ---------------------------------------------------------------------------------------
 
@@ -82,8 +85,6 @@ export async function buildQuantityXlsx({ project, lines }: ExportContext): Prom
 
 // --- shared PDF parts ----------------------------------------------------------------------------
 
-type GStateCtor = new (p: { opacity: number }) => unknown;
-
 async function newPdf(format: readonly [number, number], landscape: boolean): Promise<JsPdf> {
   const { jsPDF } = await import('jspdf');
   return new jsPDF({
@@ -92,16 +93,6 @@ async function newPdf(format: readonly [number, number], landscape: boolean): Pr
     orientation: landscape ? 'landscape' : 'portrait',
     compress: true,
   });
-}
-
-/** Runs `draw` at the given opacity. */
-function withOpacity(doc: JsPdf, opacity: number, draw: () => void) {
-  doc.saveGraphicsState();
-  // jsPDF's typings miss that GState is a constructor on the document.
-  const GState = (doc as unknown as { GState: GStateCtor }).GState;
-  doc.setGState(new GState({ opacity }));
-  draw();
-  doc.restoreGraphicsState();
 }
 
 type Picture = { dataUrl: string; width: number; height: number } | null;
@@ -129,17 +120,26 @@ interface Assets {
   logo: Picture;
   /** The uploaded proposal background, if any. */
   art: Picture;
-  /** Maxsen's monogram canvas, for dark panels (and the covers when nothing is uploaded). */
-  monogram: Picture;
+  /** The monogram canvas drawn to fill a box of `w` × `h` mm. */
+  pattern: (w: number, h: number, kind: PatternKind) => Promise<Picture>;
 }
 
 async function loadAssets(settings: Settings): Promise<Assets> {
-  const [l, art, monogram] = await Promise.all([
-    logo(settings),
-    artwork(settings),
-    imageToArtwork(monogramUrl()).catch(() => null),
-  ]);
-  return { logo: l, art, monogram };
+  const [l, art] = await Promise.all([logo(settings), artwork(settings)]);
+  const made = new Map<string, Promise<Picture>>();
+  const pattern = (w: number, h: number, kind: PatternKind) => {
+    const px = Math.round(w * PATTERN_PX_PER_MM);
+    const py = Math.round(h * PATTERN_PX_PER_MM);
+    const key = `${kind}:${px}x${py}`;
+    let pic = made.get(key);
+    if (!pic) {
+      const url = monogramUrl(px, py, PATTERN_TILE_MM * PATTERN_PX_PER_MM, kind);
+      pic = imageToArtwork(url, Math.max(px, py)).catch(() => null);
+      made.set(key, pic);
+    }
+    return pic;
+  };
+  return { logo: l, art, pattern };
 }
 
 function drawLogo(doc: JsPdf, img: Picture, x: number, y: number, h: number, alignRight = false) {
@@ -149,30 +149,27 @@ function drawLogo(doc: JsPdf, img: Picture, x: number, y: number, h: number, ali
 }
 
 /**
- * A dark panel. `full` panels (covers, the contact page) show the uploaded background under a
- * charcoal veil so text on them stays legible; without one, and on the smaller panels inside the
- * documents, they carry the monogram canvas at its natural scale.
+ * A champagne panel carrying the monogram canvas, drawn to the panel's own size so the repeat is
+ * centred in it with matching edges. A `page` panel (covers, the contact page) fades from white to
+ * sand, or shows the background uploaded in Admin › Branding; a `panel` is an even sand.
  */
-function darkPanel(
+async function champagne(
   doc: JsPdf,
   assets: Assets,
   x: number,
   y: number,
   w: number,
   h: number,
-  full = false,
+  kind: PatternKind,
 ) {
-  doc.setFillColor(...CHARCOAL);
-  doc.rect(x, y, w, h, 'F');
-  const art = full && assets.art ? assets.art : assets.monogram;
-  if (!art) return;
-  doc.saveGraphicsState();
-  doc.rect(x, y, w, h, null);
-  doc.clip();
-  doc.discardPath();
-  if (art === assets.art) {
-    // Cropped to fill the panel.
+  const art = kind === 'page' ? assets.art : null;
+  if (art) {
+    // The uploaded background, cropped to fill the page.
     const k = Math.max(w / art.width, h / art.height);
+    doc.saveGraphicsState();
+    doc.rect(x, y, w, h, null);
+    doc.clip();
+    doc.discardPath();
     doc.addImage(
       art.dataUrl,
       'JPEG',
@@ -181,22 +178,14 @@ function darkPanel(
       art.width * k,
       art.height * k,
     );
-  } else {
-    // The monogram keeps one size everywhere, anchored to the page, so its repeat lines up.
-    const k = MONOGRAM_MM_PER_PX;
-    for (let ty = 0; ty < y + h; ty += art.height * k) {
-      for (let tx = 0; tx < x + w; tx += art.width * k) {
-        if (tx + art.width * k < x || ty + art.height * k < y) continue;
-        doc.addImage(art.dataUrl, 'JPEG', tx, ty, art.width * k, art.height * k, 'monogram');
-      }
-    }
+    doc.restoreGraphicsState();
+    return;
   }
-  doc.restoreGraphicsState();
-  if (art === assets.art) {
-    withOpacity(doc, 0.66, () => {
-      doc.setFillColor(...CHARCOAL);
-      doc.rect(x, y, w, h, 'F');
-    });
+  const pic = await assets.pattern(w, h, kind);
+  if (pic) doc.addImage(pic.dataUrl, 'JPEG', x, y, w, h);
+  else {
+    doc.setFillColor(...IVORY);
+    doc.rect(x, y, w, h, 'F');
   }
 }
 
@@ -238,7 +227,7 @@ function contactLine(settings: Settings) {
     .join('   ·   ');
 }
 
-function cover(
+async function cover(
   doc: JsPdf,
   assets: Assets,
   kind: string,
@@ -249,49 +238,48 @@ function cover(
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
   const M = Math.round(W * 0.075);
-  const band = Math.max(30, H * 0.13);
+  await champagne(doc, assets, 0, 0, W, H, 'page');
 
-  // Ivory band with the logo, then the artwork under a dark veil.
-  doc.setFillColor(...IVORY);
-  doc.rect(0, 0, W, band, 'F');
-  drawLogo(doc, assets.logo, M, band / 2 - 6, 12);
+  // Logo and the proposal mark, over a fine rose-gold rule.
+  const head = M * 0.9;
+  drawLogo(doc, assets.logo, M, head - 6, 12);
   if (!assets.logo) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(15);
-    doc.setTextColor(...CHARCOAL);
-    doc.text('MAXSEN', M, band / 2 + 2, { charSpace: 2.4 });
+    doc.setTextColor(...DEEP);
+    doc.text('MAXSEN', M, head + 2, { charSpace: 2.4 });
   }
-  eyebrow(doc, 'Smart home proposal', W - M, band / 2 + 1.5, INK_2, 7.5, true);
-  darkPanel(doc, assets, 0, band, W, H - band, true);
-  doc.setFillColor(...BRASS);
-  doc.rect(0, band, W, 1.1, 'F');
+  eyebrow(doc, 'Smart home proposal', W - M, head + 1.5, BRONZE, 7.5, true);
+  doc.setDrawColor(...ROSE);
+  doc.setLineWidth(0.3);
+  doc.line(M, head + 12, W - M, head + 12);
 
   // Title.
-  const top = band + (H - band) * 0.3;
-  eyebrow(doc, kind, M, top, BRASS_LIGHT, 10);
+  const top = H * 0.36;
+  eyebrow(doc, kind, M, top, BRONZE, 10);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(32);
-  doc.setTextColor(...WHITE);
+  doc.setTextColor(...DEEP);
   const title = doc.splitTextToSize(project.title, W - M * 2) as string[];
   doc.text(title, M, top + 15, { lineHeightFactor: 1.12 });
   const afterTitle = top + 15 + (title.length - 1) * 13.5;
-  doc.setDrawColor(...BRASS);
+  doc.setDrawColor(...ROSE);
   doc.setLineWidth(0.8);
   doc.line(M, afterTitle + 9, M + 28, afterTitle + 9);
 
   // Details along the foot.
   const foot = H - M - 22;
-  doc.setDrawColor(...ON_DARK);
-  doc.setLineWidth(0.15);
-  withOpacity(doc, 0.5, () => doc.line(M, foot - 9, W - M, foot - 9));
+  doc.setDrawColor(...BRONZE);
+  doc.setLineWidth(0.2);
+  doc.line(M, foot - 9, W - M, foot - 9);
   const col = (W - M * 2) / 3;
   const block = (i: number, label: string, lines: string[]) => {
     const x = M + col * i;
-    eyebrow(doc, label, x, foot - 2, BRASS_LIGHT, 7);
+    eyebrow(doc, label, x, foot - 2, BRONZE, 7);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9.5);
     lines.forEach((line, j) => {
-      doc.setTextColor(...(j === 0 ? WHITE : ON_DARK));
+      doc.setTextColor(...(j === 0 ? DEEP : INK_2));
       doc.text(doc.splitTextToSize(line, col - 6) as string[], x, foot + 5 + j * 5.2);
     });
   };
@@ -309,16 +297,16 @@ function cover(
 /** A page heading: a small label, the title, then a charcoal rule with a brass lead-in. */
 function pageHeader(doc: JsPdf, assets: Assets, label: string, title: string, M: number): number {
   const W = doc.internal.pageSize.getWidth();
-  eyebrow(doc, label, M, M + 3, BRASS);
+  eyebrow(doc, label, M, M + 3, BRONZE);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(17);
-  doc.setTextColor(...CHARCOAL);
+  doc.setTextColor(...DEEP);
   doc.text(title, M, M + 11);
   drawLogo(doc, assets.logo, W - M, M, 9, true);
-  doc.setDrawColor(...CHARCOAL);
+  doc.setDrawColor(...DEEP);
   doc.setLineWidth(0.25);
   doc.line(M, M + 16, W - M, M + 16);
-  doc.setFillColor(...BRASS);
+  doc.setFillColor(...ROSE);
   doc.rect(M, M + 15.4, 22, 1.2, 'F');
   return M + 22;
 }
@@ -380,7 +368,7 @@ export async function buildFloorPlanPdf({
   const doc = await newPdf(size(first), landscape(first));
   const assets = await loadAssets(settings);
   const customer = customerLines(project, fp);
-  cover(doc, assets, 'Marked Floor Plan', project, customer, settings);
+  await cover(doc, assets, 'Marked Floor Plan', project, customer, settings);
 
   for (const [index, { level, plan }] of pages.entries()) {
     doc.addPage([...size(level)], landscape(level) ? 'landscape' : 'portrait');
@@ -439,7 +427,7 @@ export async function buildFloorPlanPdf({
 
     if (fp.showLegend && scene.legend.length > 0) {
       const counts = countsOf(scene);
-      eyebrow(doc, 'Legend', legendBox.x, legendBox.y + 3, BRASS);
+      eyebrow(doc, 'Legend', legendBox.x, legendBox.y + 3, BRONZE);
       const columns = wide ? 1 : 2;
       const colW = legendBox.w / columns;
       const rows = Math.ceil(scene.legend.length / columns);
@@ -464,7 +452,7 @@ export async function buildFloorPlanPdf({
         const fitted = doc.splitTextToSize(name, colW - 22) as string[];
         doc.text(fitted[0] ?? name, x + 7, y + 2.3);
         doc.setFont('helvetica', 'bold');
-        doc.setTextColor(...CHARCOAL);
+        doc.setTextColor(...DEEP);
         const n = counts.get(e.categoryId) ?? 0;
         const unit = categoryById(e.categoryId).kind === 'led-strip' ? ' runs' : '';
         doc.text(`${n}${unit}`, x + colW - 4, y + 2.3, { align: 'right' });
@@ -478,18 +466,18 @@ export async function buildFloorPlanPdf({
     const tb = wide
       ? { x: panel.x, y: panel.y + panel.h - blockH, w: blockW, h: blockH }
       : { x: panel.x + panel.w - blockW, y: panel.y, w: blockW, h: panel.h };
-    darkPanel(doc, assets, tb.x, tb.y, tb.w, tb.h);
-    doc.setFillColor(...BRASS);
+    await champagne(doc, assets, tb.x, tb.y, tb.w, tb.h, 'panel');
+    doc.setFillColor(...ROSE);
     doc.rect(tb.x, tb.y, tb.w, 0.9, 'F');
-    eyebrow(doc, 'Project', tb.x + 5, tb.y + 8, BRASS_LIGHT, 6.5);
+    eyebrow(doc, 'Project', tb.x + 5, tb.y + 8, BRONZE, 6.5);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
-    doc.setTextColor(...WHITE);
+    doc.setTextColor(...DEEP);
     const name = (doc.splitTextToSize(project.title, tb.w - 10) as string[]).slice(0, 2);
     doc.text(name, tb.x + 5, tb.y + 14);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7.5);
-    doc.setTextColor(...ON_DARK);
+    doc.setTextColor(...INK_2);
     customer.slice(0, 3).forEach((line, i) => {
       doc.text(
         (doc.splitTextToSize(line, tb.w - 10) as string[])[0] ?? '',
@@ -497,11 +485,11 @@ export async function buildFloorPlanPdf({
         tb.y + 15 + name.length * 4.6 + i * 4,
       );
     });
-    eyebrow(doc, 'Sheet', tb.x + 5, tb.y + tb.h - 9, BRASS_LIGHT, 6.5);
-    eyebrow(doc, 'Date', tb.x + tb.w / 2, tb.y + tb.h - 9, BRASS_LIGHT, 6.5);
+    eyebrow(doc, 'Sheet', tb.x + 5, tb.y + tb.h - 9, BRONZE, 6.5);
+    eyebrow(doc, 'Date', tb.x + tb.w / 2, tb.y + tb.h - 9, BRONZE, 6.5);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
-    doc.setTextColor(...WHITE);
+    doc.setTextColor(...DEEP);
     doc.text(
       `${String(index + 1).padStart(2, '0')} of ${String(pages.length).padStart(2, '0')}`,
       tb.x + 5,
@@ -538,7 +526,7 @@ export async function buildProductPdf({
   const pd = project.exportSettings.productDescription;
   const doc = await newPdf(PAPER.A4, false);
   const assets = await loadAssets(settings);
-  cover(doc, assets, 'Product Description', project, customerLines(project, pd), settings);
+  await cover(doc, assets, 'Product Description', project, customerLines(project, pd), settings);
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
   const M = 18;
@@ -566,8 +554,12 @@ export async function buildProductPdf({
     y += intro.length * 5 + 8;
     for (const section of sections) {
       ensure(24, 'Overview', 'Your home at a glance');
-      darkPanel(doc, assets, M, y, W - M * 2, 9);
-      eyebrow(doc, section.title, M + 4, y + 5.8, BRASS_LIGHT, 7.5);
+      // A band too thin for whole motifs: plain sand with a rose-gold lead-in.
+      doc.setFillColor(...SAND);
+      doc.rect(M, y, W - M * 2, 9, 'F');
+      doc.setFillColor(...ROSE);
+      doc.rect(M, y, 1.2, 9, 'F');
+      eyebrow(doc, section.title, M + 4, y + 5.8, BRONZE, 7.5);
       y += 13;
       for (const cat of section.categories) {
         ensure(9, 'Overview', 'Your home at a glance');
@@ -589,7 +581,7 @@ export async function buildProductPdf({
         doc.text(products, W - M - 40, y + 2, { align: 'right' });
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(10);
-        doc.setTextColor(...CHARCOAL);
+        doc.setTextColor(...DEEP);
         doc.text(categoryTotal(lines, cat.categoryId), W - M - 2, y + 2, { align: 'right' });
         doc.setDrawColor(...RULE);
         doc.setLineWidth(0.15);
@@ -623,7 +615,7 @@ export async function buildProductPdf({
       );
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(12.5);
-      doc.setTextColor(...CHARCOAL);
+      doc.setTextColor(...DEEP);
       doc.text(cat.name, M + 8, y);
       doc.setDrawColor(...RULE);
       doc.setLineWidth(0.2);
@@ -654,9 +646,9 @@ export async function buildProductPdf({
         }
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(11.5);
-        doc.setTextColor(...CHARCOAL);
+        doc.setTextColor(...DEEP);
         doc.text(item.productName, textX, y + 5);
-        eyebrow(doc, item.variantName, textX, y + 10.5, BRASS, 7);
+        eyebrow(doc, item.variantName, textX, y + 10.5, BRONZE, 7);
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(9);
         doc.setTextColor(...INK_2);
@@ -665,7 +657,7 @@ export async function buildProductPdf({
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(10);
         const pillW = Math.max(18, doc.getTextWidth(item.quantity) + 9);
-        doc.setFillColor(...CHARCOAL);
+        doc.setFillColor(...DEEP);
         doc.roundedRect(W - M - pillW, y, pillW, 8, 4, 4, 'F');
         doc.setTextColor(...WHITE);
         doc.text(item.quantity, W - M - pillW / 2, y + 5.4, { align: 'center' });
@@ -682,31 +674,31 @@ export async function buildProductPdf({
     }
   }
 
-  // Contact page: the artwork again, under the same veil as the cover.
+  // Contact page: the champagne canvas again, as on the cover.
   doc.addPage();
-  darkPanel(doc, assets, 0, 0, W, H, true);
+  await champagne(doc, assets, 0, 0, W, H, 'page');
   const b = settings.branding;
   let cy = H * 0.3;
-  eyebrow(doc, 'Get in touch', M, cy, BRASS_LIGHT, 9);
+  eyebrow(doc, 'Get in touch', M, cy, BRONZE, 9);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(28);
-  doc.setTextColor(...WHITE);
+  doc.setTextColor(...DEEP);
   doc.text('Contact us', M, cy + 14);
-  doc.setDrawColor(...BRASS);
+  doc.setDrawColor(...ROSE);
   doc.setLineWidth(0.8);
   doc.line(M, cy + 22, M + 28, cy + 22);
   cy += 34;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(11);
-  doc.setTextColor(...ON_DARK);
+  doc.setTextColor(...INK_2);
   const wording = doc.splitTextToSize(b.contactWording, W - M * 2) as string[];
   doc.text(wording, M, cy, { lineHeightFactor: 1.45 });
   cy += wording.length * 6 + 10;
   const row = (label: string, value: string) => {
-    eyebrow(doc, label, M, cy, BRASS_LIGHT, 7);
+    eyebrow(doc, label, M, cy, BRONZE, 7);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(11);
-    doc.setTextColor(...WHITE);
+    doc.setTextColor(...DEEP);
     doc.text(value, M + 32, cy);
     cy += 9;
   };
@@ -714,14 +706,14 @@ export async function buildProductPdf({
   if (b.website) row('Website', b.website);
   cy += 6;
   for (const room of b.showrooms) {
-    eyebrow(doc, 'Showroom', M, cy, BRASS_LIGHT, 7);
+    eyebrow(doc, 'Showroom', M, cy, BRONZE, 7);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
-    doc.setTextColor(...WHITE);
+    doc.setTextColor(...DEEP);
     doc.text(room.name, M + 32, cy);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9.5);
-    doc.setTextColor(...ON_DARK);
+    doc.setTextColor(...INK_2);
     doc.text(doc.splitTextToSize(room.address, W - M * 2 - 32) as string[], M + 32, cy + 5.5);
     cy += 16;
   }

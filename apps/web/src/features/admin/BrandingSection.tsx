@@ -55,12 +55,12 @@ export function BrandingSection() {
       <div>
         <h3 className="text-control font-semibold text-ink">Proposal background</h3>
         <p className="mt-1 text-meta text-ink-2">
-          Artwork behind the export covers and the contact page (SVG, PNG or JPG). It sits under a
-          dark veil so the text on it stays easy to read.
+          Artwork behind the export covers and the contact page (SVG, PNG or JPG). Keep it light, as
+          the text on it is dark. Without one, the Maxsen monogram canvas is used.
         </p>
       </div>
       <div className="flex items-center gap-4">
-        <span className="relative flex h-24 w-40 items-center justify-center overflow-hidden border border-rule bg-[#1B1A18]">
+        <span className="relative flex h-24 w-40 items-center justify-center overflow-hidden border border-rule bg-gradient-to-b from-white to-[#E5C89F]">
           {draft.proposalBackgroundFileId ? (
             <>
               <img
@@ -68,13 +68,12 @@ export function BrandingSection() {
                 alt="Current proposal background"
                 className="absolute inset-0 size-full object-cover"
               />
-              <span className="absolute inset-0 bg-[#1B1A18]/65" />
-              <span className="relative text-meta font-semibold tracking-wide text-white">
+              <span className="relative text-meta font-semibold tracking-wide text-[#3A2C1E]">
                 Proposal
               </span>
             </>
           ) : (
-            <span className="text-meta text-white/60">Plain charcoal</span>
+            <span className="text-meta text-[#7E5631]">Maxsen monogram</span>
           )}
         </span>
         <div className="flex flex-col items-start gap-2">

@@ -51,10 +51,11 @@ states; `/dev/styleguide` (dev server only) shows every UI primitive and categor
 5. **Review totals:** adjust export quantities; warnings if plans change afterwards.
 6. **Exports:** generate the marked floor plan PDF, the product description PDF and the quantity Excel
    file, one at a time or all together, then download them. The PDFs are laid out as a proposal: a
-   cover with the logo over Maxsen's monogram canvas (a tone-on-tone repeat of an M roundel, a house
-   mark and a diamond in brass on charcoal) or over the proposal background uploaded in Admin › Branding
-   (under a dark veil so the text stays readable), plan pages with a framed plan, a legend with how many of each device and a title
-   block, an at-a-glance overview, product cards, and a contact page. Curtains are marked
+   cover with the logo over Maxsen's champagne monogram canvas (hexagon M roundels and sparkle
+   diamonds in fine rose-gold lines, on white fading to warm sand; drawn seamlessly and centred on each
+   page) or over a light background uploaded in Admin › Branding; plan pages with a framed plan, a
+   legend with how many of each device and a title block; an at-a-glance overview, product cards, and
+   a contact page. Curtains are marked
    "S. Curtains" on the plans.
 7. **Admin:** catalogue editing with product images, branding with logo upload, icon styles, favourites,
    and _Your data_ (restore samples or erase everything).
