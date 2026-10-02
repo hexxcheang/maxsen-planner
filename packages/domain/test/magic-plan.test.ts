@@ -41,16 +41,17 @@ const element = (r: MagicPlanResult, id: string) =>
 const marker = (r: MagicPlanResult, id: string) => element(r, id) as PointMarker;
 
 describe('magicPlan', () => {
-  it('puts a switch inside each bedroom, beside the latch end of its door', () => {
+  it('puts a switch inside each bedroom, beside its door at the end with more wall', () => {
     const r = run();
     const room = hdb.rooms.find((x) => x.name === 'Bedroom 2')!;
     const sw = placed(r, 'smart-switches').filter((p) => p.roomId === room.id);
     assert.equal(sw.length, 1);
     const m = marker(r, sw[0]!.elementId);
     assert.ok(inRect(m, 880, 460, 420, 220), 'inside Bedroom 2');
-    // Door hinge at (880, 580), latch at (880, 500): the switch sits by the latch, not the hinge.
-    const latch = P(880, 500);
-    const hinge = P(880, 580);
+    // Opening from (880, 500) to (880, 580) in a room spanning y 460–680: 1 m of wall below the
+    // opening, 0.4 m above, so the switch goes below. Which way the door swings doesn't matter.
+    const latch = P(880, 580);
+    const hinge = P(880, 500);
     assert.ok(Math.hypot(m.x - latch.x, m.y - latch.y) < Math.hypot(m.x - hinge.x, m.y - hinge.y));
     assert.ok(Math.hypot(m.x - latch.x, m.y - latch.y) < 40, 'close to the door');
   });

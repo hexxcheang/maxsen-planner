@@ -22,30 +22,3 @@ export function removeRoom(a: FloorAnalysis, roomId: string): FloorAnalysis {
     windows: a.windows.map((w) => (w.roomId === roomId ? { ...w, roomId: null } : w)),
   };
 }
-
-export function removeDoor(a: FloorAnalysis, doorId: string): FloorAnalysis {
-  return { ...a, doors: a.doors.filter((d) => d.id !== doorId) };
-}
-
-/** The door swings into the room on its other side instead. */
-export function flipDoorSwing(a: FloorAnalysis, doorId: string): FloorAnalysis {
-  return {
-    ...a,
-    doors: a.doors.map((d) =>
-      d.id === doorId ? { ...d, swingsInto: d.sides[1], sides: [d.sides[1], d.sides[0]] } : d,
-    ),
-  };
-}
-
-/** The door is hinged at its other end (the switch goes beside the handle). */
-export function swapDoorHinge(a: FloorAnalysis, doorId: string): FloorAnalysis {
-  return {
-    ...a,
-    doors: a.doors.map((d) => (d.id === doorId ? { ...d, hinge: d.latch, latch: d.hinge } : d)),
-  };
-}
-
-/** Makes one door the main entrance, or none with `null`. */
-export function setMainEntrance(a: FloorAnalysis, doorId: string | null): FloorAnalysis {
-  return { ...a, doors: a.doors.map((d) => ({ ...d, isMainEntrance: d.id === doorId })) };
-}

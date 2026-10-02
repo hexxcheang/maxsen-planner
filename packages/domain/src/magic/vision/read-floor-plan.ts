@@ -114,10 +114,12 @@ export function readFloorPlan(
     h: (c.y1 - c.y0 + 1) / h,
   }));
 
-  // Scale from the door openings: the typical one is a standard door leaf.
-  const doorSizes = bridged
-    .filter((c) => c.kind === 'door')
+  // Scale from the door openings: the typical one is a standard door leaf. Gaps with a swing drawn
+  // in them are surely doors; fall back to every opening when too few have one.
+  const swung = bridged.filter((c) => c.kind === 'door');
+  const doorSizes = (swung.length >= 2 ? swung : bridged.filter((c) => c.kind !== 'window'))
     .map((c) => length(c.gap))
+    .filter((n) => n >= 2 * t)
     .sort((p, q) => p - q);
   const median = doorSizes.length ? doorSizes[Math.floor(doorSizes.length / 2)]! : null;
   const imageWidthMetres = median ? Math.round((w / (median / DOOR_METRES)) * 10) / 10 : null;
@@ -152,22 +154,20 @@ export function readFloorPlan(
     const g = c.gap;
     const a = sideRoom(g, -1);
     const b = sideRoom(g, 1);
-    if (c.kind === 'door') {
-      if (a === null && b === null) continue;
-      const lo = g.lo;
-      const hi = g.hi + 1;
-      const [hinge, latch] = c.swing.hinge === 'lo' ? [lo, hi] : [hi, lo];
-      const into = c.swing.side === 1 ? b : a;
-      const away = c.swing.side === 1 ? a : b;
+    if (c.kind !== 'window') {
+      // An opening between two spaces (a door or a passage). Which way a door swings isn't read:
+      // Magic Plan places switches from the opening and the walls around it.
+      if (a === b || length(g) < 2 * t) continue;
+      const [inner, outer] = a === null ? [b, a] : [a, b];
       doors.push({
         id: `d${doors.length + 1}`,
-        hinge: pt(g, hinge),
-        latch: pt(g, latch),
-        swingsInto: into,
-        sides: [into, away],
+        hinge: pt(g, g.lo),
+        latch: pt(g, g.hi + 1),
+        swingsInto: inner,
+        sides: [inner, outer],
         isMainEntrance: false,
       });
-    } else if (c.kind === 'window') {
+    } else {
       // Glazing only counts on an outside wall; elsewhere it's a stray line through an opening.
       const typeOf = (id: string | null) => rooms.find((r) => r.id === id)?.type;
       const open = (id: string | null) =>
@@ -188,7 +188,7 @@ export function readFloorPlan(
 
   const issues: string[] = [];
   if (rooms.length < 2)
-    issues.push(`Only found ${rooms.length} room. Check the rooms and add the doors.`);
+    issues.push('Only found 1 room. Check that the drawing shows the walls clearly.');
   if (unnamed.size > 0) {
     issues.push(
       unnamed.size === 1
@@ -200,12 +200,6 @@ export function readFloorPlan(
     const names = rooms.filter((r) => unsure.has(r.id)).map((r) => r.name);
     issues.push(`Some room names were hard to read (${names.join(', ')}).`);
   }
-  if (rooms.length >= 2 && doors.length < Math.ceil(rooms.length / 2)) {
-    issues.push(`Only found ${doors.length} doors for ${rooms.length} rooms; some may be missing.`);
-  }
-  if (!entrance && !rooms.some((r) => r.type === 'staircase')) {
-    issues.push('Couldn’t tell which door is the main entrance.');
-  }
   if (imageWidthMetres === null)
     issues.push('Couldn’t work out the drawing’s scale, so sizes are estimated.');
 
@@ -214,12 +208,14 @@ export function readFloorPlan(
 
 const length = (g: Gap) => g.hi - g.lo + 1;
 
-type Classified =
-  { gap: Gap; kind: 'door'; swing: Swing } | { gap: Gap; kind: 'window' | 'opening' };
+/** A gap with a door swing drawn in it, glazing (a window), or neither (a plain opening). */
+interface Classified {
+  gap: Gap;
+  kind: 'door' | 'window' | 'opening';
+}
 
 function classify(walls: Walls, g: Gap): Classified {
-  const swing = doorSwing(walls, g);
-  if (swing) return { gap: g, kind: 'door', swing };
+  if (doorSwing(walls, g)) return { gap: g, kind: 'door' };
   return { gap: g, kind: g.lined >= 0.6 ? 'window' : 'opening' };
 }
 

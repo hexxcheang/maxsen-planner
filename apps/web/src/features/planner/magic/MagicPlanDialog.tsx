@@ -61,7 +61,7 @@ type Step =
 
 const WORKING: Record<Extract<Step, { kind: 'working' }>['stage'], [string, string?]> = {
   labels: ['Reading room names…', 'Using the PDF’s text, or reading the words on the drawing.'],
-  walls: ['Finding rooms, doors and windows…'],
+  walls: ['Finding the rooms…'],
   claude: [
     'Reading the drawing…',
     'Finding rooms, doors and windows. This can take up to a minute.',
@@ -182,7 +182,7 @@ export function MagicPlanDialog({ open, onOpenChange, level, plans, onApply }: P
               setStep({ kind: 'check', analysis: step.analysis, issues: step.reading!.issues })
             }
           >
-            Check rooms and doors
+            Check rooms
           </Button>
         )}
         <Button onClick={() => setStep({ kind: 'options' })}>Back</Button>
@@ -367,9 +367,7 @@ function Review({ analysis, result }: { analysis: FloorAnalysis; result: MagicPl
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <p className="text-control font-semibold text-ink">
-          Found {analysis.rooms.length} rooms and {analysis.doors.length} doors
-        </p>
+        <p className="text-control font-semibold text-ink">Found {analysis.rooms.length} rooms</p>
         <p className="mt-1 text-meta text-ink-2">{analysis.rooms.map((r) => r.name).join(', ')}</p>
       </div>
       <table className="w-full text-control">

@@ -85,14 +85,10 @@ test.describe('Magic Plan', () => {
     });
 
     await rooms.getByRole('textbox', { name: 'Room 1 name' }).fill('Service Yard');
-    await dialog.getByRole('radio', { name: /Doors/ }).click();
-    const doors = dialog.getByRole('list', { name: 'Doors' });
-    await expect(doors.getByRole('listitem')).toHaveCount(10);
-    await expect(doors.getByText('Main entrance')).toHaveCount(1);
-    await doors.getByRole('button', { name: 'Door 1: swings into the other room' }).click();
+    await expect(dialog.getByRole('radio', { name: /Doors/ })).toHaveCount(0);
 
     await dialog.getByRole('button', { name: 'Plan these rooms' }).click();
-    await expect(dialog.getByText(/Found 10 rooms and 10 doors/)).toBeVisible();
+    await expect(dialog.getByText(/Found 10 rooms/)).toBeVisible();
     await expect(dialog.getByText(/Service Yard/)).toBeVisible();
     await dialog.getByRole('button', { name: /Place \d+ items/ }).click();
     await expect(page.getByText(/Magic Plan placed \d+ items/)).toBeVisible();

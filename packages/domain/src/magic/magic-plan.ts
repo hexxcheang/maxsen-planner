@@ -3,8 +3,9 @@
  * planning rules so results are predictable and explainable.
  *
  * Rules in brief
- * - Switches: inside the room, on the wall beside the latch (handle) end of its door, so the open
- *   door never hides them. Bathrooms and balconies are switched from outside their door. Walkways
+ * - Switches: inside the room, on the wall beside the opening into it, at the end with more wall
+ *   (doors are hung against the nearer side wall, so that is the handle side and the open door
+ *   never hides the switch). Which way a door swings is not needed. Bathrooms and balconies are switched from outside their door. Walkways
  *   (corridors, foyers, stairs) get a one-gang switch at each opening to another walkway or living
  *   space. Gangs follow the number of lighting circuits in the room (1–4).
  * - Lights: downlights on a regular grid (surface lights in balconies, stores, utility areas and on
@@ -397,16 +398,30 @@ export function magicPlan({ analysis, sheet, categories, pick }: MagicPlanInput)
   }
 
   // --- switches ----------------------------------------------------------------------------------
+  /** Wall left in `room` past an end of an opening, walking away from the opening. */
+  const wallBeyond = (end: Pt, dir: Pt, room: Room) => {
+    const r = room.rect;
+    if (Math.abs(dir.x) >= Math.abs(dir.y)) return dir.x > 0 ? r.x + r.w - end.x : end.x - r.x;
+    return dir.y > 0 ? r.y + r.h - end.y : end.y - r.y;
+  };
+
   /**
-   * A wall position beside the latch end of a door, on the given room's side. `extra` moves further
-   * along the wall (for panels and controllers next to the switch).
+   * A wall position beside an opening, on the given room's side, at the end with more wall (the
+   * handle side of a door hung against the nearer side wall). `extra` moves further along the wall
+   * (for panels and controllers next to the switch).
    */
   const besideLatch = (door: Door, side: Room, extra = 0): Pt | null => {
-    const along = unit(door.hingeU, door.latchU);
+    const a = door.hingeU;
+    const b = door.latchU;
+    const ab = unit(a, b);
+    const ba = { x: -ab.x, y: -ab.y };
+    const bFirst = wallBeyond(b, ab, side) >= wallBeyond(a, ba, side);
+    const [first, second] = bFirst ? [b, a] : [a, b];
+    const along = unit(second, first);
     const normal = { x: -along.y, y: along.x };
     for (const [alongSide, base] of [
-      [1, door.latchU],
-      [-1, door.hingeU],
+      [1, first],
+      [-1, second],
     ] as const) {
       const onWall = add(base, along, alongSide * (m(0.25) + extra));
       for (const s of [1, -1]) {
