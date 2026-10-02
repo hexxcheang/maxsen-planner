@@ -11,7 +11,7 @@ describe('CatalogueScreen', () => {
     render(<TestApp path="/catalogue" signedIn />);
     const nav = await screen.findByRole('list', { name: 'Categories' });
     const items = within(nav).getAllByRole('button');
-    expect(items).toHaveLength(18);
+    expect(items).toHaveLength(19);
     expect(items[0]).toHaveTextContent('Smart Switches');
   });
 

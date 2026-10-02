@@ -181,6 +181,9 @@ const products: Record<string, string> = {
   'product-plug.svg': art(
     `<rect x="60" y="60" width="120" height="120" rx="20" fill="${CHAR}"/><rect x="92" y="92" width="14" height="36" rx="4" fill="${IVORY}"/><rect x="134" y="92" width="14" height="36" rx="4" fill="${IVORY}"/><rect x="108" y="140" width="24" height="14" rx="4" fill="${BRASS}"/>`,
   ),
+  'product-fan.svg': art(
+    `<circle cx="120" cy="120" r="86" fill="none" stroke="${CHAR}" stroke-width="4" stroke-dasharray="6 8"/><g fill="${CHAR}"><path d="M120 120 Q96 60 120 34 Q144 60 120 120 Z"/><path d="M120 120 Q96 60 120 34 Q144 60 120 120 Z" transform="rotate(120 120 120)"/><path d="M120 120 Q96 60 120 34 Q144 60 120 120 Z" transform="rotate(240 120 120)"/></g><circle cx="120" cy="120" r="22" fill="${BRASS}"/><circle cx="120" cy="120" r="10" fill="${IVORY}"/>`,
+  ),
   'product-dimmer.svg': art(
     `<rect x="48" y="62" width="144" height="116" rx="10" fill="${CHAR}"/><circle cx="120" cy="120" r="34" fill="${IVORY}"/><line x1="120" y1="120" x2="140" y2="100" stroke="${BRASS}" stroke-width="6" stroke-linecap="round"/>`,
   ),

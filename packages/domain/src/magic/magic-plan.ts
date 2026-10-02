@@ -15,7 +15,9 @@
  *   corridors a single centre row; bathrooms 1–3; service yards, stores and balconies one surface
  *   light; the household shelter exactly one surface light (it may not be hacked). LED coves in
  *   living spaces and the master bedroom (with fewer downlights), a pendant over dining, and track
- *   only in elongated spaces (long, narrow walkways).
+ *   only in elongated spaces (long, narrow walkways). A ceiling fan with light in living areas and
+ *   bedrooms (52" in living and master, 46" in common bedrooms), with downlights kept clear of the
+ *   blades by 0.5 m; the fan takes a gang on the room's switch.
  * - Bathrooms, stores, the shelter and service yards are switched from outside; the master bedroom
  *   also gets a switch each side of the bed.
  * - Control panels at the main entrance and in the master bedroom; curtains at living and bedroom
@@ -32,6 +34,8 @@ export interface VariantHint {
   gangs?: number;
   /** A wide window (double curtain track). */
   wide?: boolean;
+  /** Ceiling fan sweep wanted, in inches (46 for common bedrooms, 52 for living and master). */
+  fanInches?: number;
   role?: 'router' | 'mesh' | 'door-sensor' | 'motion-sensor' | 'indoor-camera';
 }
 
@@ -54,6 +58,7 @@ export const MAGIC_CATEGORIES: readonly { id: CategoryId; defaultOn: boolean; no
   { id: 'track-lights', defaultOn: true, note: 'Only in long, narrow spaces' },
   { id: 'led-strips', defaultOn: true },
   { id: 'pendant-lights', defaultOn: true },
+  { id: 'ceiling-fans', defaultOn: true },
 ];
 
 export interface MagicPlanInput {
@@ -104,6 +109,14 @@ const CURTAIN_ROOMS: RoomType[] = [
   'study',
 ];
 const AIRCON_ROOMS: RoomType[] = [
+  'living',
+  'living-dining',
+  'family',
+  'bedroom',
+  'master-bedroom',
+  'study',
+];
+const FAN_ROOMS: RoomType[] = [
   'living',
   'living-dining',
   'family',
@@ -409,6 +422,7 @@ export function magicPlan({ analysis, sheet, categories, pick }: MagicPlanInput)
       } else missing.add('track-lights');
     } else if (main) {
       const areaM2 = area(room) / (u * u);
+      const fan = fanSpot(room);
       const willCove = coveCorners(room) !== null;
       const cap = (perM2: number) => Math.max(1, Math.round(areaM2 / perM2));
       let pts: Pt[];
@@ -444,9 +458,15 @@ export function magicPlan({ analysis, sheet, categories, pick }: MagicPlanInput)
           }
         }
       } else pts = grid(room, m(1.3), m(0.6), cap(1.5));
-      // Leave the dining table to the pendant.
+      // Leave the dining table to the pendant, and keep clear of the fan's blades.
       const pendantAt = want.has('pendant-lights') ? diningSpot(room) : null;
       if (pendantAt) pts = pts.filter((p) => dist(p, pendantAt) > m(0.9));
+      if (fan) {
+        const clear = pts.filter((p) => dist(p, fan.at) > m(fan.inches * 0.0127 + 0.5));
+        pts = clear.length || pts.length === 0 ? clear : [];
+        markerAt('ceiling-fans', fan.at, room.id, { fanInches: fan.inches });
+        lit(room, 'ceiling-fans');
+      }
       for (const p of pts) queued.push({ categoryId: main, at: p, room });
       if (pts.length) lit(room, main);
     }
@@ -526,6 +546,24 @@ export function magicPlan({ analysis, sheet, categories, pick }: MagicPlanInput)
     warnings.push(
       `${downlightCount} downlights is a lot for about ${Math.round(indoorM2)} m²; consider removing some.`,
     );
+  }
+
+  /**
+   * Where a ceiling fan goes: the room's centre (the seating half of a living/dining room), sized
+   * for the room. Null when fans aren't wanted or the room is too small for one.
+   */
+  function fanSpot(room: Room): { at: Pt; inches: number } | null {
+    if (!want.has('ceiling-fans') || !FAN_ROOMS.includes(room.type)) return null;
+    const r = room.rect;
+    if (Math.min(r.w, r.h) < m(2.2) || area(room) < m(2.5) * m(2.6)) return null;
+    let at = centre(r);
+    if (room.type === 'living-dining') {
+      const dining = diningSpot(room);
+      if (dining) at = { x: 2 * at.x - dining.x, y: 2 * at.y - dining.y };
+    }
+    if (owner(at)?.id !== room.id) return null;
+    const inches = room.type === 'bedroom' || room.type === 'study' ? 46 : 52;
+    return { at, inches };
   }
 
   /** The cove outline for a room that gets one, or null. */

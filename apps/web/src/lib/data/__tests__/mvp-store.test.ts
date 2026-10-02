@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { SYSTEM_VARIANT_IDS, createEmptyPlanDocument } from '@maxsen/domain';
-import { createSampleStore, type Persistence, type SampleState } from '../sample-store';
+import {
+  addNewSampleCategories,
+  createSampleStore,
+  type Persistence,
+  type SampleState,
+} from '../sample-store';
 
 function memoryPersistence(initial: SampleState | null = null) {
   let saved: SampleState | null = initial;
@@ -124,5 +129,27 @@ describe('planner writes', () => {
     const snap = s.getState().projects.find((x) => x.id === 'proj_sample_tan')!.catalogueSnapshot
       .var_nova_s8;
     expect(snap?.variantName).not.toBe('Renamed');
+  });
+});
+
+describe('upgrading saved data', () => {
+  it('adds products of new categories without restoring deleted ones', () => {
+    const state = createSampleStore('sample').getState();
+    // A product the user deleted from a category that still has others.
+    const deleted = state.products.find(
+      (p) => state.products.filter((q) => q.categoryId === p.categoryId).length > 1,
+    )!;
+    const old: SampleState = {
+      ...state,
+      products: state.products.filter(
+        (p) => p.categoryId !== 'ceiling-fans' && p.id !== deleted.id,
+      ),
+      variants: state.variants.filter((v) => !v.productId.startsWith('prod_breeze')),
+    };
+    const next = addNewSampleCategories(old);
+    expect(next.products.some((p) => p.categoryId === 'ceiling-fans')).toBe(true);
+    expect(next.variants.filter((v) => v.productId === 'prod_breeze_fan')).toHaveLength(2);
+    expect(next.products.some((p) => p.id === deleted.id)).toBe(false);
+    expect(addNewSampleCategories(next)).toBe(next);
   });
 });

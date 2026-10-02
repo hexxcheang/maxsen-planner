@@ -212,8 +212,8 @@ describe('magicPlan', () => {
     const master = l2.rooms.find((x) => x.type === 'master-bedroom')!;
     const balcony = l2.rooms.find((x) => x.type === 'balcony')!;
     const shared = placed(r, 'smart-switches').find((p) => p.roomId === master.id)!;
-    // Master (downlights + cove) plus the balcony light: three gangs on one plate.
-    assert.equal(marker(r, shared.elementId).variantId, 'smart-switches:3g');
+    // Master (downlights + cove + fan) plus the balcony light: four gangs on one plate.
+    assert.equal(marker(r, shared.elementId).variantId, 'smart-switches:4g');
     assert.equal(
       placed(r, 'smart-switches').some((p) => p.roomId === balcony.id),
       false,
@@ -331,6 +331,48 @@ describe('Singapore lighting conventions', () => {
     const ys = new Set(pts.map((p) => Math.round(p.y)));
     const xs = new Set(pts.map((p) => Math.round(p.x)));
     assert.ok(ys.size <= 2 || xs.size <= 2, 'rows, not a scattered grid');
+  });
+});
+
+describe('ceiling fans', () => {
+  const r = run();
+  const fanIn = (name: string) => {
+    const room = hdb.rooms.find((x) => x.name === name)!;
+    return placed(r, 'ceiling-fans')
+      .filter((p) => p.roomId === room.id)
+      .map((p) => marker(r, p.elementId));
+  };
+
+  it('hangs a fan in the living area and bedrooms, sized for the room', () => {
+    assert.equal(fanIn('Living / Dining').length, 1);
+    assert.equal(fanIn('Bedroom 2').length, 1);
+    assert.equal(fanIn('Bath 2').length, 0);
+    assert.equal(fanIn('Kitchen').length, 0);
+    assert.equal(fanIn('Bedroom 2')[0]!.variantId, 'ceiling-fans');
+  });
+
+  it('keeps downlights clear of the blades', () => {
+    for (const name of ['Living / Dining', 'Bedroom 2', 'Bedroom 3']) {
+      const room = hdb.rooms.find((x) => x.name === name)!;
+      const fan = fanIn(name)[0]!;
+      const lights = placed(r, 'downlights')
+        .filter((p) => p.roomId === room.id)
+        .map((p) => marker(r, p.elementId));
+      // 46" fan: 0.58 m blade tip + 0.5 m = 1.08 m, in plan units at 14 m per 1000.
+      for (const l of lights) assert.ok(Math.hypot(l.x - fan.x, l.y - fan.y) > (1.08 * 1000) / 14);
+    }
+  });
+
+  it('picks the fan size from the catalogue', async () => {
+    const { createVariantPicker } = await import('../src/magic/variant-picker.ts');
+    const { SAMPLE_PRODUCTS, SAMPLE_VARIANTS } = await import('../src/sample/catalogue.ts');
+    const pickFan = createVariantPicker({
+      products: SAMPLE_PRODUCTS,
+      variants: SAMPLE_VARIANTS,
+      favouriteVariantIds: [],
+    });
+    assert.equal(pickFan('ceiling-fans', { fanInches: 46 }), 'var_breeze_fan_46');
+    assert.equal(pickFan('ceiling-fans', { fanInches: 52 }), 'var_breeze_fan_52');
   });
 });
 

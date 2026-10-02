@@ -22,6 +22,7 @@ export type CategoryId =
   | 'led-strips'
   | 'magnetic-track-lights'
   | 'pendant-lights'
+  | 'ceiling-fans'
   | 'spotlights'
   | 'misc-lighting';
 
@@ -112,6 +113,7 @@ const ORDERED: Omit<CategoryDef, 'order'>[] = [
     'MT',
   ),
   def('pendant-lights', 'lighting', 'Pendant Lights', 'point', 'drop', '#A33B86', 'PD'),
+  def('ceiling-fans', 'lighting', 'Ceiling Fans', 'point', 'fan', '#4E7A3A', 'CF'),
   def('spotlights', 'lighting', 'Spotlights', 'point', 'star4', '#C7462C', 'SP'),
   def(
     'misc-lighting',

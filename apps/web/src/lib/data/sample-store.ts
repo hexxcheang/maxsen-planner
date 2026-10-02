@@ -47,6 +47,30 @@ export interface SampleState {
 
 export type SampleSeed = 'sample' | 'empty';
 
+/**
+ * Brings a saved workspace up to date with categories added since it was saved: products of a
+ * category the saved catalogue has never had are added from the sample catalogue. Products the
+ * user deleted from an existing category are not brought back.
+ */
+export function addNewSampleCategories(state: SampleState): SampleState {
+  const known = new Set(state.products.map((p) => p.categoryId));
+  const fresh = sample.SAMPLE_PRODUCTS.filter((p) => !known.has(p.categoryId));
+  if (fresh.length === 0 || state.products.length === 0) return state;
+  const ids = new Set(fresh.map((p) => p.id));
+  const maxOrder = Math.max(0, ...state.products.map((p) => p.sortOrder));
+  return {
+    ...state,
+    products: [
+      ...state.products,
+      ...fresh.map((p, i) => ({ ...structuredClone(p), sortOrder: maxOrder + i + 1 })),
+    ],
+    variants: [
+      ...state.variants,
+      ...structuredClone(sample.SAMPLE_VARIANTS.filter((v) => ids.has(v.productId))),
+    ],
+  };
+}
+
 function seed(kind: SampleSeed): SampleState {
   if (kind === 'empty') {
     return {

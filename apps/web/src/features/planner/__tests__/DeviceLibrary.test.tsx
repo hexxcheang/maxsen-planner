@@ -27,7 +27,7 @@ describe('DeviceLibrary', () => {
     expect(cats).toContain('downlights');
     expect(cats).toContain('led-strips');
     expect(cats).not.toContain('smart-switches');
-    expect(cats).toHaveLength(8);
+    expect(cats).toHaveLength(9);
   });
 
   it('never offers the system drivers', async () => {

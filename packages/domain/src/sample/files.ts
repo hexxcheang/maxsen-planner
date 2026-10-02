@@ -48,6 +48,7 @@ const PRODUCT_IMAGES = [
   'driver',
   'plug',
   'dimmer',
+  'fan',
 ];
 
 const FILES: SampleFile[] = [

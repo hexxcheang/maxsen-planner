@@ -523,6 +523,26 @@ const SPECS: ProductSpec[] = [
       ],
     ],
   },
+  // --- Ceiling Fans ------------------------------------------------------------------------
+  {
+    id: 'prod_breeze_fan',
+    categoryId: 'ceiling-fans',
+    name: 'Breeze DC Ceiling Fan',
+    variants: [
+      [
+        'var_breeze_fan_46',
+        '46" with light',
+        'Quiet DC-motor ceiling fan with a dimmable LED light, sized for common bedrooms. Smart remote and app control.',
+        IMG('fan'),
+      ],
+      [
+        'var_breeze_fan_52',
+        '52" with light',
+        'Quiet DC-motor ceiling fan with a dimmable LED light, sized for living rooms and master bedrooms. Smart remote and app control.',
+        IMG('fan'),
+      ],
+    ],
+  },
   // --- Spotlights --------------------------------------------------------------------------
   {
     id: 'prod_luna_spot',

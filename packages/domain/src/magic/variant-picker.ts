@@ -16,6 +16,7 @@ const ROLE_PATTERNS: Record<NonNullable<VariantHint['role']>, RegExp> = {
   'indoor-camera': /indoor/i,
 };
 
+const inchesOf = (v: Variant) => Number(/(\d{2})\s*(?:"|”|in\b|inch)/i.exec(v.name)?.[1] ?? NaN);
 const gangsOf = (v: Variant) => Number(/(\d)\s*-?\s*gang/i.exec(v.name)?.[1] ?? NaN);
 
 /**
@@ -64,6 +65,14 @@ export function createVariantPicker({
     if (categoryId === 'curtains-blinds') {
       const want = hint?.wide ? /double/i : /single/i;
       return (list.find((v) => want.test(label(v))) ?? list[0]!).id;
+    }
+    if (categoryId === 'ceiling-fans' && hint?.fanInches) {
+      // The listed fan closest in size to what the room needs.
+      const sized = list.filter((v) => Number.isFinite(inchesOf(v)));
+      const best = sized.sort(
+        (a, b) => Math.abs(inchesOf(a) - hint.fanInches!) - Math.abs(inchesOf(b) - hint.fanInches!),
+      )[0];
+      return (best ?? list[0]!).id;
     }
     if (hint?.role) {
       return (list.find((v) => ROLE_PATTERNS[hint.role!].test(label(v))) ?? list[0]!).id;

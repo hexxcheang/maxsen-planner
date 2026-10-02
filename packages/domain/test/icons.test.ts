@@ -23,7 +23,7 @@ const coordinatesIn = (d: string): number[] => {
 
 describe('iconPath', () => {
   it('every shape returns a non-empty path starting with M', () => {
-    assert.equal(ICON_SHAPES.length, 18);
+    assert.equal(ICON_SHAPES.length, 19);
     for (const shape of ICON_SHAPES) {
       const d = iconPath(shape);
       assert.ok(d.length > 0, `${shape} empty`);

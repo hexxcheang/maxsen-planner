@@ -1,5 +1,5 @@
 import { migratePlanDocument } from '@maxsen/domain';
-import type { Persistence, SampleState } from '../data/sample-store';
+import { addNewSampleCategories, type Persistence, type SampleState } from '../data/sample-store';
 
 const KEY = 'maxsen.mvp.state.v1';
 
@@ -14,7 +14,7 @@ export const localPersistence: Persistence = {
         return null;
       // Validate every plan document; a corrupt save falls back to fresh sample data.
       for (const plan of state.plans) plan.document = migratePlanDocument(plan.document);
-      return state;
+      return addNewSampleCategories(state);
     } catch (e) {
       console.warn('Saved data could not be read; starting from sample data.', e);
       return null;
