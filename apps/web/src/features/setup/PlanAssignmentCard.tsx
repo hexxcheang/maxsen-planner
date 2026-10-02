@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import { Crop, ImagePlus, PencilRuler, Trash2 } from 'lucide-react';
 import type { Level, Plan, PlanType, SourceFile, SourcePage } from '@maxsen/domain';
-import { Button, buttonClass, ConfirmDialog, LATER_PHASE } from '@/components/ui';
+import { Button, buttonClass, ConfirmDialog } from '@/components/ui';
+import { ChooseDrawingDialog } from './ChooseDrawingDialog';
 import { cn } from '@/lib/cn';
 import { fileUrl } from '@/lib/files';
 import { useActions } from '@/lib/data/hooks';
@@ -17,6 +18,8 @@ interface PlanAssignmentCardProps {
   file: SourceFile | undefined;
   adjusting: boolean;
   onAdjust: () => void;
+  files: SourceFile[];
+  pages: SourcePage[];
 }
 
 const isFullCrop = (c: Plan['background']['crop']) =>
@@ -31,9 +34,12 @@ export function PlanAssignmentCard({
   file,
   adjusting,
   onAdjust,
+  files,
+  pages,
 }: PlanAssignmentCardProps) {
   const actions = useActions();
   const [confirming, setConfirming] = useState(false);
+  const [choosing, setChoosing] = useState(false);
   const title = PLAN_LABELS[type];
   const titleId = `plan-card-${type}`;
 
@@ -126,9 +132,18 @@ export function PlanAssignmentCard({
               Choose one of the uploaded pages as this plan’s drawing.
             </p>
           </div>
-          <Button size="sm" disabledReason={LATER_PHASE}>
+          <Button size="sm" variant="primary" onClick={() => setChoosing(true)}>
             Choose a drawing
           </Button>
+          <ChooseDrawingDialog
+            open={choosing}
+            onOpenChange={setChoosing}
+            projectId={projectId}
+            level={level}
+            type={type}
+            files={files}
+            pages={pages}
+          />
         </div>
       )}
     </section>

@@ -61,6 +61,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
           : 'border-transparent hover:bg-desk/70',
         active && 'border-brass/40 bg-brass-tint text-brass-2 hover:bg-brass-tint',
         'text-ink aria-disabled:cursor-not-allowed aria-disabled:text-ink-3 aria-disabled:hover:bg-transparent',
+        'disabled:cursor-not-allowed disabled:text-ink-3 disabled:hover:bg-transparent',
         '[&_svg]:size-4',
         className,
       )}

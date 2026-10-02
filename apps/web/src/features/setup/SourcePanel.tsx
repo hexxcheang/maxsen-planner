@@ -1,26 +1,50 @@
 import { FileText, Upload } from 'lucide-react';
 import type { Level, Plan, SourceFile, SourcePage } from '@maxsen/domain';
-import { Badge, Button, LATER_PHASE, SectionTitle } from '@/components/ui';
+import { useRef } from 'react';
+import { Badge, Button, SectionTitle } from '@/components/ui';
+import { useUpload } from './useUpload';
 import { fileUrl } from '@/lib/files';
 import { PLAN_LABELS } from './labels';
 
 interface SourcePanelProps {
+  projectId: string;
   files: SourceFile[];
   pages: SourcePage[];
   plans: Plan[];
   levels: Level[];
 }
 
-export function SourcePanel({ files, pages, plans, levels }: SourcePanelProps) {
+export function SourcePanel({ projectId, files, pages, plans, levels }: SourcePanelProps) {
+  const input = useRef<HTMLInputElement>(null);
+  const { upload, progress } = useUpload(projectId);
   const levelName = new Map(levels.map((l) => [l.id, l.name]));
   return (
     <section aria-label="Drawings" className="flex min-h-0 flex-col">
       <SectionTitle
         className="mb-3"
         actions={
-          <Button size="sm" icon={<Upload className="size-3.5" />} disabledReason={LATER_PHASE}>
-            Upload
-          </Button>
+          <>
+            <input
+              ref={input}
+              type="file"
+              accept="application/pdf,image/png,image/jpeg"
+              multiple
+              hidden
+              aria-label="Upload drawings"
+              onChange={(e) => {
+                if (e.target.files?.length) void upload(e.target.files);
+                e.target.value = '';
+              }}
+            />
+            <Button
+              size="sm"
+              icon={<Upload className="size-3.5" />}
+              loading={progress !== null}
+              onClick={() => input.current?.click()}
+            >
+              Upload
+            </Button>
+          </>
         }
       >
         Drawings
@@ -28,6 +52,11 @@ export function SourcePanel({ files, pages, plans, levels }: SourcePanelProps) {
       <p className="mb-4 text-meta text-ink-2">
         PDFs and JPG or PNG images. Every page becomes a thumbnail.
       </p>
+      {progress && (
+        <p role="status" className="mb-3 text-meta text-brass-2">
+          {progress}
+        </p>
+      )}
       {files.length === 0 ? (
         <p className="border-t border-rule pt-4 text-control text-ink-2">
           No drawings uploaded yet.

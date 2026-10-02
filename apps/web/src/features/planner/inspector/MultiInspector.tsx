@@ -1,8 +1,10 @@
 import { Trash2 } from 'lucide-react';
-import { Button, LATER_PHASE } from '@/components/ui';
+import { Button } from '@/components/ui';
+import { usePlanner } from '../planner-context';
 import { InspectorSection } from './parts';
 
 export function MultiInspector({ count }: { count: number }) {
+  const { store } = usePlanner();
   return (
     <InspectorSection>
       <p className="text-control font-semibold text-ink">{count} items selected</p>
@@ -11,8 +13,8 @@ export function MultiInspector({ count }: { count: number }) {
         size="sm"
         variant="danger"
         icon={<Trash2 className="size-3.5" />}
-        disabledReason={LATER_PHASE}
         className="w-fit"
+        onClick={() => store.getState().deleteSelection()}
       >
         Delete {count} items
       </Button>

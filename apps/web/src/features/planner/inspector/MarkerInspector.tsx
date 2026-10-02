@@ -1,7 +1,9 @@
+import { RotateCcw, RotateCw } from 'lucide-react';
 import type { CategoryStyle, PointMarker, VariantSnapshot } from '@maxsen/domain';
 import { CategoryGlyph } from '@/components/CategoryGlyph';
-import { Field, Input, NumberField, Select } from '@/components/ui';
-import { EDIT_LATER, InspectorSection, LayerAndActions } from './parts';
+import { Field, IconButton, NumberField, Select } from '@/components/ui';
+import { usePlanner } from '../planner-context';
+import { CommitInput, InspectorSection, LayerAndActions } from './parts';
 
 interface Props {
   el: PointMarker;
@@ -10,7 +12,11 @@ interface Props {
   variantOptions: { value: string; label: string }[];
 }
 
+const norm = (deg: number) => ((Math.round(deg) % 360) + 360) % 360;
+
 export function MarkerInspector({ el, snapshot, style, variantOptions }: Props) {
+  const { store, recordUse } = usePlanner();
+  const update = store.getState().updateElement;
   return (
     <>
       <InspectorSection>
@@ -36,25 +42,46 @@ export function MarkerInspector({ el, snapshot, style, variantOptions }: Props) 
             compact
             value={el.variantId}
             options={variantOptions}
-            disabled
-            title={EDIT_LATER}
+            onChange={(variantId) => {
+              recordUse(variantId);
+              update(el.id, { variantId });
+            }}
           />
         </Field>
         <Field label="Label" optional>
-          <Input
-            compact
+          <CommitInput
             value={el.label}
             placeholder="e.g. Entrance"
-            disabled
-            readOnly
-            title={EDIT_LATER}
+            onCommit={(label) => update(el.id, { label: label.trim() })}
           />
         </Field>
         <Field label="Rotation">
-          <NumberField compact value={el.rotation} unit="°" disabled />
+          <div className="flex items-center gap-1">
+            <IconButton
+              size="sm"
+              variant="secondary"
+              label="Rotate left 90°"
+              icon={<RotateCcw />}
+              onClick={() => update(el.id, { rotation: norm(el.rotation - 90) })}
+            />
+            <NumberField
+              compact
+              className="flex-1"
+              value={el.rotation}
+              unit="°"
+              onChange={(v) => v !== null && update(el.id, { rotation: norm(v) })}
+            />
+            <IconButton
+              size="sm"
+              variant="secondary"
+              label="Rotate right 90°"
+              icon={<RotateCw />}
+              onClick={() => update(el.id, { rotation: norm(el.rotation + 90) })}
+            />
+          </div>
         </Field>
       </InspectorSection>
-      <LayerAndActions />
+      <LayerAndActions offset={style.size} />
     </>
   );
 }

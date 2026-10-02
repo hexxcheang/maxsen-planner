@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Group, Image as KonvaImage, Layer, Path, Rect, Stage } from 'react-konva';
+import { Circle, Group, Image as KonvaImage, Layer, Line, Path, Rect, Stage } from 'react-konva';
 import type Konva from 'konva';
-import type { Scene } from '@maxsen/domain';
-import type { PlannerTool } from '../store/plannerStore';
+import type { Pt, Scene } from '@maxsen/domain';
+import type { Armed, PlannerTool } from '../store/plannerStore';
 import type { StageViewport } from './useStageViewport';
 import { SceneLayer } from './SceneLayer';
 
@@ -32,6 +32,13 @@ interface PlanStageProps {
   view: StageViewport;
   onSelect: (ids: string[], mode: 'replace' | 'toggle') => void;
   onMove: (ids: string[], dx: number, dy: number) => void;
+  /** What a click places, if anything. */
+  armed: Armed | null;
+  draft: Pt[];
+  draftColor: string;
+  /** A click on the plan while something is armed, in plan units. */
+  onPlace: (at: Pt, shift: boolean) => void;
+  onFinishDraft: () => void;
 }
 
 export function PlanStage({
@@ -44,7 +51,13 @@ export function PlanStage({
   view,
   onSelect,
   onMove,
+  armed,
+  draft,
+  draftColor,
+  onPlace,
+  onFinishDraft,
 }: PlanStageProps) {
+  const [hover, setHover] = useState<Pt | null>(null);
   const image = useHtmlImage(background.url);
   const { viewport } = view;
   const [spaceHeld, setSpaceHeld] = useState(false);
@@ -72,8 +85,16 @@ export function PlanStage({
     };
   }, []);
 
+  // Konva reports any two quick clicks as a double-click; only a double-click on the last point
+  // (where a finishing double-click lands) ends the path, so fast drawing doesn't end it early.
+  const finishIfOnLastPoint = (p: Pt | null | undefined) => {
+    const last = draft.at(-1);
+    if (armed?.kind !== 'path' || !p || !last) return;
+    if (Math.hypot(p.x - last.x, p.y - last.y) * viewport.scale <= 8) onFinishDraft();
+  };
+
   const onPick = (id: string, e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
-    if (panning) return;
+    if (panning || armed) return;
     const shift = 'shiftKey' in e.evt && e.evt.shiftKey;
     if (shift) onSelect([id], 'toggle');
     else if (!selection.includes(id)) onSelect([id], 'replace');
@@ -92,7 +113,7 @@ export function PlanStage({
       scaleX={viewport.scale}
       scaleY={viewport.scale}
       draggable={panning}
-      style={{ cursor: panning ? 'grab' : 'default' }}
+      style={{ cursor: panning ? 'grab' : armed ? 'crosshair' : 'default' }}
       onDragEnd={(e) => {
         if (e.target === e.target.getStage()) view.panTo(e.target.x(), e.target.y());
       }}
@@ -105,13 +126,33 @@ export function PlanStage({
           view.zoomBy(Math.exp(-e.evt.deltaY * 0.0015), p);
         }
       }}
+      onMouseMove={(e) => {
+        if (!armed) return;
+        const p = e.target.getStage()?.getRelativePointerPosition();
+        if (p) setHover(p);
+      }}
+      onMouseLeave={() => setHover(null)}
       onClick={(e) => {
+        if (panning) return;
+        if (armed) {
+          const p = e.target.getStage()?.getRelativePointerPosition();
+          if (p) onPlace(p, e.evt.shiftKey);
+          return;
+        }
         // Only a click on empty canvas (the background layer doesn't listen) clears the selection.
-        if (e.target === e.target.getStage() && !panning) onSelect([], 'replace');
+        if (e.target === e.target.getStage()) onSelect([], 'replace');
       }}
       onTap={(e) => {
-        if (e.target === e.target.getStage() && !panning) onSelect([], 'replace');
+        if (panning) return;
+        if (armed) {
+          const p = e.target.getStage()?.getRelativePointerPosition();
+          if (p) onPlace(p, false);
+          return;
+        }
+        if (e.target === e.target.getStage()) onSelect([], 'replace');
       }}
+      onDblClick={(e) => finishIfOnLastPoint(e.target.getStage()?.getRelativePointerPosition())}
+      onDblTap={(e) => finishIfOnLastPoint(e.target.getStage()?.getRelativePointerPosition())}
     >
       <Layer listening={false}>
         <Rect
@@ -126,9 +167,9 @@ export function PlanStage({
       <Layer>
         <SceneLayer
           scene={scene}
-          draggable={tool === 'select' && !panning}
+          draggable={tool === 'select' && !panning && !armed}
           onPick={onPick}
-          onMarkerDragEnd={(id, dx, dy) => onMove(selected.has(id) ? selection : [id], dx, dy)}
+          onDragEnd={(id, dx, dy) => onMove(selected.has(id) ? selection : [id], dx, dy)}
         />
       </Layer>
       <Layer listening={false}>
@@ -188,6 +229,30 @@ export function PlanStage({
           );
         })}
       </Layer>
+      {armed?.kind === 'path' && draft.length > 0 && (
+        <Layer listening={false}>
+          <Line
+            points={[...draft, ...(hover ? [hover] : [])].flatMap((p) => [p.x, p.y])}
+            stroke={draftColor}
+            strokeWidth={6}
+            opacity={0.75}
+            lineCap="round"
+            lineJoin="round"
+            dash={[10, 6]}
+          />
+          {draft.map((p, i) => (
+            <Circle
+              key={i}
+              x={p.x}
+              y={p.y}
+              radius={4 * px}
+              fill="#FFFFFF"
+              stroke={BRASS}
+              strokeWidth={1.5 * px}
+            />
+          ))}
+        </Layer>
+      )}
     </Stage>
   );
 }

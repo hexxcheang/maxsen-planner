@@ -61,10 +61,14 @@ describe('SetupScreen', () => {
     await user.click(await screen.findByRole('button', { name: 'Attic' }));
     const card = screen.getByRole('region', { name: 'Smart Home Plan' });
     expect(within(card).getByText('Not set up yet')).toBeInTheDocument();
-    expect(within(card).getByRole('button', { name: 'Choose a drawing' })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    );
+    await user.click(within(card).getByRole('button', { name: 'Choose a drawing' }));
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Choose a drawing for the Smart Home Plan',
+    });
+    expect(
+      within(dialog).getAllByRole('radio', { name: /Lim_ChartwellDr_Drawings.pdf, page/ }),
+    ).toHaveLength(3);
+    expect(within(dialog).getByRole('button', { name: 'Use this drawing' })).toBeDisabled();
   });
 
   it('paper size and orientation update the level', async () => {

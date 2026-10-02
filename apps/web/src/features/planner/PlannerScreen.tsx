@@ -2,12 +2,19 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { useStore } from 'zustand';
 import { BookOpen, ChevronLeft, ChevronRight, Layers, PanelRight, Sigma } from 'lucide-react';
-import { buildScene, type PlanType } from '@maxsen/domain';
+import { buildScene, categoryById, type PlanType } from '@maxsen/domain';
 import { buttonClass, IconButton } from '@/components/ui';
 import { cn } from '@/lib/cn';
 import { fileUrl } from '@/lib/files';
 import { useElementSize, useMediaQuery } from '@/lib/useElementSize';
-import { useActions, useLevels, usePlans, useResolver, useSettings } from '@/lib/data/hooks';
+import {
+  useActions,
+  useCatalogue,
+  useLevels,
+  usePlans,
+  useResolver,
+  useSettings,
+} from '@/lib/data/hooks';
 import { TopBarSlot } from '@/app/shell/TopBarSlot';
 import { useCurrentProject } from '@/features/project/useProjectContext';
 import { PLAN_LABELS } from '@/features/setup/labels';
@@ -17,7 +24,9 @@ import { useStageViewport } from './canvas/useStageViewport';
 import { Inspector } from './inspector/Inspector';
 import { DeviceLibrary } from './library/DeviceLibrary';
 import { LiveTotals } from './totals/LiveTotals';
-import { createPlannerStore } from './store/plannerStore';
+import { createPlannerStore, type Armed } from './store/plannerStore';
+import { PlannerContext } from './planner-context';
+import { VARIANT_DRAG_TYPE } from './library/VariantTile';
 import { LevelSwitcher } from './LevelSwitcher';
 import { SaveState } from './SaveState';
 import { Toolbar } from './Toolbar';
@@ -109,19 +118,120 @@ export function PlannerScreen() {
   const document = useStore(store, (s) => s.document);
   const selection = useStore(store, (s) => s.selection);
   const tool = useStore(store, (s) => s.tool);
+  const armed = useStore(store, (s) => s.armed);
+  const draft = useStore(store, (s) => s.draft);
+  const canUndo = useStore(store, (s) => s.past.length > 0);
+  const canRedo = useStore(store, (s) => s.future.length > 0);
+  const { data: catalogue } = useCatalogue();
 
+  // The editor owns the open document; every change is saved straight back (autosave). A document
+  // arriving from the data layer that we didn't just save (plan switch, external change) is loaded.
+  const saved = useRef<unknown>(null);
   useEffect(() => {
-    const s = store.getState();
-    const keep = s.planId === (plan?.id ?? null) ? s.selection : [];
-    s.load({
+    if (plan && plan.document === saved.current) return;
+    store.getState().load({
       projectId: project.id,
       levelId,
       planType,
       planId: plan?.id ?? null,
       document: plan?.document ?? null,
     });
-    if (keep.length) s.select(keep, 'replace');
-  }, [store, project.id, levelId, planType, plan?.id, plan?.document]);
+  }, [store, project.id, levelId, planType, plan?.id, plan?.document, plan]);
+
+  useEffect(
+    () =>
+      store.subscribe((s, prev) => {
+        if (s.document === prev.document || !s.planId || s.planId !== prev.planId) return;
+        saved.current = s.document;
+        actions.setPlanDocument(s.planId, s.document);
+      }),
+    [store, actions],
+  );
+
+  const recordUse = (variantId: string) => actions.recordVariantUse(project.id, variantId);
+  const productById = useMemo(
+    () => new Map(catalogue.products.map((p) => [p.id, p])),
+    [catalogue.products],
+  );
+  const kindOf = (variantId: string) => {
+    const v = catalogue.variants.find((x) => x.id === variantId);
+    const p = v && productById.get(v.productId);
+    return p ? categoryById(p.categoryId).kind : 'point';
+  };
+  const nameOf = (variantId: string) => {
+    const v = catalogue.variants.find((x) => x.id === variantId);
+    const p = v && productById.get(v.productId);
+    return p && v ? `${p.name}, ${v.name}` : 'device';
+  };
+
+  const armVariant = (variantId: string) => {
+    const s = store.getState();
+    const current = s.armed && 'variantId' in s.armed ? s.armed.variantId : null;
+    if (current === variantId) return s.arm(null);
+    const kind = kindOf(variantId);
+    s.arm(
+      kind === 'point'
+        ? { kind: 'marker', variantId }
+        : { kind: 'path', variantId, elementKind: kind },
+    );
+    if (narrow) setLibraryOpen(false);
+  };
+
+  /** The variant a drawing tool uses: most recently used of that kind, then favourites, then the first. */
+  const pickVariant = (kind: 'led-strip' | 'track') => {
+    const visible = catalogue.visibleVariantsFor(planType).filter((v) => kindOf(v.id) === kind);
+    const prefer = [...project.recentVariantIds, ...settings.favouriteVariantIds];
+    return prefer.find((id) => visible.some((v) => v.id === id)) ?? visible[0]?.id;
+  };
+
+  const armTool = (t: 'led' | 'track' | 'loop' | 'note') => {
+    const s = store.getState();
+    let next: Armed | null = null;
+    if (t === 'note') next = { kind: 'note' };
+    else {
+      const variantId = pickVariant(t === 'track' ? 'track' : 'led-strip');
+      if (!variantId) return;
+      next =
+        t === 'loop'
+          ? { kind: 'loop', variantId }
+          : { kind: 'path', variantId, elementKind: t === 'led' ? 'led-strip' : 'track' };
+    }
+    const same = s.armed && JSON.stringify(s.armed) === JSON.stringify(next);
+    s.arm(same ? null : next);
+  };
+
+  const place = (at: { x: number; y: number }, shiftKey: boolean) => {
+    const s = store.getState();
+    const a = s.armed;
+    if (!a) return;
+    if (a.kind === 'marker') {
+      recordUse(a.variantId);
+      s.addMarker(a.variantId, at);
+    } else if (a.kind === 'note') {
+      s.addNote(at);
+      s.arm(null);
+      s.select([s.document.elements.at(-1)!.id], 'replace');
+    } else if (a.kind === 'loop') {
+      recordUse(a.variantId);
+      const id = s.addLoop(a.variantId, at, 40);
+      s.arm(null);
+      s.select([id], 'replace');
+    } else {
+      s.addDraftPoint(at, shiftKey);
+    }
+  };
+
+  const finishDraft = () => {
+    const s = store.getState();
+    const a = s.armed;
+    const id = s.finishDraft();
+    if (id && a && 'variantId' in a) {
+      recordUse(a.variantId);
+      s.arm(null);
+      s.select([id], 'replace');
+      setInspectorOpen(true);
+    }
+  };
 
   const switchTo = (nextLevel: string, nextType: PlanType) => {
     setParams({ level: nextLevel, type: nextType }, { replace: true });
@@ -155,17 +265,50 @@ export function PlannerScreen() {
     [document, settings, resolve, sheet],
   );
 
+  const finishRef = useRef(finishDraft);
+  finishRef.current = finishDraft;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (
         e.target instanceof HTMLInputElement ||
         e.target instanceof HTMLTextAreaElement ||
-        e.target instanceof HTMLSelectElement
+        e.target instanceof HTMLSelectElement ||
+        (e.target instanceof HTMLElement && e.target.closest('[role="dialog"]'))
       )
         return;
-      if (e.key === 'v' || e.key === 'V') store.getState().setTool('select');
-      if (e.key === 'h' || e.key === 'H') store.getState().setTool('pan');
-      if (e.key === 'Escape') store.getState().select([], 'replace');
+      const s = store.getState();
+      const mod = e.metaKey || e.ctrlKey;
+      const key = e.key.toLowerCase();
+      if (mod && key === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) s.redo();
+        else s.undo();
+      } else if (mod && key === 'y') {
+        e.preventDefault();
+        s.redo();
+      } else if (mod && key === 'd') {
+        e.preventDefault();
+        s.duplicateSelection(20);
+      } else if (mod && key === 'a') {
+        e.preventDefault();
+        s.selectAll();
+      } else if (e.key === 'Escape') {
+        if (s.armed) s.arm(null);
+        else s.select([], 'replace');
+      } else if (e.key === 'Enter' && s.armed?.kind === 'path') {
+        finishRef.current();
+      } else if ((e.key === 'Delete' || e.key === 'Backspace') && s.draft.length > 0) {
+        e.preventDefault();
+        s.popDraftPoint();
+      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (s.selection.length) {
+          e.preventDefault();
+          s.deleteSelection();
+        }
+      } else if (e.key === ']' || e.key === '}') s.reorder(e.shiftKey ? 'front' : 'forward');
+      else if (e.key === '[' || e.key === '{') s.reorder(e.shiftKey ? 'back' : 'backward');
+      else if (!mod && key === 'v') s.setTool('select');
+      else if (!mod && key === 'h') s.setTool('pan');
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -179,140 +322,212 @@ export function PlannerScreen() {
   };
 
   return (
-    <div data-screen-ready className="absolute inset-0 flex">
-      <TopBarSlot slot="right">
-        <SaveState />
-      </TopBarSlot>
-      <SidePanel
-        side="left"
-        title="Library"
-        icon={<BookOpen />}
-        open={libraryOpen}
-        overlay={narrow}
-        onToggle={() => setLibraryOpen((o) => !o)}
-      >
-        <DeviceLibrary projectId={project.id} planType={planType} />
-      </SidePanel>
-
-      <div className="relative min-w-0 flex-1 bg-desk">
-        <div
-          ref={canvasRef}
-          data-testid="plan-canvas"
-          data-scale={view.zoom.toFixed(2)}
-          data-viewport={`${v.x.toFixed(2)},${v.y.toFixed(2)},${v.scale.toFixed(5)}`}
-          className="absolute inset-0 overflow-hidden"
+    <PlannerContext.Provider value={{ store, recordUse }}>
+      <div data-screen-ready className="absolute inset-0 flex">
+        <TopBarSlot slot="right">
+          <SaveState />
+        </TopBarSlot>
+        <SidePanel
+          side="left"
+          title="Library"
+          icon={<BookOpen />}
+          open={libraryOpen}
+          overlay={narrow}
+          onToggle={() => setLibraryOpen((o) => !o)}
         >
-          {plan && size.width > 0 && (
-            <PlanStage
-              width={size.width}
-              height={size.height}
-              background={{
-                url: fileUrl(plan.background.fileId),
-                width: sheet.width,
-                height: sheet.height,
-              }}
-              scene={scene}
-              selection={selection}
-              tool={tool}
-              view={view}
-              onSelect={(ids, mode) => store.getState().select(ids, mode)}
-              onMove={(ids, dx, dy) => {
-                store.getState().moveElements(ids, dx, dy);
-                actions.moveElements(plan.id, ids, dx, dy);
-              }}
-            />
-          )}
-        </div>
-        {!plan && level && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="flex max-w-sm flex-col items-start gap-3 border border-rule bg-surface p-6">
-              <Layers aria-hidden className="size-5 text-ink-2" />
-              <h2 className="text-section text-ink">
-                No {PLAN_LABELS[planType]} on {level.name} yet
-              </h2>
-              <p className="text-control text-ink-2">
-                Choose a drawing for it in Setup, then come back here to place devices.
-              </p>
-              <Link to={`/projects/${project.id}/setup`} className={buttonClass('primary', 'sm')}>
-                Set up in Setup
-              </Link>
-            </div>
-          </div>
-        )}
-        {plan && document.view.legendVisible && (
-          <LegendOverlay scene={scene} settings={settings} style={legendStyle} />
-        )}
-        {level && (
-          <LevelSwitcher
-            levels={levels}
-            levelId={levelId}
+          <DeviceLibrary
+            projectId={project.id}
             planType={planType}
-            onChange={switchTo}
+            armedVariantId={armed && 'variantId' in armed ? armed.variantId : null}
+            onArm={armVariant}
           />
-        )}
-        <Toolbar
-          tool={tool}
-          onTool={(t) => store.getState().setTool(t)}
-          zoom={view.zoom}
-          onZoomIn={view.zoomIn}
-          onZoomOut={view.zoomOut}
-          onFit={view.fit}
-          legendVisible={document.view.legendVisible}
-          onLegend={(legendVisible) => plan && actions.setPlanView(plan.id, { legendVisible })}
-          planType={planType}
-          hidden={document.view.hiddenCategories}
-          onHidden={(hiddenCategories) =>
-            plan && actions.setPlanView(plan.id, { hiddenCategories })
-          }
-          settings={settings}
-          disabled={!plan}
-        />
-      </div>
+        </SidePanel>
 
-      <SidePanel
-        side="right"
-        title="Details"
-        icon={<PanelRight />}
-        open={inspectorOpen}
-        overlay={narrow}
-        onToggle={() => setInspectorOpen((o) => !o)}
-      >
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <Inspector
-            document={document}
-            selection={selection}
-            resolve={resolve}
-            settings={settings}
-            planType={planType}
-          />
-        </div>
-        <div
-          className={cn(
-            'flex min-h-0 flex-col border-t border-rule-2',
-            totalsOpen && 'max-h-[50%]',
-          )}
-        >
-          <button
-            type="button"
-            aria-expanded={totalsOpen}
-            onClick={() => setTotalsOpen((o) => !o)}
-            className="flex h-10 shrink-0 items-center gap-2 px-4 text-left hover:bg-paper"
+        <div className="relative min-w-0 flex-1 bg-desk">
+          <div
+            ref={canvasRef}
+            data-testid="plan-canvas"
+            data-scale={view.zoom.toFixed(2)}
+            data-viewport={`${v.x.toFixed(2)},${v.y.toFixed(2)},${v.scale.toFixed(5)}`}
+            className="absolute inset-0 overflow-hidden"
+            onDragOver={(e) => {
+              if (plan && e.dataTransfer.types.includes(VARIANT_DRAG_TYPE)) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'copy';
+              }
+            }}
+            onDrop={(e) => {
+              const variantId = e.dataTransfer.getData(VARIANT_DRAG_TYPE);
+              if (!plan || !variantId) return;
+              e.preventDefault();
+              const rect = e.currentTarget.getBoundingClientRect();
+              recordUse(variantId);
+              store.getState().addMarker(variantId, {
+                x: (e.clientX - rect.left - v.x) / v.scale,
+                y: (e.clientY - rect.top - v.y) / v.scale,
+              });
+            }}
           >
-            <Sigma aria-hidden className="size-4 text-ink-2" />
-            <span className="flex-1 text-control font-semibold text-ink">Project totals</span>
-            <span className="text-meta text-ink-3">All levels</span>
-            <ChevronRight
-              aria-hidden
-              className={cn('size-3.5 text-ink-3 transition-transform', totalsOpen && '-rotate-90')}
+            {plan && size.width > 0 && (
+              <PlanStage
+                width={size.width}
+                height={size.height}
+                background={{
+                  url: fileUrl(plan.background.fileId),
+                  width: sheet.width,
+                  height: sheet.height,
+                }}
+                scene={scene}
+                selection={selection}
+                tool={tool}
+                view={view}
+                onSelect={(ids, mode) => store.getState().select(ids, mode)}
+                onMove={(ids, dx, dy) => store.getState().moveElements(ids, dx, dy)}
+                armed={armed}
+                draft={draft}
+                draftColor="#A8873A"
+                onPlace={place}
+                onFinishDraft={finishDraft}
+              />
+            )}
+          </div>
+          {!plan && level && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="flex max-w-sm flex-col items-start gap-3 border border-rule bg-surface p-6">
+                <Layers aria-hidden className="size-5 text-ink-2" />
+                <h2 className="text-section text-ink">
+                  No {PLAN_LABELS[planType]} on {level.name} yet
+                </h2>
+                <p className="text-control text-ink-2">
+                  Choose a drawing for it in Setup, then come back here to place devices.
+                </p>
+                <Link to={`/projects/${project.id}/setup`} className={buttonClass('primary', 'sm')}>
+                  Set up in Setup
+                </Link>
+              </div>
+            </div>
+          )}
+          {plan && document.view.legendVisible && (
+            <LegendOverlay scene={scene} settings={settings} style={legendStyle} />
+          )}
+          {level && (
+            <LevelSwitcher
+              levels={levels}
+              levelId={levelId}
+              planType={planType}
+              onChange={switchTo}
             />
-          </button>
-          {totalsOpen && (
-            <div className="min-h-0 overflow-y-auto border-t border-rule">
-              <LiveTotals projectId={project.id} />
+          )}
+          <Toolbar
+            tool={tool}
+            onTool={(t) => store.getState().setTool(t)}
+            zoom={view.zoom}
+            onZoomIn={view.zoomIn}
+            onZoomOut={view.zoomOut}
+            onFit={view.fit}
+            legendVisible={document.view.legendVisible}
+            onLegend={(legendVisible) => store.getState().setView({ legendVisible })}
+            planType={planType}
+            hidden={document.view.hiddenCategories}
+            onHidden={(hiddenCategories) => store.getState().setView({ hiddenCategories })}
+            settings={settings}
+            disabled={!plan}
+            armed={armed}
+            onArmTool={armTool}
+            canUndo={canUndo}
+            canRedo={canRedo}
+            onUndo={() => store.getState().undo()}
+            onRedo={() => store.getState().redo()}
+          />
+          {armed && plan && (
+            <div
+              role="status"
+              className="absolute top-3 left-1/2 z-[var(--z-toolbar)] flex max-w-[60%] -translate-x-1/2 items-center gap-3 rounded-popover border border-brass/50 bg-surface px-3 py-1.5 text-control text-ink shadow-float max-[1179px]:top-16"
+            >
+              <span className="min-w-0">
+                {armed.kind === 'marker' && (
+                  <>
+                    Click the plan to place{' '}
+                    <strong className="font-semibold">{nameOf(armed.variantId)}</strong>. Keep
+                    clicking to place more.
+                  </>
+                )}
+                {armed.kind === 'path' &&
+                  (draft.length === 0 ? (
+                    <>
+                      Click the start of the {armed.elementKind === 'track' ? 'track' : 'LED strip'}{' '}
+                      ({nameOf(armed.variantId)}).
+                    </>
+                  ) : (
+                    <>
+                      Click to add points, Shift for straight lines. Double-click or Enter to
+                      finish.
+                    </>
+                  ))}
+                {armed.kind === 'loop' && (
+                  <>Click the centre of the LED loop ({nameOf(armed.variantId)}).</>
+                )}
+                {armed.kind === 'note' && <>Click where the note should go.</>}
+              </span>
+              <button
+                type="button"
+                onClick={() => store.getState().arm(null)}
+                className="shrink-0 text-meta text-brass-2 hover:underline"
+              >
+                Stop (Esc)
+              </button>
             </div>
           )}
         </div>
-      </SidePanel>
-    </div>
+
+        <SidePanel
+          side="right"
+          title="Details"
+          icon={<PanelRight />}
+          open={inspectorOpen}
+          overlay={narrow}
+          onToggle={() => setInspectorOpen((o) => !o)}
+        >
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <Inspector
+              document={document}
+              selection={selection}
+              resolve={resolve}
+              settings={settings}
+              planType={planType}
+            />
+          </div>
+          <div
+            className={cn(
+              'flex min-h-0 flex-col border-t border-rule-2',
+              totalsOpen && 'max-h-[50%]',
+            )}
+          >
+            <button
+              type="button"
+              aria-expanded={totalsOpen}
+              onClick={() => setTotalsOpen((o) => !o)}
+              className="flex h-10 shrink-0 items-center gap-2 px-4 text-left hover:bg-paper"
+            >
+              <Sigma aria-hidden className="size-4 text-ink-2" />
+              <span className="flex-1 text-control font-semibold text-ink">Project totals</span>
+              <span className="text-meta text-ink-3">All levels</span>
+              <ChevronRight
+                aria-hidden
+                className={cn(
+                  'size-3.5 text-ink-3 transition-transform',
+                  totalsOpen && '-rotate-90',
+                )}
+              />
+            </button>
+            {totalsOpen && (
+              <div className="min-h-0 overflow-y-auto border-t border-rule">
+                <LiveTotals projectId={project.id} />
+              </div>
+            )}
+          </div>
+        </SidePanel>
+      </div>
+    </PlannerContext.Provider>
   );
 }

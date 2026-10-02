@@ -22,8 +22,8 @@ import {
   resolveCategoryStyle,
 } from '@maxsen/domain';
 import { CategoryGlyph } from '@/components/CategoryGlyph';
-import { Checkbox, IconButton, LATER_PHASE, Popover, Tooltip } from '@/components/ui';
-import type { PlannerTool } from './store/plannerStore';
+import { Checkbox, IconButton, Popover, Tooltip } from '@/components/ui';
+import type { Armed, PlannerTool } from './store/plannerStore';
 
 interface ToolbarProps {
   tool: PlannerTool;
@@ -39,6 +39,13 @@ interface ToolbarProps {
   onHidden: (hidden: CategoryId[]) => void;
   settings: Settings;
   disabled: boolean;
+  armed: Armed | null;
+  /** Arms a drawing tool; undefined when the plan type has no variants for it. */
+  onArmTool: (tool: 'led' | 'track' | 'loop' | 'note') => void;
+  canUndo: boolean;
+  canRedo: boolean;
+  onUndo: () => void;
+  onRedo: () => void;
 }
 
 const Sep = () => <span aria-hidden className="mx-1 h-5 w-px bg-rule" />;
@@ -63,7 +70,7 @@ export function Toolbar(p: ToolbarProps) {
             size="sm"
             label="Select (V)"
             icon={<MousePointer2 />}
-            active={p.tool === 'select'}
+            active={p.tool === 'select' && !p.armed}
             onClick={() => p.onTool('select')}
           />
           <IconButton
@@ -73,31 +80,41 @@ export function Toolbar(p: ToolbarProps) {
             active={p.tool === 'pan'}
             onClick={() => p.onTool('pan')}
           />
+          {p.planType === 'lighting' && (
+            <>
+              <IconButton
+                size="sm"
+                label="Draw LED strip (click points, double-click to finish)"
+                icon={<Spline />}
+                active={p.armed?.kind === 'path' && p.armed.elementKind === 'led-strip'}
+                onClick={() => p.onArmTool('led')}
+                disabled={p.disabled}
+              />
+              <IconButton
+                size="sm"
+                label="Draw track (click points, double-click to finish)"
+                icon={<Waypoints />}
+                active={p.armed?.kind === 'path' && p.armed.elementKind === 'track'}
+                onClick={() => p.onArmTool('track')}
+                disabled={p.disabled}
+              />
+              <IconButton
+                size="sm"
+                label="Circle LED loop (click the centre)"
+                icon={<Circle />}
+                active={p.armed?.kind === 'loop'}
+                onClick={() => p.onArmTool('loop')}
+                disabled={p.disabled}
+              />
+            </>
+          )}
           <IconButton
             size="sm"
-            label={
-              p.planType === 'lighting' ? 'Draw LED strip' : 'Draw LED strip (Lighting Plan only)'
-            }
-            icon={<Spline />}
-            disabledReason={LATER_PHASE}
-          />
-          <IconButton
-            size="sm"
-            label="Draw track"
-            icon={<Waypoints />}
-            disabledReason={LATER_PHASE}
-          />
-          <IconButton
-            size="sm"
-            label="Circle LED loop"
-            icon={<Circle />}
-            disabledReason={LATER_PHASE}
-          />
-          <IconButton
-            size="sm"
-            label="Add text note"
+            label="Add text note (click the plan)"
             icon={<TextCursorInput />}
-            disabledReason={LATER_PHASE}
+            active={p.armed?.kind === 'note'}
+            onClick={() => p.onArmTool('note')}
+            disabled={p.disabled}
           />
         </>,
       )}
@@ -105,8 +122,20 @@ export function Toolbar(p: ToolbarProps) {
       {group(
         'History',
         <>
-          <IconButton size="sm" label="Undo" icon={<Undo2 />} disabledReason={LATER_PHASE} />
-          <IconButton size="sm" label="Redo" icon={<Redo2 />} disabledReason={LATER_PHASE} />
+          <IconButton
+            size="sm"
+            label="Undo (Ctrl+Z)"
+            icon={<Undo2 />}
+            onClick={p.onUndo}
+            disabled={!p.canUndo}
+          />
+          <IconButton
+            size="sm"
+            label="Redo (Ctrl+Shift+Z)"
+            icon={<Redo2 />}
+            onClick={p.onRedo}
+            disabled={!p.canRedo}
+          />
         </>,
       )}
       <Sep />

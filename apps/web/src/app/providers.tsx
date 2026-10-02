@@ -3,6 +3,7 @@ import { ToastProvider } from '@/components/ui';
 import { DataProvider } from '@/lib/data/DataProvider';
 import { createSampleStore, type SampleStore } from '@/lib/data/sample-store';
 import { AuthProvider } from './auth/AuthProvider';
+import { localPersistence } from '@/lib/storage/local-persistence';
 
 /**
  * Review hooks for the static prototype: `?sample=empty` starts with no data, `?sample=loading`
@@ -23,7 +24,12 @@ export function Providers({ children, store: given, signedIn }: ProvidersProps) 
   const [{ store, loading }] = useState(() => {
     if (given) return { store: given, loading: false };
     const mode = sampleModeFromUrl();
-    return { store: createSampleStore(mode.seed), loading: mode.loading };
+    // Review modes (?sample=empty / loading) are throwaway; normal use is saved in this browser.
+    const reviewing = new URLSearchParams(window.location.search).has('sample');
+    return {
+      store: createSampleStore(mode.seed, {}, reviewing ? undefined : localPersistence),
+      loading: mode.loading,
+    };
   });
   return (
     <DataProvider store={store} loading={loading}>

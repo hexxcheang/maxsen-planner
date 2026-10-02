@@ -5,19 +5,33 @@ import type { Scene, SceneItem, SceneMarker, ScenePath } from '@maxsen/domain';
 const FONT = "'Instrument Sans Variable', 'Instrument Sans', system-ui, sans-serif";
 const INK = '#1F1D1A';
 
+type PickEvent = Konva.KonvaEventObject<MouseEvent | TouchEvent>;
+
 interface SceneLayerProps {
   scene: Scene;
   draggable: boolean;
-  onPick: (elementId: string, e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => void;
-  onMarkerDragEnd: (elementId: string, dx: number, dy: number) => void;
+  onPick: (elementId: string, e: PickEvent) => void;
+  onDragEnd: (elementId: string, dx: number, dy: number) => void;
 }
 
-function MarkerNode({
-  m,
-  draggable,
-  onPick,
-  onMarkerDragEnd,
-}: { m: SceneMarker } & Omit<SceneLayerProps, 'scene'>) {
+type NodeProps = Omit<SceneLayerProps, 'scene'>;
+
+/** Drag handlers for a node whose resting position is (x, y): report the delta, then snap back. */
+function dragProps(id: string, x: number, y: number, { draggable, onPick, onDragEnd }: NodeProps) {
+  return {
+    draggable,
+    onMouseDown: (e: PickEvent) => onPick(id, e),
+    onTouchStart: (e: PickEvent) => onPick(id, e),
+    onDragEnd: (e: Konva.KonvaEventObject<DragEvent>) => {
+      const dx = e.target.x() - x;
+      const dy = e.target.y() - y;
+      e.target.position({ x, y });
+      if (dx !== 0 || dy !== 0) onDragEnd(id, dx, dy);
+    },
+  };
+}
+
+function MarkerNode({ m, ...rest }: { m: SceneMarker } & NodeProps) {
   const filled = m.badgeStyle === 'filled';
   const badgeW = m.size * 1.4;
   return (
@@ -27,15 +41,7 @@ function MarkerNode({
         y={m.y}
         rotation={m.rotation}
         name={`element-${m.elementId}`}
-        draggable={draggable}
-        onMouseDown={(e) => onPick(m.elementId, e)}
-        onTouchStart={(e) => onPick(m.elementId, e)}
-        onDragEnd={(e) => {
-          const dx = e.target.x() - m.x;
-          const dy = e.target.y() - m.y;
-          e.target.position({ x: m.x, y: m.y });
-          onMarkerDragEnd(m.elementId, dx, dy);
-        }}
+        {...dragProps(m.elementId, m.x, m.y, rest)}
       >
         <Path
           data={m.pathD}
@@ -79,14 +85,10 @@ function MarkerNode({
   );
 }
 
-function PathNode({ p, onPick }: { p: ScenePath; onPick: SceneLayerProps['onPick'] }) {
+function PathNode({ p, ...rest }: { p: ScenePath } & NodeProps) {
   const magnetic = p.shape === 'magnetic';
   return (
-    <Group
-      name={`element-${p.elementId}`}
-      onMouseDown={(e) => onPick(p.elementId, e)}
-      onTouchStart={(e) => onPick(p.elementId, e)}
-    >
+    <Group name={`element-${p.elementId}`} {...dragProps(p.elementId, 0, 0, rest)}>
       <Path
         data={p.d}
         stroke={p.color}
@@ -143,7 +145,6 @@ function PathNode({ p, onPick }: { p: ScenePath; onPick: SceneLayerProps['onPick
             fontFamily={FONT}
             fill={INK}
             padding={p.label.fontSize * 0.25}
-            offsetX={0}
           />
         </Label>
       )}
@@ -151,18 +152,17 @@ function PathNode({ p, onPick }: { p: ScenePath; onPick: SceneLayerProps['onPick
   );
 }
 
-function ItemNode({ item, ...rest }: { item: SceneItem } & Omit<SceneLayerProps, 'scene'>) {
+function ItemNode({ item, ...rest }: { item: SceneItem } & NodeProps) {
   if (item.type === 'marker') return <MarkerNode m={item} {...rest} />;
-  if (item.type === 'path') return <PathNode p={item} onPick={rest.onPick} />;
+  if (item.type === 'path') return <PathNode p={item} {...rest} />;
   return (
     <Label
       x={item.x}
       y={item.y}
       name={`element-${item.elementId}`}
-      onMouseDown={(e) => rest.onPick(item.elementId, e)}
-      onTouchStart={(e) => rest.onPick(item.elementId, e)}
+      {...dragProps(item.elementId, item.x, item.y, rest)}
     >
-      <Tag fill={item.highlight ?? 'transparent'} cornerRadius={item.fontSize * 0.15} />
+      <Tag fill={item.highlight ?? 'rgba(255,255,255,0.01)'} cornerRadius={item.fontSize * 0.15} />
       <Text
         text={item.text}
         fontSize={item.fontSize}

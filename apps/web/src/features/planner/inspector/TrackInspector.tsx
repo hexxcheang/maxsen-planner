@@ -1,7 +1,8 @@
 import type { CategoryStyle, TrackPath, VariantSnapshot } from '@maxsen/domain';
 import { CategoryGlyph } from '@/components/CategoryGlyph';
 import { Field, NumberField, Select, Switch } from '@/components/ui';
-import { EDIT_LATER, InspectorSection, LayerAndActions } from './parts';
+import { usePlanner } from '../planner-context';
+import { InspectorSection, LayerAndActions } from './parts';
 
 interface Props {
   el: TrackPath;
@@ -11,6 +12,8 @@ interface Props {
 }
 
 export function TrackInspector({ el, snapshot, style, variantOptions }: Props) {
+  const { store, recordUse } = usePlanner();
+  const update = store.getState().updateElement;
   const magnetic = snapshot?.categoryId === 'magnetic-track-lights';
   return (
     <>
@@ -38,16 +41,29 @@ export function TrackInspector({ el, snapshot, style, variantOptions }: Props) {
             compact
             value={el.variantId}
             options={variantOptions}
-            disabled
-            title={EDIT_LATER}
+            onChange={(variantId) => {
+              recordUse(variantId);
+              update(el.id, { variantId });
+            }}
           />
         </Field>
         <Field label={magnetic ? 'Modules' : 'Heads'} hint="Spaced evenly along the track">
-          <NumberField compact value={el.headCount} min={1} stepper disabled />
+          <NumberField
+            compact
+            value={el.headCount}
+            min={1}
+            max={60}
+            stepper
+            onChange={(v) => v !== null && update(el.id, { headCount: v })}
+          />
         </Field>
-        <Switch checked={el.showLabel} label="Show track label" disabled />
+        <Switch
+          checked={el.showLabel}
+          onCheckedChange={(showLabel) => update(el.id, { showLabel })}
+          label="Show track label"
+        />
       </InspectorSection>
-      <LayerAndActions duplicate={false} />
+      <LayerAndActions offset={style.size} />
     </>
   );
 }

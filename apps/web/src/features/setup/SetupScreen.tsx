@@ -35,7 +35,13 @@ export function SetupScreen() {
         </p>
       </header>
       <div className="grid grid-cols-[240px_300px_minmax(0,1fr)] gap-8 max-[1180px]:grid-cols-[200px_260px_minmax(0,1fr)] max-[1180px]:gap-5">
-        <SourcePanel files={sources.files} pages={sources.pages} plans={plans} levels={levels} />
+        <SourcePanel
+          projectId={project.id}
+          files={sources.files}
+          pages={sources.pages}
+          plans={plans}
+          levels={levels}
+        />
         <LevelList
           projectId={project.id}
           levels={levels}
@@ -85,6 +91,8 @@ export function SetupScreen() {
                     plan={plan}
                     page={page}
                     file={sources.files.find((f) => f.id === page?.sourceFileId)}
+                    files={sources.files}
+                    pages={sources.pages}
                     adjusting={adjusting === type}
                     onAdjust={() => setAdjusting((a) => (a === type ? null : type))}
                   />

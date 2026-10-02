@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { ArrowDownToLine, ArrowUpToLine, ChevronDown, ChevronUp, Copy, Trash2 } from 'lucide-react';
-import { IconButton, LATER_PHASE } from '@/components/ui';
+import { IconButton, Input, Textarea } from '@/components/ui';
+import { usePlanner } from '../planner-context';
 
 export function InspectorSection({ title, children }: { title?: string; children: ReactNode }) {
   return (
@@ -11,54 +12,63 @@ export function InspectorSection({ title, children }: { title?: string; children
   );
 }
 
-export function LayerAndActions({ duplicate = true }: { duplicate?: boolean }) {
+/** Layer order, duplicate and delete for the current selection. */
+export function LayerAndActions({
+  duplicate = true,
+  offset,
+}: {
+  duplicate?: boolean;
+  offset: number;
+}) {
+  const { store } = usePlanner();
+  const s = store.getState();
   return (
     <InspectorSection title="Arrange">
       <div className="flex items-center gap-1">
         <IconButton
           size="sm"
           variant="secondary"
-          label="Bring to front"
+          label="Bring to front (Shift+])"
           icon={<ArrowUpToLine />}
-          disabledReason={LATER_PHASE}
+          onClick={() => s.reorder('front')}
         />
         <IconButton
           size="sm"
           variant="secondary"
-          label="Bring forward"
+          label="Bring forward (])"
           icon={<ChevronUp />}
-          disabledReason={LATER_PHASE}
+          onClick={() => s.reorder('forward')}
         />
         <IconButton
           size="sm"
           variant="secondary"
-          label="Send backward"
+          label="Send backward ([)"
           icon={<ChevronDown />}
-          disabledReason={LATER_PHASE}
+          onClick={() => s.reorder('backward')}
         />
         <IconButton
           size="sm"
           variant="secondary"
-          label="Send to back"
+          label="Send to back (Shift+[)"
           icon={<ArrowDownToLine />}
-          disabledReason={LATER_PHASE}
+          onClick={() => s.reorder('back')}
         />
         <span className="ml-auto flex gap-1">
           {duplicate && (
             <IconButton
               size="sm"
               variant="secondary"
-              label="Duplicate"
+              label="Duplicate (Ctrl+D)"
               icon={<Copy />}
-              disabledReason={LATER_PHASE}
+              onClick={() => s.duplicateSelection(offset)}
             />
           )}
           <IconButton
             size="sm"
             variant="secondary"
-            label="Delete"
+            label="Delete (Delete)"
             icon={<Trash2 />}
-            disabledReason={LATER_PHASE}
+            onClick={() => s.deleteSelection()}
           />
         </span>
       </div>
@@ -66,5 +76,47 @@ export function LayerAndActions({ duplicate = true }: { duplicate?: boolean }) {
   );
 }
 
-/** Editing controls render with real values; Phase E/F make them editable. */
-export const EDIT_LATER = `Editing: ${LATER_PHASE.toLowerCase()}`;
+/** A text input that saves on blur or Enter, so typing makes one undo step, not one per key. */
+export function CommitInput({
+  value,
+  onCommit,
+  multiline,
+  ...rest
+}: {
+  value: string;
+  onCommit: (v: string) => void;
+  multiline?: boolean;
+  placeholder?: string;
+  id?: string;
+  'aria-label'?: string;
+}) {
+  const [text, setText] = useState(value);
+  useEffect(() => setText(value), [value]);
+  const commit = () => {
+    if (text !== value) onCommit(text);
+  };
+  if (multiline) {
+    return (
+      <Textarea
+        rows={3}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) commit();
+        }}
+        {...rest}
+      />
+    );
+  }
+  return (
+    <Input
+      compact
+      value={text}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => e.key === 'Enter' && commit()}
+      {...rest}
+    />
+  );
+}

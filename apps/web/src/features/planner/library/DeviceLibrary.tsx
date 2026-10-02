@@ -16,9 +16,12 @@ import { VariantTile } from './VariantTile';
 interface DeviceLibraryProps {
   projectId: string;
   planType: PlanType;
+  /** The variant currently armed for placement. */
+  armedVariantId?: string | null;
+  onArm?: (variantId: string) => void;
 }
 
-export function DeviceLibrary({ projectId, planType }: DeviceLibraryProps) {
+export function DeviceLibrary({ projectId, planType, armedVariantId, onArm }: DeviceLibraryProps) {
   const [search, setSearch] = useState('');
   const { data: catalogue } = useCatalogue();
   const { data: settings } = useSettings();
@@ -45,6 +48,8 @@ export function DeviceLibrary({ projectId, planType }: DeviceLibraryProps) {
               product={p}
               style={styleFor(p)}
               productFirst={productFirst}
+              armed={armedVariantId === v.id}
+              onArm={onArm}
             />,
           ]
         : [];

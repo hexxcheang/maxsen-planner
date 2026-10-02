@@ -1,7 +1,8 @@
 import type { CategoryStyle, LedStripPath, VariantSnapshot } from '@maxsen/domain';
 import { CategoryGlyph } from '@/components/CategoryGlyph';
 import { Badge, Field, NumberField, Select, Switch } from '@/components/ui';
-import { EDIT_LATER, InspectorSection, LayerAndActions } from './parts';
+import { usePlanner } from '../planner-context';
+import { InspectorSection, LayerAndActions } from './parts';
 
 interface Props {
   el: LedStripPath;
@@ -11,6 +12,8 @@ interface Props {
 }
 
 export function LedInspector({ el, snapshot, style, variantOptions }: Props) {
+  const { store, recordUse } = usePlanner();
+  const update = store.getState().updateElement;
   return (
     <>
       <InspectorSection>
@@ -31,8 +34,10 @@ export function LedInspector({ el, snapshot, style, variantOptions }: Props) {
             compact
             value={el.variantId}
             options={variantOptions}
-            disabled
-            title={EDIT_LATER}
+            onChange={(variantId) => {
+              recordUse(variantId);
+              update(el.id, { variantId });
+            }}
           />
         </Field>
         <Field
@@ -44,16 +49,36 @@ export function LedInspector({ el, snapshot, style, variantOptions }: Props) {
           }
           error={el.metres === null ? 'Enter the length so totals are right' : undefined}
         >
-          <NumberField compact value={el.metres} unit="m" precision={2} allowEmpty disabled />
+          <NumberField
+            compact
+            value={el.metres}
+            unit="m"
+            precision={2}
+            min={0}
+            allowEmpty
+            onChange={(metres) => update(el.id, { metres })}
+          />
         </Field>
         <div className="flex flex-wrap gap-1.5">
           <Badge>{el.points.length} points</Badge>
-          {el.closed && <Badge>Closed loop</Badge>}
-          {el.smooth && <Badge>Smooth curve</Badge>}
         </div>
-        <Switch checked={el.showLabel} label="Show length label" disabled />
+        <Switch
+          checked={el.closed}
+          onCheckedChange={(closed) => update(el.id, { closed })}
+          label="Closed loop"
+        />
+        <Switch
+          checked={el.smooth}
+          onCheckedChange={(smooth) => update(el.id, { smooth })}
+          label="Smooth curve"
+        />
+        <Switch
+          checked={el.showLabel}
+          onCheckedChange={(showLabel) => update(el.id, { showLabel })}
+          label="Show length label"
+        />
       </InspectorSection>
-      <LayerAndActions duplicate={false} />
+      <LayerAndActions offset={style.size} />
     </>
   );
 }
