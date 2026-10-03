@@ -5,11 +5,15 @@
  */
 import {
   buildInvoice,
+  INVOICE_STAGES,
   invoiceNumber,
   resolvePricing,
+  stageAmounts,
   type Invoice,
+  type InvoiceStage,
   type PricingSettings,
   type Project,
+  type StageAmounts,
 } from '@maxsen/domain';
 import type { Style as ExcelStyle } from 'exceljs';
 import type { ExportContext } from './generate';
@@ -79,6 +83,7 @@ export async function buildInvoiceXlsx({
   pricing,
   number,
   date = new Date(),
+  payment,
 }: {
   /** Who the invoice is for: printed in the template's client block. */
   client: { name: string; contact: string };
@@ -86,6 +91,8 @@ export async function buildInvoiceXlsx({
   pricing: PricingSettings;
   number: string;
   date?: Date;
+  /** For the 2nd and final invoices: what's been paid and what this one asks for. */
+  payment?: StageAmounts;
 }): Promise<Blob> {
   const { default: ExcelJS } = await import('exceljs');
   const res = await fetch(TEMPLATE_URL);
@@ -225,14 +232,33 @@ export async function buildInvoiceXlsx({
     'GRANT TOTAL (S$)',
     { formula: `F${totalRow}`, result: invoice.total },
   ]);
-  put('deposit', [
-    null,
-    null,
-    null,
-    null,
-    'DEPOSIT REQUEST (S$)',
-    { formula: `F${grandRow}*${pricing.depositPercent}/100`, result: invoice.deposit },
-  ]);
+  if (!payment || payment.stage === 'deposit') {
+    put('deposit', [
+      null,
+      null,
+      null,
+      null,
+      'DEPOSIT REQUEST (S$)',
+      { formula: `F${grandRow}*${pricing.depositPercent}/100`, result: invoice.deposit },
+    ]);
+  } else {
+    const paidRow = put('deposit', [null, null, null, null, 'LESS PAID (S$)', payment.paid]);
+    ws.getCell(`E${paidRow}`).font = {
+      ...ws.getCell(`E${paidRow}`).font,
+      color: { argb: INK.text },
+    };
+    put('deposit', [
+      null,
+      null,
+      null,
+      null,
+      payment.stage === 'second' ? '2ND PAYMENT (S$)' : 'FINAL PAYMENT (S$)',
+      {
+        formula: `MAX(0,F${grandRow}*${payment.percent}/100-F${paidRow})`,
+        result: payment.due,
+      },
+    ]);
+  }
   put('rule', []);
   const details = put('details', [
     'DETAILS',
@@ -270,17 +296,44 @@ export function projectInvoice(ctx: Pick<ExportContext, 'lines' | 'settings' | '
   return { pricing, invoice: buildInvoice(ctx.lines, (id) => prices.get(id) ?? null, pricing) };
 }
 
-/** The project's invoice number, or a new one from today's date. */
-export function projectInvoiceNumber(project: Project, pricing: PricingSettings): string {
-  return project.exportSettings.invoiceNumber || invoiceNumber(pricing.invoicePrefix, new Date());
+/**
+ * The project's invoice number for a payment stage, or a new one from today's date (counting up
+ * per stage, so the deposit, 2nd and final invoices made on one day don't share a number).
+ */
+export function projectInvoiceNumber(
+  project: Project,
+  pricing: PricingSettings,
+  stage: InvoiceStage = 'deposit',
+): string {
+  const s = project.exportSettings;
+  const saved = stage === 'deposit' ? s.invoiceNumber : s.billing?.numbers?.[stage];
+  return (
+    saved || invoiceNumber(pricing.invoicePrefix, new Date(), INVOICE_STAGES.indexOf(stage) + 1)
+  );
+}
+
+/** Which payment the project's invoice asks for, with its number and amounts. */
+export function projectPayment(
+  ctx: Pick<ExportContext, 'lines' | 'settings' | 'variants' | 'project'>,
+) {
+  const { pricing, invoice } = projectInvoice(ctx);
+  const billing = ctx.project.exportSettings.billing;
+  const amounts = stageAmounts(invoice.total, pricing, billing);
+  return {
+    pricing,
+    invoice,
+    amounts,
+    number: projectInvoiceNumber(ctx.project, pricing, amounts.stage),
+  };
 }
 
 export async function buildProjectInvoice(ctx: ExportContext): Promise<Blob> {
-  const { pricing, invoice } = projectInvoice(ctx);
+  const { pricing, invoice, amounts, number } = projectPayment(ctx);
   return buildInvoiceXlsx({
     client: { name: ctx.project.customerName, contact: ctx.project.customerContact },
     invoice,
     pricing,
-    number: projectInvoiceNumber(ctx.project, pricing),
+    number,
+    payment: amounts,
   });
 }

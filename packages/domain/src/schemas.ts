@@ -99,6 +99,8 @@ const customerToggles = {
   showPropertyAddress: z.boolean(),
 };
 
+const invoiceStageSchema = z.enum(['deposit', 'second', 'final']);
+
 export const exportSettingsSchema = z.object({
   floorPlan: z.object({
     ...customerToggles,
@@ -114,6 +116,25 @@ export const exportSettingsSchema = z.object({
     ...customerToggles,
     excludedCategories: z.array(categoryIdSchema),
   }),
+  invoiceNumber: z.string().max(60).optional(),
+  billing: z
+    .object({
+      stage: invoiceStageSchema,
+      numbers: z.partialRecord(invoiceStageSchema, z.string().max(60)).optional(),
+      paid: z.partialRecord(invoiceStageSchema, z.number().finite().min(0)).optional(),
+      issued: z
+        .partialRecord(
+          invoiceStageSchema,
+          z.object({
+            number: z.string(),
+            total: z.number().finite(),
+            due: z.number().finite(),
+            date: z.string(),
+          }),
+        )
+        .optional(),
+    })
+    .optional(),
 }) satisfies z.ZodType<ExportSettings>;
 
 /** Icon sizes are plan units; the admin presets run 12–34, the field allows a little either side. */

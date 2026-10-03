@@ -155,8 +155,31 @@ export interface ProductPdfExportSettings {
 export interface ExportSettings {
   floorPlan: FloorPlanExportSettings;
   productDescription: ProductPdfExportSettings;
-  /** Invoice number for this project's invoice; generated when absent. */
+  /** Invoice number for this project's (deposit) invoice; generated when absent. */
   invoiceNumber?: string;
+  /** Which payment the next invoice asks for, and what earlier invoices asked for. */
+  billing?: ProjectBilling;
+}
+
+/** The three payments in Maxsen's terms: deposit, at the start of installation, and the balance. */
+export type InvoiceStage = 'deposit' | 'second' | 'final';
+
+export interface IssuedInvoice {
+  number: string;
+  /** Grand total and the amount asked for, when the invoice was generated. */
+  total: number;
+  due: number;
+  date: string;
+}
+
+export interface ProjectBilling {
+  stage: InvoiceStage;
+  /** Invoice numbers for the 2nd and final invoices (the deposit uses `invoiceNumber`). */
+  numbers?: Partial<Record<InvoiceStage, string>>;
+  /** Already collected, as typed in; suggested from earlier invoices when absent. */
+  paid?: Partial<Record<InvoiceStage, number>>;
+  /** The last invoice generated at each stage. */
+  issued?: Partial<Record<InvoiceStage, IssuedInvoice>>;
 }
 
 export interface ProjectDetails {

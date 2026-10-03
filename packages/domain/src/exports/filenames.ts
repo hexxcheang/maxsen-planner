@@ -1,3 +1,5 @@
+import type { InvoiceStage } from '../types.ts';
+
 export type ExportKind = 'floor-plan' | 'product-description' | 'quantity' | 'invoice';
 
 const MAX_LENGTH = 100;
@@ -31,7 +33,14 @@ const SUFFIX: Record<ExportKind, string> = {
   invoice: ' - Invoice.xlsx',
 };
 
+const STAGE_SUFFIX: Record<Exclude<InvoiceStage, 'deposit'>, string> = {
+  second: ' - 2nd Payment Invoice.xlsx',
+  final: ' - Final Invoice.xlsx',
+};
+
 /** Export filenames per product spec §11. */
-export function exportFilename(title: string, kind: ExportKind): string {
-  return `${sanitiseFilename(title)}${SUFFIX[kind]}`;
+export function exportFilename(title: string, kind: ExportKind, stage?: InvoiceStage): string {
+  const suffix =
+    kind === 'invoice' && stage && stage !== 'deposit' ? STAGE_SUFFIX[stage] : SUFFIX[kind];
+  return `${sanitiseFilename(title)}${suffix}`;
 }

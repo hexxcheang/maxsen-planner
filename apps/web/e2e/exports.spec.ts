@@ -97,4 +97,55 @@ test.describe('exports', () => {
     expect((total.f as { formula: string }).formula).toMatch(/^SUM\(F15:F\d+\)$/);
     expect(rows.some((r) => r.b.startsWith('Delivery Terms'))).toBe(true);
   });
+
+  test('2nd and final invoices suggest what was paid and ask for the rest', async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'File generation is viewport-independent');
+    await page.goto('/projects/proj_sample_lim/exports');
+    const panel = page.getByRole('region', { name: 'Invoice' });
+    const due = panel.getByTestId('invoice-due');
+    const money = async () => Number(/[\d.]+/.exec((await due.innerText()).replace(/,/g, ''))?.[0]);
+
+    // The deposit invoice records what it asked for.
+    await panel.getByRole('button', { name: 'Generate' }).click();
+    await expect(panel.getByRole('link', { name: 'Download' })).toBeVisible();
+    const deposit = await money();
+
+    await panel.getByRole('radio', { name: '2nd payment' }).click();
+    const paid = panel.getByLabel('Already paid (S$)');
+    await expect(paid).toHaveValue(String(deposit));
+    await expect(panel.getByText(/Suggested from Deposit invoice/)).toBeVisible();
+    const second = await money();
+    await panel.screenshot({ path: 'test-results/screens/exports-invoice-second.png' });
+    expect(second).toBeGreaterThan(0);
+
+    // Change what was collected: the amount due follows at once, and can be reset.
+    await paid.fill(String(deposit - 100));
+    await expect.poll(money).toBeCloseTo(second + 100, 2);
+    await panel.getByRole('button', { name: 'Use suggested' }).click();
+    await expect(paid).toHaveValue(String(deposit));
+
+    await panel.getByRole('button', { name: /Generate/ }).click();
+    const link = panel.getByRole('link', { name: 'Download' });
+    const [download] = await Promise.all([page.waitForEvent('download'), link.click()]);
+    expect(download.suggestedFilename()).toBe(
+      'Lim Family Home - Serangoon Gardens - 2nd Payment Invoice.xlsx',
+    );
+    const path = testInfo.outputPath(download.suggestedFilename());
+    await download.saveAs(path);
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load((await readFile(path)) as unknown as Parameters<typeof wb.xlsx.load>[0]);
+    const labels: Record<string, unknown> = {};
+    wb.worksheets[0]!.eachRow((row, n) => {
+      if (n > 14) labels[row.getCell(5).text] = row.getCell(6).value;
+    });
+    expect(labels['LESS PAID (S$)']).toBe(deposit);
+    expect((labels['2ND PAYMENT (S$)'] as { result: number }).result).toBeCloseTo(second, 2);
+
+    // The final invoice suggests deposit + 2nd payment, and asks for the balance.
+    await panel.getByRole('radio', { name: 'Final' }).click();
+    await expect(paid).toHaveValue(String(Math.round((deposit + second) * 100) / 100));
+    await expect(panel.getByText(/\(balance\)/)).toBeVisible();
+  });
 });

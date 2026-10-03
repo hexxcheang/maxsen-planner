@@ -109,11 +109,13 @@ const tokens = (s: string) => s.toLowerCase().match(/[a-z0-9]+/g) ?? [];
 
 /** Splits a message into phrases, one item each. */
 export function splitPhrases(text: string): string[] {
-  return text
-    .split(/\n|[;,•]|\s+(?:and|&|plus|also|then)\s+|(?<!\b\d+)\.\s+/i)
-    // Without list bullets ("- ", "• ", "1. ", "2) ").
-    .map((s) => s.replace(/^\s*(?:[-*–]+|\d+[.)])\s+/, '').trim())
-    .filter((s) => s.length > 0);
+  return (
+    text
+      .split(/\n|[;,•]|\s+(?:and|&|plus|also|then)\s+|(?<!\b\d+)\.\s+/i)
+      // Without list bullets ("- ", "• ", "1. ", "2) ").
+      .map((s) => s.replace(/^\s*(?:[-*–]+|\d+[.)])\s+/, '').trim())
+      .filter((s) => s.length > 0)
+  );
 }
 
 /** The details a phrase gives about the variant, as words to match against variant names. */

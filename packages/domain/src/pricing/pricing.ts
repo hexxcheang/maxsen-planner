@@ -40,6 +40,8 @@ export interface PricingSettings {
   warranty: string;
   /** Share of the total asked as deposit, in percent. */
   depositPercent: number;
+  /** Share of the total due at the start of installation (the second payment), in percent. */
+  secondPercent: number;
   /** Invoice numbers are this prefix plus the date (yymmdd) and a 2-digit count. */
   invoicePrefix: string;
   /** One package per switch series (Ark, Nova+ Pro, Lusano+), each with its own price. */
@@ -90,6 +92,7 @@ export const DEFAULT_PRICING: PricingSettings = {
     'Delivery Terms: The services/items will commence after receiving 60% deposit.\nPayment Terms: Next, 30% to be paid on the starting date of installation of the proposed devices in the above statement. Last, 10% to be paid before the integration of all stated smart home devices into the smartlife application. Grant Total in the final invoice is subjected to changes made during the Installation process. ',
   warranty: '2 Years On-Site Warranty for All Devices Stated in the Invoice.',
   depositPercent: 60,
+  secondPercent: 30,
   invoicePrefix: 'MXN-HX-',
   // From the price catalogue: each switch series has its own core package of 10.
   switches: [

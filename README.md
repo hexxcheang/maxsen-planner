@@ -161,6 +161,10 @@ and waived. Every other device is charged at its catalogue price, and the invoic
   **Admin settings › Pricing**.
 - Upload your newest price catalogue PDF in the same place, for reference. Prices aren't read from it
   automatically, because the catalogue PDF is made of images rather than text.
+- **Payments:** in **Exports › Invoice**, choose _Deposit_, _2nd payment_ or _Final_. The 2nd
+  payment invoice asks for 90% (deposit + 2nd payment %) of today's total less what was paid; the
+  final invoice asks for the balance. _Already paid_ is suggested from the earlier invoices generated
+  for the project; change it to what was actually collected.
 
 **LED strips:** select a strip on the plan to get round handles on its points. Drag them to bend,
 lengthen or shorten the run. The **+** just past its end adds a point that you can drag to any angle.

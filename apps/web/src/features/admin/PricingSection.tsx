@@ -386,6 +386,17 @@ export function PricingSection() {
             onChange={(v) => set('depositPercent', num(v))}
           />
         </Field>
+        <Field
+          label="2nd payment (%)"
+          hint="Due when installation starts; the rest is the final payment."
+        >
+          <NumberField
+            value={draft.secondPercent}
+            min={0}
+            max={100}
+            onChange={(v) => set('secondPercent', num(v))}
+          />
+        </Field>
         <Field label="Warranty line" className={wide}>
           <Input value={draft.warranty} onChange={(e) => set('warranty', e.target.value)} />
         </Field>

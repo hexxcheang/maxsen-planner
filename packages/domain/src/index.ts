@@ -25,4 +25,5 @@ export * from './magic/vision/index.ts';
 export * from './magic/room-layout.ts';
 export * from './pricing/pricing.ts';
 export * from './pricing/invoice.ts';
+export * from './pricing/billing.ts';
 export * from './quote/parse-message.ts';

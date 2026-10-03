@@ -94,7 +94,7 @@ export function ExportsScreen() {
   const { data: settings } = useSettings();
   const exp = useExports(project);
   const panel = (kind: ExportKind) => ({
-    filename: exportFilename(project.title, kind),
+    filename: exportFilename(project.title, kind, project.exportSettings.billing?.stage),
     state: exp.state[kind],
     onGenerate: () => void exp.generate(kind),
   });
@@ -140,7 +140,7 @@ export function ExportsScreen() {
         <ExportPanel
           title="Invoice"
           icon={<Receipt />}
-          summary="Your invoice template filled in: packages, add-ons and other devices priced, with total and deposit."
+          summary="Your invoice template filled in: packages, add-ons and other devices priced, with the total and the deposit, 2nd or final payment due."
           {...panel('invoice')}
         >
           <InvoiceOptions project={project} settings={settings} />
