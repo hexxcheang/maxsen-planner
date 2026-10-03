@@ -26,6 +26,7 @@ import { Page } from '@/components/Page';
 import { formatMoney } from '@/lib/format';
 import { useCatalogue, useSettings } from '@/lib/data/hooks';
 import { buildInvoiceXlsx } from '@/features/exports/build/invoice';
+import { buildQuotationPdf } from '@/features/exports/build/generate';
 
 interface Draft {
   message: string;
@@ -56,7 +57,7 @@ function loadDraft(prefix: string): Draft {
   }
 }
 
-const money = (n: number) => `S$${formatMoney(n)}`;
+const money = (n: number) => `${n < 0 ? '-' : ''}S$${formatMoney(Math.abs(n))}`;
 
 /**
  * Quick quote: paste a client's message, check the items it was read into, and get the exact
@@ -187,19 +188,28 @@ export function QuoteScreen() {
     }
   };
 
-  const download = async () => {
-    const blob = await buildInvoiceXlsx({
-      client: { name: draft.clientName, contact: draft.clientContact },
-      invoice,
-      pricing,
-      number: draft.number,
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Quotation ${draft.number}${draft.clientName ? ` - ${draft.clientName}` : ''}.xlsx`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  const [making, setMaking] = useState<'pdf' | 'xlsx' | null>(null);
+  /** Builds the quotation file and hands it to the browser to save. */
+  const download = async (kind: 'pdf' | 'xlsx') => {
+    setMaking(kind);
+    try {
+      const client = { name: draft.clientName, contact: draft.clientContact };
+      const blob =
+        kind === 'pdf'
+          ? await buildQuotationPdf({ client, invoice, pricing, number: draft.number, settings })
+          : await buildInvoiceXlsx({ client, invoice, pricing, number: draft.number });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Quotation ${draft.number}${draft.clientName ? ` - ${draft.clientName}` : ''}.${kind}`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    } catch (e) {
+      console.error(e);
+      toast({ title: 'The quotation couldn’t be made', tone: 'danger' });
+    } finally {
+      setMaking(null);
+    }
   };
 
   const items = invoice.rows.filter((r) => r.kind === 'item').length;
@@ -431,11 +441,19 @@ export function QuoteScreen() {
                     Copy as text
                   </Button>
                   <Button
-                    variant="primary"
                     icon={<Download className="size-4" />}
-                    onClick={() => void download()}
+                    loading={making === 'xlsx'}
+                    onClick={() => void download('xlsx')}
                   >
                     Download quotation (Excel)
+                  </Button>
+                  <Button
+                    variant="primary"
+                    icon={<Download className="size-4" />}
+                    loading={making === 'pdf'}
+                    onClick={() => void download('pdf')}
+                  >
+                    Download quotation (PDF)
                   </Button>
                 </div>
               </>

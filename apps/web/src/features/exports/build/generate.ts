@@ -8,6 +8,8 @@ import {
   categoryById,
   resolveCategoryStyle,
   type CategoryId,
+  type Invoice,
+  type PricingSettings,
   type Level,
   type Plan,
   type Project,
@@ -17,7 +19,7 @@ import {
   type Variant,
 } from '@maxsen/domain';
 import { fileUrl } from '@/lib/files';
-import { formatDate, formatQuantity } from '@/lib/format';
+import { formatDate, formatMoney, formatQuantity } from '@/lib/format';
 import { imageToArtwork, imageToPngDataUrl } from '@/lib/images';
 import { floorPlanPages, productSections, quantitySections } from './content';
 import { monogramUrl, type PatternKind } from './monogram';
@@ -242,7 +244,7 @@ async function cover(
   doc: JsPdf,
   assets: Assets,
   kind: string,
-  project: Project,
+  title: string,
   customer: string[],
   settings: Settings,
 ) {
@@ -271,9 +273,9 @@ async function cover(
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(32);
   doc.setTextColor(...DEEP);
-  const title = doc.splitTextToSize(project.title, W - M * 2) as string[];
-  doc.text(title, M, top + 15, { lineHeightFactor: 1.12 });
-  const afterTitle = top + 15 + (title.length - 1) * 13.5;
+  const titleLines = doc.splitTextToSize(title, W - M * 2) as string[];
+  doc.text(titleLines, M, top + 15, { lineHeightFactor: 1.12 });
+  const afterTitle = top + 15 + (titleLines.length - 1) * 13.5;
   doc.setDrawColor(...ROSE);
   doc.setLineWidth(0.8);
   doc.line(M, afterTitle + 9, M + 28, afterTitle + 9);
@@ -294,7 +296,7 @@ async function cover(
       doc.text(doc.splitTextToSize(line, col - 6) as string[], x, foot + 5 + j * 5.2);
     });
   };
-  block(0, 'Prepared for', customer.length ? customer : [project.title]);
+  block(0, 'Prepared for', customer.length ? customer : [title]);
   block(1, 'Date', [formatDate(new Date().toISOString())]);
   block(
     2,
@@ -379,7 +381,7 @@ export async function buildFloorPlanPdf({
   const doc = await newPdf(size(first), landscape(first));
   const assets = await loadAssets(settings);
   const customer = customerLines(project, fp);
-  await cover(doc, assets, 'Marked Floor Plan', project, customer, settings);
+  await cover(doc, assets, 'Marked Floor Plan', project.title, customer, settings);
 
   for (const [index, { level, plan }] of pages.entries()) {
     doc.addPage([...size(level)], landscape(level) ? 'landscape' : 'portrait');
@@ -537,7 +539,14 @@ export async function buildProductPdf({
   const pd = project.exportSettings.productDescription;
   const doc = await newPdf(PAPER.A4, false);
   const assets = await loadAssets(settings);
-  await cover(doc, assets, 'Product Description', project, customerLines(project, pd), settings);
+  await cover(
+    doc,
+    assets,
+    'Product Description',
+    project.title,
+    customerLines(project, pd),
+    settings,
+  );
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
   const M = 18;
@@ -729,5 +738,180 @@ export async function buildProductPdf({
     cy += 16;
   }
   footers(doc, settings, () => M, new Set([1, doc.getNumberOfPages()]));
+  return doc.output('blob');
+}
+
+// --- quotation ------------------------------------------------------------------------------------
+
+/**
+ * A quotation as a proposal-style PDF: the champagne cover, then the items priced as on the invoice
+ * (packages highlighted, sections for lighting), the total and deposit, and the warranty, terms
+ * and payment details from Admin › Pricing.
+ */
+export async function buildQuotationPdf({
+  client,
+  invoice,
+  pricing,
+  number,
+  settings,
+}: {
+  client: { name: string; contact: string };
+  invoice: Invoice;
+  pricing: PricingSettings;
+  number: string;
+  settings: Settings;
+}): Promise<Blob> {
+  const doc = await newPdf(PAPER.A4, false);
+  const assets = await loadAssets(settings);
+  const customer = [client.name, client.contact].filter(Boolean);
+  await cover(
+    doc,
+    assets,
+    `Quotation ${number}`,
+    client.name ? `Smart home quotation for ${client.name}` : 'Smart home quotation',
+    customer,
+    settings,
+  );
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
+  const M = 18;
+  const money = (n: number) => `${n < 0 ? '-' : ''}S$${formatMoney(Math.abs(n))}`;
+  // Columns: number, item, quantity, unit price, amount (right edges for the figures).
+  const col = { no: M + 1, item: M + 13, qty: W - M - 62, unit: W - M - 32, amount: W - M };
+  const itemW = col.qty - 10 - col.item;
+  let y = 0;
+  const head = () => {
+    doc.setFillColor(...SAND);
+    doc.rect(M, y, W - M * 2, 8, 'F');
+    doc.setFillColor(...ROSE);
+    doc.rect(M, y, 1.2, 8, 'F');
+    eyebrow(doc, 'No.', col.no + 1.5, y + 5.2, BRONZE, 6.5);
+    eyebrow(doc, 'Item', col.item, y + 5.2, BRONZE, 6.5);
+    eyebrow(doc, 'Qty', col.qty, y + 5.2, BRONZE, 6.5, true);
+    eyebrow(doc, 'Unit price', col.unit, y + 5.2, BRONZE, 6.5, true);
+    eyebrow(doc, 'Amount', col.amount - 2, y + 5.2, BRONZE, 6.5, true);
+    y += 12;
+  };
+  const newPage = (continued: boolean, table = true) => {
+    doc.addPage();
+    y =
+      pageHeader(
+        doc,
+        assets,
+        `Quotation ${number}`,
+        continued ? 'Your quotation (continued)' : 'Your quotation',
+        M,
+      ) + 4;
+    if (table) head();
+  };
+  const ensure = (needed: number, table = true) => {
+    if (y + needed > H - M - 8) newPage(true, table);
+  };
+
+  newPage(false);
+  let n = 0;
+  for (const row of invoice.rows) {
+    if (row.kind === 'note') continue;
+    if (row.kind === 'section') {
+      ensure(14);
+      y += 3;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10.5);
+      doc.setTextColor(...DEEP);
+      doc.text(row.title, col.item, y);
+      doc.setDrawColor(...ROSE);
+      doc.setLineWidth(0.5);
+      doc.line(col.item, y + 2, col.item + 14, y + 2);
+      y += 8;
+      continue;
+    }
+    // The first line of an item is its name; the rest (a package's contents) is the detail.
+    const [first = '', ...rest] = row.description.split('\n').filter((l) => l.trim());
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
+    const nameLines = doc.splitTextToSize(first, itemW) as string[];
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    const detail = rest.flatMap((l) => doc.splitTextToSize(l.trim(), itemW) as string[]);
+    const h = nameLines.length * 4.4 + detail.length * 3.7 + 5;
+    ensure(h + 2);
+    if (row.highlight) {
+      doc.setFillColor(...IVORY);
+      doc.rect(M, y - 3.5, W - M * 2, h, 'F');
+      doc.setFillColor(...ROSE);
+      doc.rect(M, y - 3.5, 0.8, h, 'F');
+    }
+    n++;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(...MUTED);
+    doc.text(String(n).padStart(2, '0'), col.no + 1.5, y + 0.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
+    doc.setTextColor(...DEEP);
+    doc.text(nameLines, col.item, y + 0.5, { lineHeightFactor: 1.3 });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...INK_2);
+    if (detail.length)
+      doc.text(detail, col.item, y + nameLines.length * 4.4 + 0.5, { lineHeightFactor: 1.3 });
+    doc.setFontSize(9.5);
+    doc.setTextColor(...INK);
+    doc.text(String(row.quantity), col.qty, y + 0.5, { align: 'right' });
+    doc.text(row.unitPrice === null ? '—' : money(row.unitPrice), col.unit, y + 0.5, {
+      align: 'right',
+    });
+    doc.setFont('helvetica', 'bold');
+    doc.text(money(row.quantity * (row.unitPrice ?? 0)), col.amount - 2, y + 0.5, {
+      align: 'right',
+    });
+    y += h;
+    doc.setDrawColor(...RULE);
+    doc.setLineWidth(0.15);
+    doc.line(M, y - 3.5, W - M, y - 3.5);
+  }
+
+  // Total and deposit, set apart on the right.
+  ensure(30, false);
+  y += 4;
+  const left = col.qty - 20;
+  doc.setDrawColor(...DEEP);
+  doc.setLineWidth(0.3);
+  doc.line(left, y, W - M, y);
+  doc.setFillColor(...ROSE);
+  doc.rect(left, y - 0.6, 18, 1.2, 'F');
+  y += 8;
+  eyebrow(doc, 'Total', left, y, BRONZE, 7.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(15);
+  doc.setTextColor(...DEEP);
+  doc.text(money(invoice.total), col.amount - 2, y + 0.5, { align: 'right' });
+  y += 8;
+  eyebrow(doc, `Deposit (${pricing.depositPercent}%)`, left, y, BRONZE, 7);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10.5);
+  doc.setTextColor(...INK_2);
+  doc.text(money(invoice.deposit), col.amount - 2, y, { align: 'right' });
+  y += 12;
+
+  // Warranty, terms and payment details.
+  const paragraph = (label: string, text: string) => {
+    if (!text.trim()) return;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    const lines = doc.splitTextToSize(text, W - M * 2) as string[];
+    ensure(10 + lines.length * 3.9, false);
+    eyebrow(doc, label, M, y, BRONZE, 7);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(...INK_2);
+    doc.text(lines, M, y + 5, { lineHeightFactor: 1.35 });
+    y += 9 + lines.length * 3.9;
+  };
+  paragraph('Warranty', pricing.warranty);
+  paragraph('Terms', pricing.terms);
+  paragraph('Payment', pricing.bankDetails);
+
+  footers(doc, settings, () => M, new Set([1]));
   return doc.output('blob');
 }

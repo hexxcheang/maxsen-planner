@@ -51,5 +51,18 @@ test.describe('quick quote', () => {
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.load((await readFile(path)) as unknown as Parameters<typeof wb.xlsx.load>[0]);
     expect(wb.worksheets[0]!.getCell('B11').value).toBe('Mr Tan');
+
+    // And as a proposal-style PDF.
+    const [pdfDownload] = await Promise.all([
+      page.waitForEvent('download'),
+      page.getByRole('button', { name: 'Download quotation (PDF)' }).click(),
+    ]);
+    expect(pdfDownload.suggestedFilename()).toMatch(/^Quotation .* - Mr Tan\.pdf$/);
+    const pdfPath = testInfo.outputPath('quote.pdf');
+    await pdfDownload.saveAs(pdfPath);
+    const pdf = await readFile(pdfPath);
+    expect(pdf.subarray(0, 5).toString()).toBe('%PDF-');
+    // A cover and at least one page of items.
+    expect(pdf.toString('latin1').match(/\/Type \/Page\b/g)!.length).toBeGreaterThanOrEqual(2);
   });
 });

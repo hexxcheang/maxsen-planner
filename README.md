@@ -70,7 +70,9 @@ from its details ("2 gang", "black", "warm white", "double") and the quantity or
 drivers are added for the strip (one per 5 m, the LED package's ratio). Anything with a number that
 names no product is listed as not recognised. Check and adjust the items, and the quotation is priced
 exactly as on the invoice (packages, add-ons, integration and deposit). _Copy as text_ gives a version
-to paste into WhatsApp; _Download quotation (Excel)_ fills the invoice template. The quote in progress
+to paste into WhatsApp; _Download quotation (PDF)_ gives a proposal-style quotation (the champagne cover,
+the priced items, total, deposit, warranty, terms and payment details); _Download quotation (Excel)_
+fills the invoice template. The quote in progress
 is kept in the browser until _New quote_.
 
 **Magic Plan:** in the Plan tab, _Magic Plan_ places devices for you in two steps.
