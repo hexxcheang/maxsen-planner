@@ -37,13 +37,14 @@ const STYLE_ROWS = {
 type Style = Partial<ExcelStyle>;
 
 export async function buildInvoiceXlsx({
-  project,
+  client,
   invoice,
   pricing,
   number,
   date = new Date(),
 }: {
-  project: Project;
+  /** Who the invoice is for: printed in the template's client block. */
+  client: { name: string; contact: string };
   invoice: Invoice;
   pricing: PricingSettings;
   number: string;
@@ -71,6 +72,13 @@ export async function buildInvoiceXlsx({
     const top = Number(/\d+/.exec(range)?.[0] ?? 0);
     if (top >= HEADER_ROW) ws.unMergeCells(range);
   }
+  // Empty the old item table first: its price column is one shared formula (F17 copied down), and
+  // removing the rows alone leaves the copies pointing at it, which breaks longer invoices.
+  for (let r = HEADER_ROW; r <= ws.rowCount; r++) {
+    ws.getRow(r).eachCell({ includeEmpty: true }, (cell) => {
+      cell.value = null;
+    });
+  }
   ws.spliceRows(HEADER_ROW, ws.rowCount - HEADER_ROW + 1);
 
   // --- header and client -----------------------------------------------------------------------
@@ -81,8 +89,8 @@ export async function buildInvoiceXlsx({
   ws.getCell('F7').value = date;
   ws.getCell('F7').numFmt = 'd mmm yyyy';
   ws.getCell('F8').value = number;
-  ws.getCell('B10').value = project.customerContact || null;
-  ws.getCell('B11').value = project.customerName || null;
+  ws.getCell('B10').value = client.contact || null;
+  ws.getCell('B11').value = client.name || null;
 
   // --- item table ------------------------------------------------------------------------------
   let r = HEADER_ROW;
@@ -219,7 +227,7 @@ export function projectInvoiceNumber(project: Project, pricing: PricingSettings)
 export async function buildProjectInvoice(ctx: ExportContext): Promise<Blob> {
   const { pricing, invoice } = projectInvoice(ctx);
   return buildInvoiceXlsx({
-    project: ctx.project,
+    client: { name: ctx.project.customerName, contact: ctx.project.customerContact },
     invoice,
     pricing,
     number: projectInvoiceNumber(ctx.project, pricing),

@@ -8,6 +8,7 @@ import {
   LayoutTemplate,
   ListChecks,
   LogOut,
+  MessageSquareText,
   Package,
   PencilRuler,
   ShieldCheck,
@@ -25,6 +26,7 @@ interface RailItem {
 
 const GLOBAL: RailItem[] = [
   { to: '/', label: 'Projects', icon: <FolderOpen />, end: true },
+  { to: '/quote', label: 'Quote', icon: <MessageSquareText /> },
   { to: '/catalogue', label: 'Catalogue', icon: <Package /> },
   { to: '/templates', label: 'Templates', icon: <LayoutTemplate /> },
   { to: '/admin', label: 'Admin', icon: <ShieldCheck /> },

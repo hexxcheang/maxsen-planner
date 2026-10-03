@@ -126,7 +126,8 @@ export function NumberField({
             controlClass,
             h,
             'tnum text-right',
-            unit && 'pr-7',
+            // Room on the right for the unit: wider for longer units ("pcs").
+            unit && (unit.length > 1 ? 'pr-10' : 'pr-7'),
             stepper && 'rounded-none text-center',
           )}
           {...aria}

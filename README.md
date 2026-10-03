@@ -63,6 +63,16 @@ states; `/dev/styleguide` (dev server only) shows every UI primitive and categor
    variants; projects already using them keep them), branding with logo upload, icon styles, favourites,
    and _Your data_ (restore samples or erase everything).
 
+**Quick quote:** the _Quote_ tab prices a client's text message without a project. Paste the message
+(a list or a sentence) and press _Read message_. Each item is matched to the catalogue by product name
+("Lusano", "Nova S8") or everyday words ("switches", "downlights", "cctv", "aircon"), with the variant
+from its details ("2 gang", "black", "warm white", "double") and the quantity or LED metres. LED
+drivers are added for the strip (one per 5 m, the LED package's ratio). Anything with a number that
+names no product is listed as not recognised. Check and adjust the items, and the quotation is priced
+exactly as on the invoice (packages, add-ons, integration and deposit). _Copy as text_ gives a version
+to paste into WhatsApp; _Download quotation (Excel)_ fills the invoice template. The quote in progress
+is kept in the browser until _New quote_.
+
 **Magic Plan:** in the Plan tab, _Magic Plan_ places devices for you in two steps.
 
 1. **Rooms.** Choose the type of home: a 2- to 5-room flat, an executive flat, a 2- or 3-bedroom condo,
