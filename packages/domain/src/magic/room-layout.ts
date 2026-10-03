@@ -4,6 +4,7 @@
  * the drawing's scale comes from the home's floor area.
  */
 import type { AnalysisDoor, FloorAnalysis, RoomType } from './analysis.ts';
+import { newId } from '../ids.ts';
 
 export interface DrawnRoom {
   id: string;
@@ -219,6 +220,52 @@ export function drawingWidthMetres(layout: RoomLayout, aspect: number): number |
     outlined.reduce((s, r) => s + typical(r.type), 0) /
     layout.rooms.reduce((s, r) => s + typical(r.type), 0);
   return Math.sqrt((ROOMS_SHARE * layout.floorAreaM2 * share * aspect) / drawn);
+}
+
+/** A room read off the drawing: its boxes, door and floor share (see `roomReader`). */
+export interface FoundRoomShape {
+  box: Box;
+  parts: Box[];
+  door: { x: number; y: number } | null;
+  share: number;
+}
+
+/**
+ * Outlines every room found on the drawing at once (the quick way, without naming rooms). Rooms
+ * already outlined are kept, rooms listed but not outlined are dropped, and each room found that
+ * isn't outlined yet is added as "Room n": Magic Plan plans unnamed rooms by their size and shape.
+ * Naming the rooms that matter (bedrooms, living room) makes the plan exact.
+ */
+export function withFoundRooms(layout: RoomLayout, found: FoundRoomShape[]): RoomLayout {
+  const outlined = layout.rooms.filter((r) => r.w > 0 && r.h > 0);
+  const inside = (p: { x: number; y: number }, r: Box) =>
+    p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
+  const fresh = found.filter((f) => {
+    const c = { x: f.box.x + f.box.w / 2, y: f.box.y + f.box.h / 2 };
+    return !outlined.some((r) => [r, ...(r.parts ?? [])].some((b) => inside(c, b)));
+  });
+  const used = new Set(outlined.map((r) => r.name));
+  let n = 0;
+  const name = () => {
+    let next: string;
+    do next = `Room ${++n}`;
+    while (used.has(next));
+    return next;
+  };
+  return {
+    ...layout,
+    rooms: [
+      ...outlined,
+      ...fresh.map((f): DrawnRoom => ({
+        id: newId('room'),
+        type: 'other',
+        name: name(),
+        ...f.box,
+        parts: f.parts,
+        door: f.door,
+      })),
+    ],
+  };
 }
 
 /**

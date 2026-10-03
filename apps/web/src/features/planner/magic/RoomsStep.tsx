@@ -1,12 +1,26 @@
 import { useRef, useState, type PointerEvent } from 'react';
-import { Check, DoorOpen, PanelTop, Plus, Sparkles, SquareDashed, Trash2, X } from 'lucide-react';
+import {
+  Check,
+  ChevronDown,
+  DoorOpen,
+  PanelTop,
+  Plus,
+  ScanSearch,
+  Sparkles,
+  SquareDashed,
+  Trash2,
+  X,
+} from 'lucide-react';
 import {
   EXTRA_ROOMS,
   FLAT_PRESETS,
   newId,
   partBoxes,
+  roomTypeFromName,
+  withFoundRooms,
   type DrawnRoom,
   type DrawnWindow,
+  type FoundRoom,
   type RoomLayout,
 } from '@maxsen/domain';
 import { Button, Field, IconButton, Input, Select } from '@/components/ui';
@@ -24,7 +38,18 @@ interface Props {
   suggesting?: boolean;
   /** The window on the drawing under an X marked at (x, y), or null when there's no line there. */
   readWindow?: (x: number, y: number) => Promise<DrawnWindow | null>;
+  /** The room around a tap, read from the drawing's walls; null when they don't close. */
+  readRoom?: (x: number, y: number) => Promise<FoundRoom | null>;
+  /** Every closed room on the drawing. */
+  findRooms?: () => Promise<FoundRoom[]>;
 }
+
+/** "Room n" for a room tapped beyond the list, numbered after the rooms there. */
+const nextRoomName = (rooms: DrawnRoom[]) => {
+  let n = rooms.length;
+  while (rooms.some((r) => r.name === `Room ${n + 1}`)) n++;
+  return `Room ${n + 1}`;
+};
 
 /** Outlining the room, tapping its door, adding another area to it, or done with it. */
 type Mode = 'draw' | 'door' | 'part' | 'done';
@@ -41,7 +66,12 @@ export function RoomsStep({
   onSuggest,
   suggesting,
   readWindow,
+  readRoom,
+  findRooms,
 }: Props) {
+  /** Reading the room under a tap, or all rooms; and why a tap found nothing. */
+  const [finding, setFinding] = useState(false);
+  const [roomNote, setRoomNote] = useState<string | null>(null);
   /** Marking windows instead of outlining rooms. */
   const [windowMode, setWindowMode] = useState(false);
   const [reading, setReading] = useState(false);
@@ -129,7 +159,13 @@ export function RoomsStep({
         return;
       }
       const hit = roomAt(p);
-      if (hit && mode !== 'part') select(hit, 'done');
+      // (Redrawing a room: a tap inside its old outline outlines it afresh.)
+      const redraw = mode === 'draw' && hit?.id === active?.id;
+      if (hit && mode !== 'part' && !redraw) {
+        select(hit, 'done');
+        return;
+      }
+      void outlineAt(p);
       return;
     }
     if (active && mode === 'part') {
@@ -146,6 +182,121 @@ export function RoomsStep({
     update(target.id, { x, y, w, h, door: null, parts: [] });
     setActiveId(target.id);
     setMode('door');
+  };
+
+  /**
+   * A tap inside a room: finds its walls and outlines it (with its door, and extra areas for an odd
+   * shape) as the room being drawn, else the next room still to outline, else a new room.
+   */
+  const outlineAt = async (p: { x: number; y: number }) => {
+    if (!readRoom) return;
+    setFinding(true);
+    setRoomNote(null);
+    try {
+      const found = await readRoom(p.x, p.y);
+      if (!found) {
+        setRoomNote('Couldn’t find closed walls around there. Drag a box over the room instead.');
+        return;
+      }
+      const shape = { x: found.box.x, y: found.box.y, w: found.box.w, h: found.box.h };
+      if (active && mode === 'part') {
+        update(active.id, { parts: [...(active.parts ?? []), shape, ...found.parts] });
+        setMode(active.door ? 'done' : 'door');
+        return;
+      }
+      let rooms = layout.rooms;
+      let target =
+        active && mode === 'draw' ? active : (layout.rooms.find((r) => !drawn(r)) ?? null);
+      if (!target) {
+        target = blank('other', nextRoomName(layout.rooms));
+        rooms = [...rooms, target];
+      }
+      const id = target.id;
+      rooms = rooms.map((r) =>
+        r.id === id ? { ...r, ...shape, parts: found.parts, door: found.door } : r,
+      );
+      onChange({ ...layout, rooms });
+      if (found.door) advance(rooms, id);
+      else {
+        setActiveId(id);
+        setMode('door');
+      }
+    } catch {
+      setRoomNote('The drawing couldn’t be read here. Drag a box over the room instead.');
+    } finally {
+      setFinding(false);
+    }
+  };
+
+  /** Outlines every room on the drawing at once; listed rooms not outlined yet are dropped. */
+  const findAll = async () => {
+    if (!findRooms) return;
+    setFinding(true);
+    setRoomNote(null);
+    try {
+      const found = await findRooms();
+      if (!found.length) {
+        setRoomNote('No closed rooms found on this drawing. Outline them with boxes instead.');
+        return;
+      }
+      const next = withFoundRooms(layout, found);
+      onChange(next);
+      const todo = next.rooms.find((r) => !r.door);
+      setActiveId(todo?.id ?? null);
+      setMode(todo ? 'door' : 'draw');
+    } catch {
+      setRoomNote('The drawing couldn’t be read. Outline the rooms with boxes instead.');
+    } finally {
+      setFinding(false);
+    }
+  };
+
+  /** Gives a room another name (and the type that goes with it). */
+  const rename = (room: DrawnRoom, name: string, type: DrawnRoom['type']) => {
+    // A listed room of that name not outlined yet takes this room's outline.
+    const listed = layout.rooms.find((r) => r.name === name && r.id !== room.id && !drawn(r));
+    if (listed) {
+      // The room renamed goes back to "not outlined" if the home's list has it, else it goes.
+      const preset = FLAT_PRESETS.find((p) => p.id === layout.presetId);
+      const keep = preset?.rooms.some((p) => p.name === room.name);
+      const rooms = layout.rooms
+        .filter((r) => keep || r.id !== room.id)
+        .map((r) =>
+          r.id === listed.id
+            ? {
+                ...r,
+                x: room.x,
+                y: room.y,
+                w: room.w,
+                h: room.h,
+                parts: room.parts,
+                door: room.door,
+              }
+            : r.id === room.id
+              ? { ...r, x: 0, y: 0, w: 0, h: 0, parts: [], door: null }
+              : r,
+        );
+      onChange({ ...layout, rooms });
+      setActiveId(listed.id);
+      return;
+    }
+    update(room.id, { name, type });
+  };
+  /** Names to choose from: the home type's rooms not outlined yet, then any kind of room. */
+  const namesFor = (room: DrawnRoom) => {
+    const preset = FLAT_PRESETS.find((p) => p.id === layout.presetId);
+    const taken = new Set(
+      layout.rooms.filter((r) => drawn(r) && r.id !== room.id).map((r) => r.name),
+    );
+    const listed = [
+      ...(preset?.rooms ?? []),
+      ...layout.rooms.filter((r) => !drawn(r)).map((r) => ({ type: r.type, name: r.name })),
+    ].filter((r, i, all) => !taken.has(r.name) && all.findIndex((x) => x.name === r.name) === i);
+    const extras = EXTRA_ROOMS.filter((e) => !listed.some((l) => l.name === e.name)).map((e) => {
+      const same = layout.rooms.filter((r) => r.id !== room.id && r.name.startsWith(e.name)).length;
+      return { type: e.type, name: same ? `${e.name} ${same + 1}` : e.name };
+    });
+    return { listed, extras };
   };
 
   /** An X tapped on the drawing: removes the window it's on, or marks the window on that line. */
@@ -182,17 +333,23 @@ export function RoomsStep({
     ? reading
       ? 'Finding the window…'
       : 'Put an X on each window: tap its line. Tap an X again to remove it.'
-    : !active
-      ? done === layout.rooms.length && done > 0
-        ? 'All rooms are outlined. Tap a room to change it.'
-        : 'Drag a box over each room, in the order listed. Tap a box to select it.'
-      : mode === 'draw'
-        ? `Drag a box over the ${active.name}.`
-        : mode === 'part'
-          ? `Drag a box over the rest of the ${active.name}. It joins on to the room.`
-          : mode === 'done'
-            ? `The ${active.name} is outlined. Odd shape? Press + to add another area.`
-            : `Tap where the ${active.name}’s door is (or skip if it has none). Odd shape? Press + first.`;
+    : finding
+      ? 'Finding the room’s walls…'
+      : !active
+        ? done === layout.rooms.length && done > 0
+          ? 'All rooms are outlined. Tap a room to change it.'
+          : readRoom
+            ? 'Tap inside each room (or drag a box over it), in the order listed.'
+            : 'Drag a box over each room, in the order listed. Tap a box to select it.'
+        : mode === 'draw'
+          ? readRoom
+            ? `Tap inside the ${active.name} (or drag a box over it).`
+            : `Drag a box over the ${active.name}.`
+          : mode === 'part'
+            ? `Tap or drag a box over the rest of the ${active.name}. It joins on to the room.`
+            : mode === 'done'
+              ? `The ${active.name} is outlined. Odd shape? Press + to add another area.`
+              : `Tap where the ${active.name}’s door is (or skip if it has none). Odd shape? Press + first.`;
   /** Adds another area to the active room. */
   const addPart = () => {
     if (!active) return;
@@ -358,6 +515,23 @@ export function RoomsStep({
         >
           {windowMode ? 'Done marking windows' : 'Mark windows'}
         </Button>
+        {findRooms && (
+          <div className="flex flex-col gap-1 border-t border-rule pt-3">
+            <Button
+              size="sm"
+              icon={<ScanSearch className="size-4" />}
+              loading={finding}
+              onClick={() => void findAll()}
+            >
+              Find all rooms
+            </Button>
+            <p className="text-meta text-ink-2">
+              Quickest: outlines every room on the drawing, with its door, and plans each by its
+              size and shape. Name the bedrooms and living room (tap a room’s name on the drawing)
+              for the most exact plan.
+            </p>
+          </div>
+        )}
         {onSuggest && (
           <Button
             size="sm"
@@ -379,6 +553,11 @@ export function RoomsStep({
             {windowMode && windowNote && (
               <p role="alert" className="text-meta text-warn">
                 {windowNote}
+              </p>
+            )}
+            {!windowMode && roomNote && (
+              <p role="alert" className="text-meta text-warn">
+                {roomNote}
               </p>
             )}
           </div>
@@ -542,6 +721,55 @@ export function RoomsStep({
                 />
               )}
             </svg>
+            {!windowMode && active && drawn(active) && (
+              <div
+                className="absolute z-10 -translate-x-1/2 -translate-y-1/2"
+                style={{ left: pct(active.x + active.w / 2), top: pct(active.y + active.h / 2) }}
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                {(() => {
+                  const { listed, extras } = namesFor(active);
+                  const all = [...listed, ...extras];
+                  return (
+                    <label className="relative flex items-center gap-1 rounded-full border-2 border-white bg-ink px-2.5 py-1 text-meta font-semibold text-surface shadow-md hover:bg-ink-2">
+                      {active.name}
+                      <ChevronDown aria-hidden className="size-3.5" />
+                      {/* A native list over the label: works the same with a mouse, touch and keys. */}
+                      <select
+                        aria-label={`Rename the ${active.name}`}
+                        className="absolute inset-0 cursor-pointer opacity-0"
+                        value=""
+                        onChange={(e) => {
+                          const pick = all.find((r) => r.name === e.target.value);
+                          if (pick)
+                            rename(active, pick.name, roomTypeFromName(pick.name) ?? pick.type);
+                        }}
+                      >
+                        <option value="" disabled>
+                          Rename the {active.name}…
+                        </option>
+                        {listed.length > 0 && (
+                          <optgroup label="Rooms of this home">
+                            {listed.map((r) => (
+                              <option key={r.name} value={r.name}>
+                                {r.name}
+                              </option>
+                            ))}
+                          </optgroup>
+                        )}
+                        <optgroup label="Other rooms">
+                          {extras.map((r) => (
+                            <option key={r.name} value={r.name}>
+                              {r.name}
+                            </option>
+                          ))}
+                        </optgroup>
+                      </select>
+                    </label>
+                  );
+                })()}
+              </div>
+            )}
             {!windowMode && active && drawn(active) && mode !== 'part' && mode !== 'draw' && (
               <>
                 <button
@@ -578,8 +806,9 @@ export function RoomsStep({
           </div>
         </div>
         <p className="text-meta text-ink-2">
-          Boxes can be rough: cover each room’s floor. The green dot is the door; the switch goes
-          beside it. Each X marks a window; its blue line shows how far it runs.
+          Tap inside a room to outline it from its walls, door and all; or drag a box (it can be
+          rough). The green dot is the door; the switch goes beside it. Each X marks a window; its
+          blue line shows how far it runs.
         </p>
       </div>
     </div>

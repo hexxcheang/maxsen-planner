@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowRight, Sparkles, TriangleAlert } from 'lucide-react';
+import { ArrowRight, FastForward, Sparkles, TriangleAlert } from 'lucide-react';
 import {
   analysisFromLayout,
+  withFoundRooms,
   categoryById,
   createVariantPicker,
   layoutFromAnalysis,
@@ -22,7 +23,14 @@ import { Button, Checkbox, Dialog, Switch } from '@/components/ui';
 import { useActions, useCatalogue, useSettings } from '@/lib/data/hooks';
 import { fileUrl } from '@/lib/files';
 import { analyseBackground, magicPlanConfigured, MagicPlanError } from './analysis-source';
-import { drawn, startingLayout, windowAt } from './room-layouts';
+import {
+  drawn,
+  prepareRooms,
+  roomAt,
+  roomsOnDrawing,
+  startingLayout,
+  windowAt,
+} from './room-layouts';
 import { RoomsStep } from './RoomsStep';
 
 export interface MagicPlanOutcome {
@@ -73,6 +81,8 @@ export function MagicPlanDialog({ open, onOpenChange, level, plans, onApply }: P
     setReplace(hasContent);
     const start = startingLayout(source);
     setLayout(start);
+    // Read the drawing's walls now, so tapping a room outlines it straight away.
+    prepareRooms(fileUrl(source.background.fileId));
     if (!builtIn) void magicPlanConfigured().then(setConfigured);
     // Only when the window opens: later saves of the layout must not reset it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -132,6 +142,28 @@ export function MagicPlanDialog({ open, onOpenChange, level, plans, onApply }: P
   );
 
   const outlined = layout?.rooms.filter(drawn) ?? [];
+  const [skipping, setSkipping] = useState(false);
+  /** Skips outlining: every room on the drawing is found and planned by its size and shape. */
+  const skipRooms = async () => {
+    if (!source || !layout) return;
+    setSkipping(true);
+    try {
+      const found = await roomsOnDrawing(fileUrl(source.background.fileId));
+      if (!found.length) {
+        setStep({
+          kind: 'rooms',
+          error: 'No closed rooms found on this drawing, so they need outlining by hand.',
+        });
+        return;
+      }
+      changeLayout(withFoundRooms(layout, found));
+      setStep({ kind: 'options' });
+    } catch {
+      setStep({ kind: 'rooms', error: 'The drawing couldn’t be read. Outline the rooms by hand.' });
+    } finally {
+      setSkipping(false);
+    }
+  };
   const run = () => {
     if (!source || !layout) return;
     const analysis = analysisFromLayout(layout, aspect);
@@ -153,6 +185,15 @@ export function MagicPlanDialog({ open, onOpenChange, level, plans, onApply }: P
     step.kind === 'rooms' ? (
       <>
         <Button onClick={() => onOpenChange(false)}>Cancel</Button>
+        {outlined.length === 0 && (
+          <Button
+            icon={<FastForward className="size-4" />}
+            loading={skipping}
+            onClick={() => void skipRooms()}
+          >
+            Skip: find rooms for me
+          </Button>
+        )}
         <Button
           variant="primary"
           icon={<ArrowRight className="size-4" />}
@@ -222,6 +263,8 @@ export function MagicPlanDialog({ open, onOpenChange, level, plans, onApply }: P
             onChange={changeLayout}
             onSuggest={!builtIn && configured ? () => void suggest() : undefined}
             readWindow={(x, y) => windowAt(fileUrl(source.background.fileId), x, y)}
+            readRoom={(x, y) => roomAt(fileUrl(source.background.fileId), x, y)}
+            findRooms={() => roomsOnDrawing(fileUrl(source.background.fileId))}
             suggesting={suggesting}
           />
         </div>

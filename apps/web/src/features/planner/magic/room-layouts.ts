@@ -1,7 +1,11 @@
 import { loadImage } from '@/lib/images';
 import {
+  roomReader,
   toGray,
   windowReader,
+  type FoundRoom,
+  type GrayImage,
+  type RoomReader,
   type DrawnWindow,
   type FoundWindow,
   FLAT_PRESETS,
@@ -53,13 +57,12 @@ export function startingLayout(plan: Plan): RoomLayout {
   return applyPreset({ presetId: 'hdb-4', floorAreaM2: 93, rooms: [] }, 'hdb-4');
 }
 
-const readers = new Map<string, Promise<(x: number, y: number) => FoundWindow | null>>();
-
-/** The drawing read once (on this computer), ready to find the window under each mark. */
-function readerFor(imageUrl: string) {
-  let reader = readers.get(imageUrl);
-  if (!reader) {
-    reader = loadImage(imageUrl).then((img) => {
+/** The drawing as a grey image, read once per drawing (on this computer). */
+const grays = new Map<string, Promise<GrayImage>>();
+function grayFor(imageUrl: string) {
+  let gray = grays.get(imageUrl);
+  if (!gray) {
+    gray = loadImage(imageUrl).then((img) => {
       const k = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
       const canvas = document.createElement('canvas');
       canvas.width = Math.max(1, Math.round(img.naturalWidth * k));
@@ -69,12 +72,43 @@ function readerFor(imageUrl: string) {
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      return windowReader(toGray(data.data, canvas.width, canvas.height));
+      return toGray(data.data, canvas.width, canvas.height);
     });
-    reader.catch(() => readers.delete(imageUrl));
-    readers.set(imageUrl, reader);
+    gray.catch(() => grays.delete(imageUrl));
+    grays.set(imageUrl, gray);
   }
-  return reader;
+  return gray;
+}
+
+const windowReaders = new Map<string, Promise<(x: number, y: number) => FoundWindow | null>>();
+const roomReaders = new Map<string, Promise<RoomReader>>();
+const cached = <T>(map: Map<string, Promise<T>>, key: string, make: () => Promise<T>) => {
+  let v = map.get(key);
+  if (!v) {
+    v = make();
+    v.catch(() => map.delete(key));
+    map.set(key, v);
+  }
+  return v;
+};
+const readerFor = (imageUrl: string) =>
+  cached(windowReaders, imageUrl, () => grayFor(imageUrl).then(windowReader));
+const roomsFor = (imageUrl: string) =>
+  cached(roomReaders, imageUrl, () => grayFor(imageUrl).then(roomReader));
+
+/** Starts reading the drawing's rooms in the background, so the first tap is quick. */
+export function prepareRooms(imageUrl: string) {
+  void roomsFor(imageUrl).catch(() => undefined);
+}
+
+/** The room around a tap at (x, y) on the drawing (fractions), or null if its walls don't close. */
+export async function roomAt(imageUrl: string, x: number, y: number): Promise<FoundRoom | null> {
+  return (await roomsFor(imageUrl)).at(x, y);
+}
+
+/** Every closed room on the drawing, largest first. */
+export async function roomsOnDrawing(imageUrl: string): Promise<FoundRoom[]> {
+  return (await roomsFor(imageUrl)).all();
 }
 
 /**

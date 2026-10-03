@@ -96,7 +96,7 @@ test.describe('Magic Plan', () => {
     await dialog.getByRole('button', { name: /^Living \/ Dining:/ }).click();
     await dialog.getByRole('button', { name: 'Add another area to the Living / Dining' }).click();
     await expect(
-      dialog.getByText(/Drag a box over the rest of the Living \/ Dining/),
+      dialog.getByText(/drag a box over the rest of the Living \/ Dining/),
     ).toBeVisible();
     const p1 = P(700, 380);
     const p2 = P(860, 640);
@@ -216,6 +216,72 @@ test.describe('Magic Plan', () => {
     // The outlines are kept for next time.
     await page.getByRole('button', { name: 'Magic Plan' }).click();
     await expect(dialog.getByText(/7 of 7 outlined/)).toBeVisible();
+  });
+
+  test('a tap outlines a room with its door; or skip and find them all', async ({
+    page,
+  }, testInfo) => {
+    test.setTimeout(120_000);
+    await page.route('**/api/magic-plan/status', (route) =>
+      route.fulfill({ json: { configured: false } }),
+    );
+    await uploadAndOpen(page, drawHdbPng, { wholePage: true });
+    await page.getByRole('button', { name: 'Magic Plan' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Magic Plan' });
+    await expect(
+      dialog.getByText('Tap inside the Master Bedroom (or drag a box over it).'),
+    ).toBeVisible();
+    const canvas = dialog.getByTestId('room-canvas');
+    const tap = async (x: number, y: number) => {
+      await canvas.scrollIntoViewIfNeeded();
+      const b = (await canvas.boundingBox())!;
+      await page.mouse.click(b.x + (x / 1400) * b.width, b.y + (y / 1000) * b.height);
+    };
+
+    // One tap each: the room's walls are followed (the master bedroom wraps round its bathroom,
+    // so it gets two areas) and its door is found, then on to the next room.
+    await tap(1000, 300);
+    await expect(dialog.getByRole('button', { name: 'Master Bedroom: Done' })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: /^Master Bedroom:/ })).toContainText('2 areas');
+    await expect(
+      dialog.getByText('Tap inside the Bedroom 2 (or drag a box over it).'),
+    ).toBeVisible();
+    await tap(1090, 570);
+    await expect(dialog.getByRole('button', { name: 'Bedroom 2: Done' })).toBeVisible();
+    // Tapped the wrong room for the list? Rename it from its label on the drawing.
+    await tap(400, 600); // the living room, while Bedroom 3 is next
+    await expect(dialog.getByRole('button', { name: 'Bedroom 3: Done' })).toBeVisible();
+    await tap(400, 600);
+    await dialog
+      .getByRole('combobox', { name: 'Rename the Bedroom 3' })
+      .selectOption('Living / Dining');
+    await expect(dialog.getByRole('button', { name: 'Living / Dining: Done' })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Bedroom 3: Not outlined' })).toBeVisible();
+    await expect(dialog.getByText(/3 of 7 outlined/)).toBeVisible();
+    await page.screenshot({
+      path: `test-results/screens/magic-tap-rooms-${testInfo.project.name}.png`,
+    });
+
+    // A tap outside the home finds no walls, and says so.
+    await tap(40, 40);
+    await expect(dialog.getByRole('alert')).toContainText('Couldn’t find closed walls');
+
+    // Find the rest at once: rooms not outlined yet are replaced by the rooms found.
+    await dialog.getByRole('button', { name: 'Find all rooms' }).click();
+    await expect(dialog.getByText(/10 of 10 outlined/)).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Living / Dining: Done' })).toBeVisible();
+    await dialog.getByRole('button', { name: 'Next', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Create Magic Plan' }).click();
+    await expect(dialog.getByText(/Found 10 rooms/)).toBeVisible();
+
+    // Or skip outlining altogether on a fresh drawing.
+    await uploadAndOpen(page, drawHdbPng, { wholePage: true });
+    await page.getByRole('button', { name: 'Magic Plan' }).click();
+    await dialog.getByRole('button', { name: 'Skip: find rooms for me' }).click();
+    await dialog.getByRole('button', { name: 'Create Magic Plan' }).click();
+    await expect(dialog.getByText(/Found 10 rooms/)).toBeVisible();
+    await dialog.getByRole('button', { name: /Place \d+ items/ }).click();
+    await expect(page.getByText(/Magic Plan placed \d+ items/)).toBeVisible();
   });
 
   test('suggests a crop to the floor plan and lets you adjust it', async ({ page }, testInfo) => {
