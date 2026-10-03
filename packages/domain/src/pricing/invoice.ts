@@ -279,6 +279,37 @@ export function applyPriceEdits(
   };
 }
 
+/** A row's edits as typed in the app: the discount kept as text ("50" or "10%"). */
+export interface RowEdit {
+  unitPrice?: number;
+  discount?: string;
+}
+
+/** A typed discount: "50" is S$50 off the row, "10%" is 10% off; anything else is no discount. */
+export function parseDiscount(text: string | undefined): Omit<PriceEdit, 'unitPrice'> {
+  const m = /^\s*(?:S?\$)?\s*(\d+(?:\.\d+)?)\s*(%)?\s*$/i.exec(text ?? '');
+  if (!m) return {};
+  return { discount: Number(m[1]), ...(m[2] ? { discountPercent: true } : {}) };
+}
+
+/** `applyPriceEdits` with the edits as typed in the app. */
+export function applyRowEdits(
+  invoice: Invoice,
+  edits: Record<string, RowEdit> | undefined,
+  depositPercent: number,
+): Invoice {
+  return applyPriceEdits(
+    invoice,
+    Object.fromEntries(
+      Object.entries(edits ?? {}).map(([k, e]) => [
+        k,
+        { unitPrice: e.unitPrice, ...parseDiscount(e.discount) },
+      ]),
+    ),
+    depositPercent,
+  );
+}
+
 /** Invoice number: prefix, yymmdd, then a 2-digit count for the day. */
 export function invoiceNumber(prefix: string, date: Date, count = 1): string {
   const two = (n: number) => String(n).padStart(2, '0');

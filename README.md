@@ -165,6 +165,10 @@ and waived. Every other device is charged at its catalogue price, and the invoic
   payment invoice asks for 90% (deposit + 2nd payment %) of today's total less what was paid; the
   final invoice asks for the balance. _Already paid_ is suggested from the earlier invoices generated
   for the project; change it to what was actually collected.
+- **Prices and discounts:** in **Exports › Invoice**, _Prices and discounts_ opens the invoice as an
+  editable quotation, as in Quick quote. Quantities stay in sync with Review totals; unit prices and
+  discounts (`50` or `10%`) are saved with the project and used on every invoice (deposit, 2nd and
+  final), with _Copy as text_ and _Download quotation (PDF)_ there too.
 
 **LED strips:** select a strip on the plan to get round handles on its points. Drag them to bend,
 lengthen or shorten the run. The **+** just past its end adds a point that you can drag to any angle.

@@ -135,6 +135,15 @@ export const exportSettingsSchema = z.object({
         .optional(),
     })
     .optional(),
+  priceEdits: z
+    .record(
+      z.string(),
+      z.object({
+        unitPrice: z.number().finite().optional(),
+        discount: z.string().max(20).optional(),
+      }),
+    )
+    .optional(),
 }) satisfies z.ZodType<ExportSettings>;
 
 /** Icon sizes are plan units; the admin presets run 12–34, the field allows a little either side. */

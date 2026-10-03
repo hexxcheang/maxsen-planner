@@ -148,4 +148,40 @@ test.describe('exports', () => {
     await expect(paid).toHaveValue(String(Math.round((deposit + second) * 100) / 100));
     await expect(panel.getByText(/\(balance\)/)).toBeVisible();
   });
+
+  test('prices and discounts set on the project carry into the invoice', async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'File generation is viewport-independent');
+    await page.goto('/projects/proj_sample_lim/exports');
+    const panel = page.getByRole('region', { name: 'Invoice' });
+    await panel.getByRole('button', { name: 'Prices and discounts' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Prices and discounts' });
+    const discount = dialog.getByLabel(/^Discount on /).first();
+    const item = ((await discount.getAttribute('aria-label')) ?? '').replace('Discount on ', '');
+    await discount.fill('100');
+    await expect(dialog.getByText(`Discount: ${item}`)).toBeVisible();
+    await page.screenshot({ path: 'test-results/screens/exports-invoice-prices.png' });
+    await dialog.getByRole('button', { name: 'Done' }).click();
+    await expect(
+      panel.getByText(/1 row with your own price or discount, S\$100\.00 off/),
+    ).toBeVisible();
+
+    // Saved with the project: still there after a reload, and on the invoice.
+    await page.reload();
+    await panel.getByRole('button', { name: 'Generate' }).click();
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      panel.getByRole('link', { name: 'Download' }).click(),
+    ]);
+    const path = testInfo.outputPath('invoice.xlsx');
+    await download.saveAs(path);
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load((await readFile(path)) as unknown as Parameters<typeof wb.xlsx.load>[0]);
+    const rows: { b: string; e: unknown }[] = [];
+    wb.worksheets[0]!.eachRow((row, n) => {
+      if (n > 14) rows.push({ b: row.getCell(2).text, e: row.getCell(5).value });
+    });
+    expect(rows.find((r) => r.b === `Discount: ${item}`)?.e).toBe(-100);
+  });
 });

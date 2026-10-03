@@ -159,6 +159,8 @@ export interface ExportSettings {
   invoiceNumber?: string;
   /** Which payment the next invoice asks for, and what earlier invoices asked for. */
   billing?: ProjectBilling;
+  /** Hand-set unit prices and discounts on the invoice, by invoice row key. */
+  priceEdits?: Record<string, { unitPrice?: number; discount?: string }>;
 }
 
 /** The three payments in Maxsen's terms: deposit, at the start of installation, and the balance. */

@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { Link } from 'react-router';
-import { TriangleAlert } from 'lucide-react';
+import { Percent, TriangleAlert } from 'lucide-react';
 import {
   applyAdjustments,
   STAGE_LABEL,
@@ -11,6 +12,7 @@ import { Button, Field, Input, NumberField, SegmentedControl } from '@/component
 import { useActions, useCatalogue, useProjectTotals } from '@/lib/data/hooks';
 import { formatMoney } from '@/lib/format';
 import { projectPayment } from './build/invoice';
+import { InvoicePricesDialog } from './InvoicePricesDialog';
 
 /**
  * Which payment the invoice asks for, its number, who it's addressed to, and a preview of the
@@ -22,7 +24,8 @@ export function InvoiceOptions({ project, settings }: { project: Project; settin
   const { data: totals } = useProjectTotals(project.id);
   const { data: catalogue } = useCatalogue();
   const lines = applyAdjustments(totals, project.quantityAdjustments);
-  const { invoice, amounts, number } = projectPayment({
+  const [editing, setEditing] = useState(false);
+  const { pricing, base, invoice, amounts, number } = projectPayment({
     lines,
     settings,
     variants: catalogue.variants,
@@ -38,6 +41,11 @@ export function InvoiceOptions({ project, settings }: { project: Project; settin
       recipe(s.billing);
     });
   const issued = billing?.issued?.[stage];
+  const edits = Object.keys(project.exportSettings.priceEdits ?? {}).length;
+  const discounts = -invoice.rows.reduce(
+    (sum, r) => (r.kind === 'item' && r.discount ? sum + (r.unitPrice ?? 0) * r.quantity : sum),
+    0,
+  );
 
   return (
     <div className="flex flex-col gap-4">
@@ -143,6 +151,29 @@ export function InvoiceOptions({ project, settings }: { project: Project; settin
               : ' (balance)'}
         </dd>
       </dl>
+      <div className="flex flex-col gap-1">
+        <Button icon={<Percent className="size-4" />} onClick={() => setEditing(true)}>
+          Prices and discounts
+        </Button>
+        <p className="text-meta text-ink-2">
+          {edits === 0
+            ? 'At list prices. Change unit prices or give discounts, as in Quick quote.'
+            : `${edits} ${edits === 1 ? 'row' : 'rows'} with your own price or discount${
+                discounts > 0 ? `, S$${formatMoney(discounts)} off in all` : ''
+              }.`}
+        </p>
+      </div>
+      <InvoicePricesDialog
+        open={editing}
+        onOpenChange={setEditing}
+        project={project}
+        settings={settings}
+        pricing={pricing}
+        base={base}
+        invoice={invoice}
+        amounts={amounts}
+        number={number}
+      />
       {invoice.unpriced.length > 0 && (
         <p className="flex items-start gap-2 border-l-[3px] border-warn bg-warn-tint px-3 py-2 text-meta text-ink">
           <TriangleAlert aria-hidden className="mt-0.5 size-3.5 shrink-0 text-warn" />

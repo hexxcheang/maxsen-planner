@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Copy, Download, MessageSquareText, Sparkles, Trash2, TriangleAlert } from 'lucide-react';
 import {
-  applyPriceEdits,
+  applyRowEdits,
   buildInvoice,
   categoryById,
   CATEGORIES,
@@ -10,7 +10,7 @@ import {
   resolvePricing,
   withLedDrivers,
   type InvoiceInputLine,
-  type PriceEdit,
+  type RowEdit,
   type QuoteLine,
 } from '@maxsen/domain';
 import {
@@ -25,10 +25,11 @@ import {
   useToast,
 } from '@/components/ui';
 import { Page } from '@/components/Page';
-import { formatMoney } from '@/lib/format';
 import { useCatalogue, useSettings } from '@/lib/data/hooks';
 import { buildInvoiceXlsx } from '@/features/exports/build/invoice';
 import { buildQuotationPdf } from '@/features/exports/build/generate';
+import { QuotationTable } from './QuotationTable';
+import { money, quotationText, withRowEdit } from './quotation';
 
 interface Draft {
   message: string;
@@ -38,14 +39,7 @@ interface Draft {
   lines: QuoteLine[];
   unread: string[];
   /** Hand-set prices and discounts per quotation row (by row key); discounts as typed. */
-  edits: Record<string, { unitPrice?: number; discount?: string }>;
-}
-
-/** A typed discount: "50" is S$50 off the row, "10%" is 10% off. */
-function parseDiscount(text: string | undefined): Omit<PriceEdit, 'unitPrice'> {
-  const m = /^\s*\$?\s*(\d+(?:\.\d+)?)\s*(%)?\s*$/.exec(text ?? '');
-  if (!m) return {};
-  return { discount: Number(m[1]), ...(m[2] ? { discountPercent: true } : {}) };
+  edits: Record<string, RowEdit>;
 }
 
 const KEY = 'maxsen.quote.draft.v1';
@@ -68,8 +62,6 @@ function loadDraft(prefix: string): Draft {
     return blank;
   }
 }
-
-const money = (n: number) => `${n < 0 ? '-' : ''}S$${formatMoney(Math.abs(n))}`;
 
 /**
  * Quick quote: paste a client's message, check the items it was read into, and get the exact
@@ -153,64 +145,13 @@ export function QuoteScreen() {
     ];
   });
   const base = buildInvoice(inputs, (id) => variants.get(id)?.price ?? null, pricing);
-  const invoice = applyPriceEdits(
-    base,
-    Object.fromEntries(
-      Object.entries(draft.edits).map(([k, e]) => [
-        k,
-        { unitPrice: e.unitPrice, ...parseDiscount(e.discount) },
-      ]),
-    ),
-    pricing.depositPercent,
-  );
-  const listPrice = new Map(
-    base.rows.flatMap((r) => (r.kind === 'item' ? [[r.key, r.unitPrice] as const] : [])),
-  );
-  const editRow = (key: string, patch: { unitPrice?: number; discount?: string }) =>
-    setDraft((d) => {
-      const next = { ...d.edits[key], ...patch };
-      const edits = { ...d.edits };
-      if (next.unitPrice === undefined && !next.discount) delete edits[key];
-      else edits[key] = next;
-      return { ...d, edits };
-    });
+  const invoice = applyRowEdits(base, draft.edits, pricing.depositPercent);
 
   const updateLine = (i: number, patch: Partial<QuoteLine>) =>
     set({ lines: draft.lines.map((l, j) => (j === i ? { ...l, ...patch } : l)) });
 
-  const asText = () => {
-    const out: string[] = [
-      `Quotation ${draft.number}${draft.clientName ? ` for ${draft.clientName}` : ''}`,
-      new Date().toLocaleDateString('en-SG', { day: 'numeric', month: 'short', year: 'numeric' }),
-      '',
-    ];
-    let n = 0;
-    for (const row of invoice.rows) {
-      if (row.kind === 'section') out.push('', row.title);
-      else if (row.kind === 'item') {
-        n++;
-        const price = row.unitPrice ?? 0;
-        if (row.discount) {
-          out.push(`   ${row.description}: ${money(price)}`);
-          continue;
-        }
-        out.push(
-          `${n}. ${row.description.split('\n')[0]}`,
-          `   ${row.quantity} × ${money(price)} = ${money(row.quantity * price)}`,
-        );
-      }
-    }
-    out.push(
-      '',
-      `Total: ${money(invoice.total)}`,
-      `Deposit (${pricing.depositPercent}%): ${money(invoice.deposit)}`,
-      '',
-      pricing.warranty,
-      '',
-      `${pricing.company.name} · ${pricing.company.phone}`,
-    );
-    return out.join('\n');
-  };
+  const asText = () =>
+    quotationText({ invoice, pricing, number: draft.number, clientName: draft.clientName });
 
   const copy = async () => {
     try {
@@ -413,111 +354,15 @@ export function QuoteScreen() {
               <p className="text-control text-ink-2">The priced quotation appears here.</p>
             ) : (
               <>
-                <table className="w-full text-control">
-                  <thead>
-                    <tr className="border-b border-rule-2 text-left text-meta text-ink-2">
-                      <th className="py-1.5 font-medium">Item</th>
-                      <th className="py-1.5 pl-3 text-right font-medium">Qty</th>
-                      <th className="py-1.5 pl-3 text-right font-medium">Unit price (S$)</th>
-                      <th className="py-1.5 pl-3 text-right font-medium">Discount</th>
-                      <th className="py-1.5 pl-4 text-right font-medium">Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {invoice.rows.map((row, i) =>
-                      row.kind === 'section' ? (
-                        <tr key={i}>
-                          <td colSpan={5} className="pt-3 pb-1 text-meta font-semibold text-ink-2">
-                            {row.title}
-                          </td>
-                        </tr>
-                      ) : row.kind === 'item' && row.discount ? (
-                        <tr key={i} className="border-b border-rule align-top text-danger">
-                          <td colSpan={4} className="py-1.5 pl-3">
-                            {row.description}
-                          </td>
-                          <td className="tnum py-1.5 pl-4 text-right whitespace-nowrap">
-                            {money(row.unitPrice ?? 0)}
-                          </td>
-                        </tr>
-                      ) : row.kind === 'item' ? (
-                        <tr key={i} className="border-b border-rule align-top">
-                          <td
-                            className={
-                              row.highlight ? 'py-1.5 font-semibold text-ink' : 'py-1.5 text-ink'
-                            }
-                          >
-                            <span className="line-clamp-3 whitespace-pre-line">
-                              {row.description}
-                            </span>
-                          </td>
-                          <td className="tnum py-1.5 pl-3 text-right">{row.quantity}</td>
-                          <td className="py-1 pl-3">
-                            <NumberField
-                              compact
-                              live
-                              allowEmpty
-                              min={-100000}
-                              max={1000000}
-                              precision={2}
-                              className="w-28"
-                              aria-label={`Unit price of ${row.description.split('\n')[0]}`}
-                              placeholder={listPrice.get(row.key) == null ? 'Price' : undefined}
-                              value={row.unitPrice}
-                              onChange={(v) =>
-                                editRow(row.key, {
-                                  unitPrice:
-                                    v === null || v === listPrice.get(row.key) ? undefined : v,
-                                })
-                              }
-                            />
-                            {draft.edits[row.key]?.unitPrice !== undefined && (
-                              <p className="mt-0.5 text-right text-meta text-ink-3">
-                                List{' '}
-                                {listPrice.get(row.key) == null
-                                  ? '—'
-                                  : money(listPrice.get(row.key)!)}
-                              </p>
-                            )}
-                          </td>
-                          <td className="py-1 pl-3">
-                            <Input
-                              compact
-                              className="w-24 text-right"
-                              aria-label={`Discount on ${row.description.split('\n')[0]}`}
-                              placeholder="S$ or %"
-                              value={draft.edits[row.key]?.discount ?? ''}
-                              aria-invalid={
-                                !!draft.edits[row.key]?.discount &&
-                                parseDiscount(draft.edits[row.key]?.discount).discount === undefined
-                              }
-                              onChange={(e) => editRow(row.key, { discount: e.target.value })}
-                            />
-                          </td>
-                          <td className="tnum py-1.5 pl-4 text-right whitespace-nowrap">
-                            {money(row.quantity * (row.unitPrice ?? 0))}
-                          </td>
-                        </tr>
-                      ) : null,
-                    )}
-                  </tbody>
-                  <tfoot>
-                    <tr>
-                      <td colSpan={4} className="pt-3 text-right font-semibold text-ink">
-                        Total
-                      </td>
-                      <td className="tnum pt-3 text-right text-body font-semibold text-ink">
-                        {money(invoice.total)}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td colSpan={4} className="py-1 text-right text-ink-2">
-                        Deposit ({pricing.depositPercent}%)
-                      </td>
-                      <td className="tnum py-1 text-right text-ink-2">{money(invoice.deposit)}</td>
-                    </tr>
-                  </tfoot>
-                </table>
+                <QuotationTable
+                  base={base}
+                  invoice={invoice}
+                  edits={draft.edits}
+                  onEdit={(key, patch) =>
+                    setDraft((d) => ({ ...d, edits: withRowEdit(d.edits, key, patch) }))
+                  }
+                  depositPercent={pricing.depositPercent}
+                />
                 {invoice.unpriced.length > 0 && (
                   <p role="alert" className="text-meta text-warn">
                     No price yet for {invoice.unpriced.join(', ')}. Set it in Catalogue for an exact

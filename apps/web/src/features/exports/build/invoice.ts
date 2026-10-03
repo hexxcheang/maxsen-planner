@@ -4,6 +4,7 @@
  * The header, client and terms come from Admin › Pricing; the lines from Review totals.
  */
 import {
+  applyRowEdits,
   buildInvoice,
   INVOICE_STAGES,
   invoiceNumber,
@@ -289,11 +290,23 @@ export async function buildInvoiceXlsx({
   });
 }
 
-/** The invoice for a project: lines priced from the live catalogue and Admin › Pricing. */
-export function projectInvoice(ctx: Pick<ExportContext, 'lines' | 'settings' | 'variants'>) {
+/**
+ * The invoice for a project: lines priced from the live catalogue and Admin › Pricing, with the
+ * project's own unit prices and discounts.
+ */
+export function projectInvoice(
+  ctx: Pick<ExportContext, 'lines' | 'settings' | 'variants' | 'project'>,
+) {
   const pricing = resolvePricing(ctx.settings);
   const prices = new Map(ctx.variants.map((v) => [v.id, v.price ?? null]));
-  return { pricing, invoice: buildInvoice(ctx.lines, (id) => prices.get(id) ?? null, pricing) };
+  // Before and after the unit prices and discounts set for this project.
+  const base = buildInvoice(ctx.lines, (id) => prices.get(id) ?? null, pricing);
+  const invoice = applyRowEdits(
+    base,
+    ctx.project.exportSettings.priceEdits,
+    pricing.depositPercent,
+  );
+  return { pricing, base, invoice };
 }
 
 /**
@@ -316,11 +329,12 @@ export function projectInvoiceNumber(
 export function projectPayment(
   ctx: Pick<ExportContext, 'lines' | 'settings' | 'variants' | 'project'>,
 ) {
-  const { pricing, invoice } = projectInvoice(ctx);
+  const { pricing, base, invoice } = projectInvoice(ctx);
   const billing = ctx.project.exportSettings.billing;
   const amounts = stageAmounts(invoice.total, pricing, billing);
   return {
     pricing,
+    base,
     invoice,
     amounts,
     number: projectInvoiceNumber(ctx.project, pricing, amounts.stage),
