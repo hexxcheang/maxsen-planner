@@ -35,6 +35,43 @@ const STYLE_ROWS = {
 } as const;
 
 type Style = Partial<ExcelStyle>;
+const THIN = { style: 'thin' } as const;
+
+/** Text colours from the invoice template. */
+const INK = {
+  header: 'FFFFC000',
+  discount: 'FFFF0000',
+  service: 'FF0043C1',
+  text: 'FF000000',
+} as const;
+
+/**
+ * A description as rich text. Packages show their name (the first line) highlighted, discounts in
+ * red, installation & integration and warranty in blue and the rest in black. Other lines are black,
+ * or red when they take money off.
+ */
+export function descriptionText(text: string, isPackage: boolean, isDiscount: boolean) {
+  const run = (t: string, argb: string) => ({
+    text: t,
+    font: { name: 'Trebuchet MS', size: 11, bold: true, color: { argb } },
+  });
+  if (!isPackage) return { richText: [run(text, isDiscount ? INK.discount : INK.text)] };
+  const lines = text.split('\n');
+  return {
+    richText: lines.map((line, i) =>
+      run(
+        (i > 0 ? '\n' : '') + line,
+        i === 0
+          ? INK.header
+          : /discount|rebate|waive|free|\bwas\b|\bsave/i.test(line)
+            ? INK.discount
+            : /install|warrant/i.test(line)
+              ? INK.service
+              : INK.text,
+      ),
+    ),
+  };
+}
 
 export async function buildInvoiceXlsx({
   client,
@@ -77,6 +114,8 @@ export async function buildInvoiceXlsx({
   for (let r = HEADER_ROW; r <= ws.rowCount; r++) {
     ws.getRow(r).eachCell({ includeEmpty: true }, (cell) => {
       cell.value = null;
+      // Clear the styles too, or the template's old footer borders linger below the new one.
+      cell.style = {};
     });
   }
   ws.spliceRows(HEADER_ROW, ws.rowCount - HEADER_ROW + 1);
@@ -109,6 +148,13 @@ export async function buildInvoiceXlsx({
     });
     return r++;
   };
+  /** Merge a row's cells, keeping the merged block's right edge (ExcelJS copies the first
+   * cell's style across the merge, which drops the last cell's right border). */
+  const merge = (row: number, from: (typeof COLS)[number], to: (typeof COLS)[number]) => {
+    ws.mergeCells(`${from}${row}:${to}${row}`);
+    const last = ws.getCell(`${to}${row}`);
+    last.border = { ...last.border, right: THIN };
+  };
   const heightFor = (text: string) => {
     // B and C together fit about 55 characters of bold 11pt Trebuchet per line.
     const lines = text.split('\n').reduce((n, l) => n + Math.max(1, Math.ceil(l.length / 55)), 0);
@@ -123,7 +169,12 @@ export async function buildInvoiceXlsx({
     'UNIT PRICE (S$)',
     'PRICE (S$)',
   ]);
-  ws.mergeCells(`B${HEADER_ROW}:C${HEADER_ROW}`);
+  merge(HEADER_ROW, 'B', 'C');
+  // Lines between every heading, so Item/Description, Quantity and the prices read as columns.
+  for (const col of COLS) {
+    const cell = ws.getCell(`${col}${HEADER_ROW}`);
+    cell.border = { top: THIN, bottom: THIN, left: THIN, right: THIN };
+  }
   const first = r;
   let sn = 0;
   for (const row of invoice.rows) {
@@ -134,25 +185,25 @@ export async function buildInvoiceXlsx({
         row.highlight ? 'package' : 'item',
         [
           sn,
-          row.description,
-          row.description,
+          descriptionText(row.description, !!row.highlight, (row.unitPrice ?? 0) < 0),
+          null,
           row.quantity,
           row.unitPrice,
           { formula: `D${at}*E${at}`, result: row.quantity * (row.unitPrice ?? 0) },
         ],
         heightFor(row.description),
       );
-      ws.mergeCells(`B${at}:C${at}`);
+      merge(at, 'B', 'C');
     } else if (row.kind === 'section') {
       const at = put('section', [null, row.title, row.title, null, null, null]);
-      ws.mergeCells(`B${at}:C${at}`);
+      merge(at, 'B', 'C');
     } else {
       const at = put(
         row.tone === 'warranty' ? 'warranty' : 'item',
         [null, row.text, row.text, null, null, null],
         heightFor(row.text),
       );
-      ws.mergeCells(`B${at}:C${at}`);
+      merge(at, 'B', 'C');
     }
   }
   const last = r - 1;
@@ -164,7 +215,7 @@ export async function buildInvoiceXlsx({
     null,
     { formula: `SUM(F${first}:F${last})`, result: invoice.total },
   ]);
-  ws.mergeCells(`B${totalRow}:C${totalRow}`);
+  merge(totalRow, 'B', 'C');
   put('spacer', []);
   const grandRow = put('grand', [
     null,
@@ -191,19 +242,19 @@ export async function buildInvoiceXlsx({
     'DETAILS',
     'DETAILS',
   ]);
-  ws.mergeCells(`A${details}:F${details}`);
+  merge(details, 'A', 'F');
   const terms = put(
     'terms',
     Array(6).fill(pricing.terms) as string[],
     Math.max(50.25, pricing.terms.split('\n').length * 25),
   );
-  ws.mergeCells(`A${terms}:F${terms}`);
+  merge(terms, 'A', 'F');
   const bank = put(
     'bank',
     Array(6).fill(pricing.bankDetails) as string[],
     Math.max(103.5, pricing.bankDetails.split('\n').length * 17),
   );
-  ws.mergeCells(`A${bank}:F${bank}`);
+  merge(bank, 'A', 'F');
 
   ws.pageSetup.printArea = `A1:F${bank}`;
   const buf = await wb.xlsx.writeBuffer();
