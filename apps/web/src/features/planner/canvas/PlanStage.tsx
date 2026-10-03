@@ -1,0 +1,492 @@
+import { useEffect, useState } from 'react';
+import {
+  Circle,
+  Group,
+  Image as KonvaImage,
+  Layer,
+  Line,
+  Path,
+  Rect,
+  Stage,
+  Text,
+} from 'react-konva';
+import type Konva from 'konva';
+import { alignPoint, snapToAxes, type AlignGuide, type Pt, type Scene } from '@maxsen/domain';
+import { ALIGNED_LIGHTS, lightSpots, SNAP_PX } from './align';
+import type { Armed, PlannerTool } from '../store/plannerStore';
+import type { StageViewport } from './useStageViewport';
+import { SceneLayer } from './SceneLayer';
+
+const BRASS = '#A8873A';
+/** Smart guides: a clear magenta, drawn hairline-thin so they never hide the plan. */
+const GUIDE = '#D6336C';
+
+function useHtmlImage(url: string | null) {
+  const [img, setImg] = useState<HTMLImageElement | null>(null);
+  useEffect(() => {
+    if (!url) return;
+    const el = new window.Image();
+    el.onload = () => setImg(el);
+    el.src = url;
+    return () => {
+      el.onload = null;
+    };
+  }, [url]);
+  return url ? img : null;
+}
+
+interface PlanStageProps {
+  width: number;
+  height: number;
+  background: { url: string; width: number; height: number };
+  scene: Scene;
+  selection: string[];
+  tool: PlannerTool;
+  view: StageViewport;
+  onSelect: (ids: string[], mode: 'replace' | 'toggle') => void;
+  onMove: (ids: string[], dx: number, dy: number) => void;
+  /** What a click places, if anything. */
+  armed: Armed | null;
+  draft: Pt[];
+  draftColor: string;
+  /** A click on the plan while something is armed, in plan units. */
+  onPlace: (at: Pt, shift: boolean) => void;
+  onFinishDraft: () => void;
+  /** Moves or adds points of a selected LED strip or track (one undoable step). */
+  onEditPoints?: (elementId: string, points: Pt[]) => void;
+  /** The armed device is a light that lines up with the others as it's placed. */
+  armedAligns?: boolean;
+}
+
+/** Most points an LED strip or track run can be given with the + handle. */
+export const MAX_PATH_POINTS = 8;
+/** How far (plan units) a new point is placed beyond the last one; then drag it anywhere. */
+const NEW_POINT_STEP = 50;
+
+export function PlanStage({
+  width,
+  height,
+  background,
+  scene,
+  selection,
+  tool,
+  view,
+  onSelect,
+  onMove,
+  armed,
+  draft,
+  draftColor,
+  onPlace,
+  onFinishDraft,
+  onEditPoints,
+  armedAligns = false,
+}: PlanStageProps) {
+  /** Smart guides shown while a light is dragged or about to be placed. */
+  const [guides, setGuides] = useState<AlignGuide[]>([]);
+  /** Points of the run being reshaped, while a handle is dragged. */
+  const [reshaping, setReshaping] = useState<{ id: string; points: Pt[] } | null>(null);
+  const [hover, setHover] = useState<Pt | null>(null);
+  const image = useHtmlImage(background.url);
+  const { viewport } = view;
+  const [spaceHeld, setSpaceHeld] = useState(false);
+  const panning = tool === 'pan' || spaceHeld;
+
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      const t = e.target instanceof HTMLElement ? e.target : null;
+      // Space pans only from the canvas or the page itself; on buttons and fields it keeps its normal job.
+      const onCanvas =
+        !t || t === document.body || t.closest('[data-testid="plan-canvas"]') !== null;
+      if (e.code === 'Space' && onCanvas) {
+        e.preventDefault();
+        setSpaceHeld(true);
+      }
+    };
+    const up = (e: KeyboardEvent) => {
+      if (e.code === 'Space') setSpaceHeld(false);
+    };
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    return () => {
+      window.removeEventListener('keydown', down);
+      window.removeEventListener('keyup', up);
+    };
+  }, []);
+
+  // Konva reports any two quick clicks as a double-click; only a double-click on the last point
+  // (where a finishing double-click lands) ends the path, so fast drawing doesn't end it early.
+  const finishIfOnLastPoint = (p: Pt | null | undefined) => {
+    const last = draft.at(-1);
+    if (armed?.kind !== 'path' || !p || !last) return;
+    if (Math.hypot(p.x - last.x, p.y - last.y) * viewport.scale <= 8) onFinishDraft();
+  };
+
+  const onPick = (id: string, e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+    if (panning || armed) return;
+    const shift = 'shiftKey' in e.evt && e.evt.shiftKey;
+    if (shift) onSelect([id], 'toggle');
+    else if (!selection.includes(id)) onSelect([id], 'replace');
+  };
+
+  const selected = new Set(selection);
+  const selectedItems = scene.items.filter((i) => selected.has(i.elementId));
+  const px = 1 / viewport.scale;
+  const lightIds = new Set(
+    scene.items.flatMap((i) =>
+      i.type === 'marker' && ALIGNED_LIGHTS.includes(i.categoryId) ? [i.elementId] : [],
+    ),
+  );
+  /** A light being dragged: snap it into line with the lights that aren't moving with it. */
+  const alignDrag = (id: string, at: Pt, free: boolean): Pt | null => {
+    if (free || !lightIds.has(id)) {
+      if (guides.length) setGuides([]);
+      return null;
+    }
+    const moving = new Set(selected.has(id) ? selection : [id]);
+    const r = alignPoint(at, lightSpots(scene, moving), SNAP_PX * px);
+    setGuides(r.guides);
+    return r.at;
+  };
+  /** Where an armed light would be placed at `p`. */
+  const placeAt = (p: Pt, free: boolean): { at: Pt; guides: AlignGuide[] } =>
+    armedAligns && !free ? alignPoint(p, lightSpots(scene), SNAP_PX * px) : { at: p, guides: [] };
+  // One open LED strip or track selected: show its points as handles, plus a + to add a point.
+  const editable =
+    onEditPoints && tool === 'select' && !panning && !armed && selectedItems.length === 1
+      ? selectedItems.find((i) => i.type === 'path' && !i.closed)
+      : undefined;
+  const editPath = editable?.type === 'path' ? editable : undefined;
+  const editPoints =
+    editPath && (reshaping?.id === editPath.elementId ? reshaping.points : editPath.points);
+  const neighbours = (i: number) =>
+    editPoints
+      ? [editPoints[i - 1], editPoints[i + 1]].filter((q): q is Pt => q !== undefined)
+      : [];
+  const plusAt = (() => {
+    if (!editPoints || editPoints.length >= MAX_PATH_POINTS) return null;
+    const last = editPoints.at(-1)!;
+    const prev = editPoints.at(-2) ?? { x: last.x - 1, y: last.y };
+    const d = Math.hypot(last.x - prev.x, last.y - prev.y) || 1;
+    const dir = { x: (last.x - prev.x) / d, y: (last.y - prev.y) / d };
+    return { at: { x: last.x + dir.x * 22 * px, y: last.y + dir.y * 22 * px }, dir, last };
+  })();
+
+  return (
+    <Stage
+      width={width}
+      height={height}
+      x={viewport.x}
+      y={viewport.y}
+      scaleX={viewport.scale}
+      scaleY={viewport.scale}
+      draggable={panning}
+      style={{ cursor: panning ? 'grab' : armed ? 'crosshair' : 'default' }}
+      onDragEnd={(e) => {
+        if (e.target === e.target.getStage()) view.panTo(e.target.x(), e.target.y());
+      }}
+      onWheel={(e) => {
+        e.evt.preventDefault();
+        const stage = e.target.getStage();
+        const p = stage?.getPointerPosition();
+        if (!p) return;
+        if (e.evt.ctrlKey || e.evt.metaKey || Math.abs(e.evt.deltaY) > 0) {
+          view.zoomBy(Math.exp(-e.evt.deltaY * 0.0015), p);
+        }
+      }}
+      onMouseMove={(e) => {
+        if (!armed) return;
+        const p = e.target.getStage()?.getRelativePointerPosition();
+        if (!p) return;
+        setHover(p);
+        if (armedAligns) setGuides(placeAt(p, e.evt.altKey).guides);
+      }}
+      onMouseLeave={() => {
+        setHover(null);
+        if (armedAligns) setGuides([]);
+      }}
+      onClick={(e) => {
+        if (panning) return;
+        if (armed) {
+          const p = e.target.getStage()?.getRelativePointerPosition();
+          if (p) onPlace(placeAt(p, e.evt.altKey).at, e.evt.shiftKey);
+          setGuides([]);
+          return;
+        }
+        // Only a click on empty canvas (the background layer doesn't listen) clears the selection.
+        if (e.target === e.target.getStage()) onSelect([], 'replace');
+      }}
+      onTap={(e) => {
+        if (panning) return;
+        if (armed) {
+          const p = e.target.getStage()?.getRelativePointerPosition();
+          if (p) onPlace(placeAt(p, false).at, false);
+          return;
+        }
+        if (e.target === e.target.getStage()) onSelect([], 'replace');
+      }}
+      onDblClick={(e) => finishIfOnLastPoint(e.target.getStage()?.getRelativePointerPosition())}
+      onDblTap={(e) => finishIfOnLastPoint(e.target.getStage()?.getRelativePointerPosition())}
+    >
+      <Layer listening={false}>
+        <Rect
+          width={background.width}
+          height={background.height}
+          fill="#FFFFFF"
+          stroke="#CBC6BC"
+          strokeWidth={px}
+        />
+        {image && <KonvaImage image={image} width={background.width} height={background.height} />}
+      </Layer>
+      <Layer>
+        <SceneLayer
+          scene={scene}
+          draggable={tool === 'select' && !panning && !armed}
+          onPick={onPick}
+          onDragMove={alignDrag}
+          onDragEnd={(id, dx, dy) => {
+            setGuides([]);
+            onMove(selected.has(id) ? selection : [id], dx, dy);
+          }}
+        />
+      </Layer>
+      <Layer listening={false}>
+        {selectedItems.map((item) => {
+          if (item.type === 'marker') {
+            const r = item.size * 0.75;
+            return (
+              <Rect
+                key={item.elementId}
+                x={item.x - r}
+                y={item.y - r}
+                width={r * 2}
+                height={r * 2}
+                stroke={BRASS}
+                strokeWidth={1.5 * px}
+                dash={[4 * px, 3 * px]}
+              />
+            );
+          }
+          if (item.type === 'path') {
+            return (
+              <Group key={item.elementId}>
+                <Path
+                  data={item.d}
+                  stroke={BRASS}
+                  strokeWidth={item.strokeWidth + 4 * px}
+                  opacity={0.35}
+                  lineCap="round"
+                  lineJoin="round"
+                />
+                {item.points.map((pt, i) => (
+                  <Rect
+                    key={i}
+                    x={pt.x - 3 * px}
+                    y={pt.y - 3 * px}
+                    width={6 * px}
+                    height={6 * px}
+                    fill="#FFFFFF"
+                    stroke={BRASS}
+                    strokeWidth={1.5 * px}
+                  />
+                ))}
+              </Group>
+            );
+          }
+          return (
+            <Rect
+              key={item.elementId}
+              x={item.x - 3 * px}
+              y={item.y - 3 * px}
+              width={item.text.length * item.fontSize * 0.55 + 6 * px}
+              height={item.fontSize * 1.3 + 6 * px}
+              stroke={BRASS}
+              strokeWidth={1.5 * px}
+              dash={[4 * px, 3 * px]}
+            />
+          );
+        })}
+      </Layer>
+      {editPath && editPoints && (
+        <Layer>
+          {reshaping && (
+            <Line
+              points={editPoints.flatMap((p) => [p.x, p.y])}
+              stroke={editPath.color}
+              strokeWidth={editPath.strokeWidth}
+              opacity={0.6}
+              lineCap="round"
+              lineJoin="round"
+              listening={false}
+            />
+          )}
+          {editPoints.map((p, i) => (
+            <Circle
+              key={i}
+              name={`point-${i}`}
+              x={p.x}
+              y={p.y}
+              radius={7 * px}
+              hitStrokeWidth={10 * px}
+              fill="#FFFFFF"
+              stroke={BRASS}
+              strokeWidth={2 * px}
+              draggable
+              onMouseEnter={(e) => {
+                const c = e.target.getStage()?.container();
+                if (c) c.style.cursor = 'move';
+              }}
+              onMouseLeave={(e) => {
+                const c = e.target.getStage()?.container();
+                if (c) c.style.cursor = '';
+              }}
+              onDragMove={(e) => {
+                // Segments within a few degrees of level or plumb snap straight.
+                const at = snapToAxes({ x: e.target.x(), y: e.target.y() }, neighbours(i));
+                e.target.position(at);
+                const next = editPoints.map((q, j) => (j === i ? at : q));
+                setReshaping({ id: editPath.elementId, points: next });
+              }}
+              onDragEnd={(e) => {
+                const at = snapToAxes({ x: e.target.x(), y: e.target.y() }, neighbours(i));
+                const next = editPoints.map((q, j) =>
+                  j === i ? { x: Math.round(at.x * 10) / 10, y: Math.round(at.y * 10) / 10 } : q,
+                );
+                setReshaping(null);
+                onEditPoints!(editPath.elementId, next);
+              }}
+            />
+          ))}
+          {plusAt && (
+            <Group
+              name="add-point"
+              x={plusAt.at.x}
+              y={plusAt.at.y}
+              onMouseEnter={(e) => {
+                const c = e.target.getStage()?.container();
+                if (c) c.style.cursor = 'pointer';
+              }}
+              onMouseLeave={(e) => {
+                const c = e.target.getStage()?.container();
+                if (c) c.style.cursor = '';
+              }}
+              onClick={(e) => {
+                e.cancelBubble = true;
+                const { last, dir } = plusAt;
+                const added = {
+                  x: Math.round((last.x + dir.x * NEW_POINT_STEP) * 10) / 10,
+                  y: Math.round((last.y + dir.y * NEW_POINT_STEP) * 10) / 10,
+                };
+                onEditPoints!(editPath.elementId, [...editPoints, added]);
+              }}
+              onTap={(e) => {
+                e.cancelBubble = true;
+                const { last, dir } = plusAt;
+                onEditPoints!(editPath.elementId, [
+                  ...editPoints,
+                  { x: last.x + dir.x * NEW_POINT_STEP, y: last.y + dir.y * NEW_POINT_STEP },
+                ]);
+              }}
+            >
+              <Circle radius={9 * px} fill={BRASS} stroke="#FFFFFF" strokeWidth={1.5 * px} />
+              <Text
+                text="+"
+                fontSize={16 * px}
+                fontStyle="bold"
+                fill="#FFFFFF"
+                width={18 * px}
+                height={18 * px}
+                offsetX={9 * px}
+                offsetY={8.5 * px}
+                align="center"
+                verticalAlign="middle"
+              />
+            </Group>
+          )}
+        </Layer>
+      )}
+      {armed?.kind === 'path' && draft.length > 0 && (
+        <Layer listening={false}>
+          <Line
+            points={[...draft, ...(hover ? [snapToAxes(hover, [draft.at(-1)!])] : [])].flatMap(
+              (p) => [p.x, p.y],
+            )}
+            stroke={draftColor}
+            strokeWidth={6}
+            opacity={0.75}
+            lineCap="round"
+            lineJoin="round"
+            dash={[10, 6]}
+          />
+          {draft.map((p, i) => (
+            <Circle
+              key={i}
+              x={p.x}
+              y={p.y}
+              radius={4 * px}
+              fill="#FFFFFF"
+              stroke={BRASS}
+              strokeWidth={1.5 * px}
+            />
+          ))}
+        </Layer>
+      )}
+      {guides.length > 0 && (
+        <Layer listening={false}>
+          {armedAligns && hover && (
+            <Circle
+              {...placeAt(hover, false).at}
+              radius={3.5 * px}
+              stroke={GUIDE}
+              strokeWidth={1.5 * px}
+            />
+          )}
+          {guides.map((g, i) => {
+            if (g.kind === 'line') {
+              return (
+                <Line
+                  key={i}
+                  points={[g.from.x, g.from.y, g.to.x, g.to.y]}
+                  stroke={GUIDE}
+                  strokeWidth={px}
+                  dash={[5 * px, 4 * px]}
+                />
+              );
+            }
+            // An equal gap: a solid span with end ticks and an "=" at its middle.
+            const horizontal = Math.abs(g.to.y - g.from.y) < Math.abs(g.to.x - g.from.x);
+            const off = 9 * px;
+            const t = 4 * px;
+            const a = horizontal
+              ? { x: g.from.x, y: g.from.y - off }
+              : { x: g.from.x - off, y: g.from.y };
+            const b = horizontal ? { x: g.to.x, y: g.to.y - off } : { x: g.to.x - off, y: g.to.y };
+            const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+            return (
+              <Group key={i}>
+                <Line points={[a.x, a.y, b.x, b.y]} stroke={GUIDE} strokeWidth={px} />
+                {[a, b].map((e, j) => (
+                  <Line
+                    key={j}
+                    points={
+                      horizontal ? [e.x, e.y - t, e.x, e.y + t] : [e.x - t, e.y, e.x + t, e.y]
+                    }
+                    stroke={GUIDE}
+                    strokeWidth={px}
+                  />
+                ))}
+                <Text
+                  text="="
+                  x={mid.x - 4 * px}
+                  y={mid.y - 13 * px}
+                  fontSize={11 * px}
+                  fontStyle="bold"
+                  fill={GUIDE}
+                />
+              </Group>
+            );
+          })}
+        </Layer>
+      )}
+    </Stage>
+  );
+}

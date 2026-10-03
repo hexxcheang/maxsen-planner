@@ -32,7 +32,8 @@
   --ok: #3e7a4f;
 
   /* Type */
-  --font-sans: 'Instrument Sans Variable', 'Instrument Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-sans:
+    'Instrument Sans Variable', 'Instrument Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --text-caption: 11px;
   --leading-caption: 16px;
   --text-meta: 12px;

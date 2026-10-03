@@ -1,4 +1,9 @@
-import { SYSTEM_DRIVER_CATEGORY, SYSTEM_PRODUCT_IDS, SYSTEM_VARIANT_IDS, type CategoryId } from '../categories.ts';
+import {
+  SYSTEM_DRIVER_CATEGORY,
+  SYSTEM_PRODUCT_IDS,
+  SYSTEM_VARIANT_IDS,
+  type CategoryId,
+} from '../categories.ts';
 import type { PlanDocument, VariantSnapshot } from '../types.ts';
 import { compareLines } from './sort.ts';
 
@@ -25,7 +30,10 @@ export type VariantResolver = (variantId: string) => VariantSnapshot | undefined
 const UNKNOWN_CATEGORY: CategoryId = 'misc-smart-home';
 
 /** Names used for the auto-added drivers when the catalogue snapshot has not captured them. */
-const SYSTEM_FALLBACKS: Record<string, Pick<VariantSnapshot, 'productId' | 'categoryId' | 'productName' | 'variantName'>> = {
+const SYSTEM_FALLBACKS: Record<
+  string,
+  Pick<VariantSnapshot, 'productId' | 'categoryId' | 'productName' | 'variantName'>
+> = {
   [SYSTEM_VARIANT_IDS.smartLedDriver]: {
     productId: SYSTEM_PRODUCT_IDS.smartLedDriver,
     categoryId: SYSTEM_DRIVER_CATEGORY,
@@ -51,13 +59,19 @@ const round1 = (n: number): number => Math.round(n * 10) / 10;
 
 /**
  * Deterministic project-wide quantities (product spec §9–§10):
- * one unit per point marker; LED-strip metres summed per variant; track heads summed per
+ * one unit per point marker and per curtain track; LED-strip metres summed per variant; track heads summed per
  * variant; one Smart LED Driver per LED run and one Track Driver per track. Consolidated across
  * every document (all levels, both plan types); editor visibility never affects the result.
  */
 export function computeTotals(documents: PlanDocument[], resolve: VariantResolver): TotalLine[] {
   const acc = new Map<string, Accumulator>();
-  const bump = (variantId: string, unit: 'pcs' | 'm', amount: number, autoAdded = false, missing = 0) => {
+  const bump = (
+    variantId: string,
+    unit: 'pcs' | 'm',
+    amount: number,
+    autoAdded = false,
+    missing = 0,
+  ) => {
     const existing = acc.get(variantId);
     if (existing) {
       existing.total += amount;
@@ -80,6 +94,9 @@ export function computeTotals(documents: PlanDocument[], resolve: VariantResolve
         case 'track':
           bump(el.variantId, 'pcs', el.headCount);
           bump(SYSTEM_VARIANT_IDS.trackDriver, 'pcs', 1, true);
+          break;
+        case 'curtain':
+          bump(el.variantId, 'pcs', 1);
           break;
         case 'note':
           break;
