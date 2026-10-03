@@ -43,6 +43,19 @@ test.describe('quick quote', () => {
     await page.getByLabel('Quantity of item 1').fill('25');
     await expect(addOn.getByRole('cell').nth(1)).toHaveText('15');
     await expect(page.getByLabel('Quantity of item 1')).toBeFocused();
+
+    // Unit prices can be changed and discounts given per item (S$ or %); the total follows.
+    const totalCell = quote
+      .getByRole('row', { name: /^Total/ })
+      .getByRole('cell')
+      .last();
+    const amount = async () => Number((await totalCell.innerText()).replace(/[^\d.]/g, ''));
+    const before = await amount();
+    await quote.getByLabel(/^Unit price of Add-On Per Nova\+ Pro/).fill('150');
+    await expect.poll(amount).toBeCloseTo(before - 15 * 30, 2);
+    await quote.getByLabel(/^Discount on Nova Package/).fill('10%');
+    await expect(quote.getByText(/^Discount 10%: Nova Package/)).toBeVisible();
+    await expect.poll(amount).toBeCloseTo(before - 15 * 30 - 199, 2);
     await page.screenshot({
       path: `test-results/screens/quote-${testInfo.project.name}.png`,
       fullPage: true,
@@ -59,6 +72,12 @@ test.describe('quick quote', () => {
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.load((await readFile(path)) as unknown as Parameters<typeof wb.xlsx.load>[0]);
     expect(wb.worksheets[0]!.getCell('B11').value).toBe('Mr Tan');
+    const sheet: { b: string; e: unknown }[] = [];
+    wb.worksheets[0]!.eachRow((row, n) => {
+      if (n > 14) sheet.push({ b: row.getCell(2).text, e: row.getCell(5).value });
+    });
+    expect(sheet.find((r) => r.b.startsWith('Add-On Per Nova+ Pro'))?.e).toBe(150);
+    expect(sheet.find((r) => r.b.startsWith('Discount 10%: Nova Package'))?.e).toBe(-199);
 
     // And as a proposal-style PDF.
     const [pdfDownload] = await Promise.all([

@@ -1,6 +1,11 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildInvoice, invoiceNumber, type InvoiceInputLine } from '../src/pricing/invoice.ts';
+import {
+  applyPriceEdits,
+  buildInvoice,
+  invoiceNumber,
+  type InvoiceInputLine,
+} from '../src/pricing/invoice.ts';
 import { DEFAULT_PRICING, resolvePricing } from '../src/pricing/pricing.ts';
 import { SYSTEM_VARIANT_IDS } from '../src/categories.ts';
 import { SAMPLE_VARIANTS } from '../src/sample/catalogue.ts';
@@ -210,5 +215,41 @@ describe('switch packages per series', () => {
         ['lusano', 3590],
       ],
     );
+  });
+});
+
+describe('hand-set prices and discounts', () => {
+  const inv = buildInvoice(
+    [line('var_ark_1g', 'smart-switches', 12), line('var_temp_sensor', 'sensors', 3)],
+    () => 50,
+    DEFAULT_PRICING,
+  );
+
+  it('overrides a unit price and adds each discount as a red line under its item', () => {
+    const edited = applyPriceEdits(
+      inv,
+      {
+        'switch-package': { discount: 90 },
+        'variant:var_temp_sensor': { unitPrice: 40, discount: 10, discountPercent: true },
+      },
+      60,
+    );
+    const rows = items(edited).map((r) => [r.key, r.quantity, r.unitPrice, !!r.discount]);
+    assert.deepEqual(rows, [
+      ['switch-package', 1, 1390, false],
+      ['switch-package:discount', 1, -90, true],
+      ['switch-addon', 2, 100, false],
+      ['variant:var_temp_sensor', 3, 40, false],
+      ['variant:var_temp_sensor:discount', 1, -12, true],
+    ]);
+    // 1390 - 90 + 200 + 120 - 12
+    assert.equal(edited.total, 1608);
+    assert.equal(edited.deposit, 964.8);
+    assert.match(items(edited)[4]!.description, /^Discount 10%: /);
+  });
+
+  it('never discounts more than the row is worth', () => {
+    const edited = applyPriceEdits(inv, { 'switch-addon': { discount: 999 } }, 60);
+    assert.equal(edited.total, 1390 + 150);
   });
 });

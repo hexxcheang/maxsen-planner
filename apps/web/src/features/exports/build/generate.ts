@@ -44,6 +44,7 @@ const INK: Rgb = [45, 38, 31];
 const INK_2: Rgb = [99, 84, 68];
 const MUTED: Rgb = [150, 135, 117];
 const RULE: Rgb = [229, 216, 196];
+const DISCOUNT: Rgb = [178, 34, 34];
 const IVORY: Rgb = [251, 247, 241];
 const ROSE: Rgb = [197, 138, 98];
 const BRONZE: Rgb = [126, 86, 49];
@@ -823,6 +824,24 @@ export async function buildQuotationPdf({
       doc.setLineWidth(0.5);
       doc.line(col.item, y + 2, col.item + 14, y + 2);
       y += 8;
+      continue;
+    }
+    if (row.discount) {
+      // A discount sits under its item, in red, without a number of its own.
+      ensure(8);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(...DISCOUNT);
+      doc.text((doc.splitTextToSize(row.description, itemW) as string[])[0]!, col.item, y - 0.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9.5);
+      doc.text(money(row.quantity * (row.unitPrice ?? 0)), col.amount - 2, y - 0.5, {
+        align: 'right',
+      });
+      y += 5.5;
+      doc.setDrawColor(...RULE);
+      doc.setLineWidth(0.15);
+      doc.line(M, y - 3.5, W - M, y - 3.5);
       continue;
     }
     // The first line of an item is its name; the rest (a package's contents) is the detail.

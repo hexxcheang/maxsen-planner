@@ -73,7 +73,7 @@ exactly as on the invoice (packages, add-ons, integration and deposit). _Copy as
 to paste into WhatsApp; _Download quotation (PDF)_ gives a proposal-style quotation (the champagne cover,
 the priced items, total, deposit, warranty, terms and payment details); _Download quotation (Excel)_
 fills the invoice template. The quote in progress
-is kept in the browser until _New quote_.
+is kept in the browser until _New quote_. In the quotation, change any row's _Unit price_, or type a _Discount_ (`50` for S$50 off the row, `10%` for 10% off): each discount is listed in red under its item, and the total, deposit, Excel and PDF follow.
 
 **Magic Plan:** in the Plan tab, _Magic Plan_ places devices for you in two steps.
 

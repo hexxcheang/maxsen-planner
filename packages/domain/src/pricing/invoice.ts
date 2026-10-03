@@ -21,12 +21,16 @@ export interface InvoiceInputLine {
 export type InvoiceRow =
   | {
       kind: 'item';
+      /** Stable id for the row (e.g. `switch-package`, `variant:<id>`), for price edits. */
+      key: string;
       description: string;
       quantity: number;
       /** Null when the catalogue has no price yet. */
       unitPrice: number | null;
       /** Packages are printed highlighted, like the template's first line. */
       highlight?: boolean;
+      /** A discount line (printed in red). */
+      discount?: boolean;
     }
   | { kind: 'section'; title: string }
   | { kind: 'note'; text: string; tone?: 'warranty' };
@@ -58,6 +62,7 @@ export function buildInvoice(
   const qty = (pred: (l: InvoiceInputLine) => boolean) =>
     lines.filter(pred).reduce((s, l) => s + l.exportQuantity, 0);
   const item = (
+    key: string,
     description: string,
     quantity: number,
     unitPrice: number | null,
@@ -67,6 +72,7 @@ export function buildInvoice(
     if (unitPrice === null) unpriced.push(description);
     rows.push({
       kind: 'item',
+      key,
       description,
       quantity,
       unitPrice,
@@ -85,7 +91,12 @@ export function buildInvoice(
       const covered = Math.min(left, l.exportQuantity);
       left -= covered;
       const name = `${l.productName}, ${l.variantName}`;
-      item(name, round(l.exportQuantity - covered), priceOf(l.variantId) ?? fallback);
+      item(
+        `variant:${l.variantId}`,
+        name,
+        round(l.exportQuantity - covered),
+        priceOf(l.variantId) ?? fallback,
+      );
     }
   };
 
@@ -114,8 +125,8 @@ export function buildInvoice(
   if (packaged) {
     const { s: sw, count } = packaged;
     swPackages = packagesFor(count, sw.packageSize);
-    item(sw.description, swPackages, sw.packagePrice, true);
-    item(sw.addOnName, count - swPackages * sw.packageSize, sw.addOnPrice);
+    item('switch-package', sw.description, swPackages, sw.packagePrice, true);
+    item('switch-addon', sw.addOnName, count - swPackages * sw.packageSize, sw.addOnPrice);
     for (const l of lines.filter((x) => isSwitch(x) && seriesOf(x) === sw)) used.add(l.variantId);
   }
   for (const { s } of counts)
@@ -143,23 +154,26 @@ export function buildInvoice(
   const ltPackages = packagesFor(lights, lt.packageSize);
   if (ltPackages > 0) {
     item(
+      'light-package',
       fill(lt.description, { total: ltPackages * lt.packageSize }),
       ltPackages,
       lt.packagePrice,
       true,
     );
-    item(lt.addOnName, lights - ltPackages * lt.packageSize, lt.addOnPrice);
+    item('light-addon', lt.addOnName, lights - ltPackages * lt.packageSize, lt.addOnPrice);
     for (const l of lines.filter(isLight)) used.add(l.variantId);
   } else perVariant(isLight, lt.addOnPrice);
   if (lights > 0 && lt.integrationPrice > 0) {
-    item(lt.integrationName, lights, lt.integrationPrice);
-    if (lt.integrationWaived) item('Integration Waived', lights, -lt.integrationPrice);
+    item('light-integration', lt.integrationName, lights, lt.integrationPrice);
+    if (lt.integrationWaived)
+      item('light-integration-waived', 'Integration Waived', lights, -lt.integrationPrice);
   }
 
   const led = pricing.led;
   const ledPackages = packagesFor(metres, led.packageMetres);
   if (ledPackages > 0) {
     item(
+      'led-package',
       fill(led.description, {
         metres: ledPackages * led.packageMetres,
         drivers: ledPackages * led.packageDrivers,
@@ -171,18 +185,21 @@ export function buildInvoice(
   }
   for (const l of lines.filter((x) => isStrip(x) || isDriver(x))) used.add(l.variantId);
   item(
+    'led-driver-addon',
     led.driverAddOnName,
     Math.max(0, drivers - ledPackages * led.packageDrivers),
     led.driverAddOnPrice,
   );
   item(
+    'led-metre-addon',
     led.metreAddOnName,
     round(Math.max(0, metres - ledPackages * led.packageMetres)),
     led.metreAddOnPrice,
   );
   if (drivers > 0 && led.integrationPrice > 0) {
-    item(led.integrationName, drivers, led.integrationPrice);
-    if (led.integrationWaived) item('Integration Waived', drivers, -led.integrationPrice);
+    item('led-integration', led.integrationName, drivers, led.integrationPrice);
+    if (led.integrationWaived)
+      item('led-integration-waived', 'Integration Waived', drivers, -led.integrationPrice);
   }
 
   // --- everything else, at catalogue prices ------------------------------------------------------
@@ -199,6 +216,66 @@ export function buildInvoice(
     deposit: round2((total * pricing.depositPercent) / 100),
     packages: { switches: swPackages, lights: ltPackages, led: ledPackages },
     unpriced,
+  };
+}
+
+/** A hand-set unit price and/or discount for one invoice row. */
+export interface PriceEdit {
+  unitPrice?: number;
+  /** Taken off the row: S$ for the whole row, or a percentage when `discountPercent`. */
+  discount?: number;
+  discountPercent?: boolean;
+}
+
+/**
+ * The invoice with hand-set unit prices and discounts. Each discount is its own line under the
+ * item it's for (one at minus the amount, as the template shows rebates), so it reads clearly on
+ * the quotation and the Excel; the total and deposit follow.
+ */
+export function applyPriceEdits(
+  invoice: Invoice,
+  edits: Record<string, PriceEdit>,
+  depositPercent: number,
+): Invoice {
+  const rows: InvoiceRow[] = [];
+  for (const row of invoice.rows) {
+    if (row.kind !== 'item') {
+      rows.push(row);
+      continue;
+    }
+    const edit = edits[row.key];
+    const unitPrice = edit?.unitPrice ?? row.unitPrice;
+    rows.push({ ...row, unitPrice });
+    const gross = row.quantity * (unitPrice ?? 0);
+    const off = round2(
+      Math.min(
+        gross,
+        edit?.discountPercent ? (gross * (edit.discount ?? 0)) / 100 : (edit?.discount ?? 0),
+      ),
+    );
+    if (off > 0) {
+      const name = row.description.split('\n')[0]!.trim();
+      rows.push({
+        kind: 'item',
+        key: `${row.key}:discount`,
+        description: `Discount${edit?.discountPercent ? ` ${edit.discount}%` : ''}: ${name}`,
+        quantity: 1,
+        unitPrice: -off,
+        discount: true,
+      });
+    }
+  }
+  const total = round2(
+    rows.reduce((s, r) => (r.kind === 'item' ? s + r.quantity * (r.unitPrice ?? 0) : s), 0),
+  );
+  return {
+    ...invoice,
+    rows,
+    total,
+    deposit: round2((total * depositPercent) / 100),
+    unpriced: rows.flatMap((r) =>
+      r.kind === 'item' && r.unitPrice === null ? [r.description] : [],
+    ),
   };
 }
 

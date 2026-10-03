@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Copy, Download, MessageSquareText, Sparkles, Trash2, TriangleAlert } from 'lucide-react';
 import {
+  applyPriceEdits,
   buildInvoice,
   categoryById,
   CATEGORIES,
@@ -9,6 +10,7 @@ import {
   resolvePricing,
   withLedDrivers,
   type InvoiceInputLine,
+  type PriceEdit,
   type QuoteLine,
 } from '@maxsen/domain';
 import {
@@ -35,6 +37,15 @@ interface Draft {
   number: string;
   lines: QuoteLine[];
   unread: string[];
+  /** Hand-set prices and discounts per quotation row (by row key); discounts as typed. */
+  edits: Record<string, { unitPrice?: number; discount?: string }>;
+}
+
+/** A typed discount: "50" is S$50 off the row, "10%" is 10% off. */
+function parseDiscount(text: string | undefined): Omit<PriceEdit, 'unitPrice'> {
+  const m = /^\s*\$?\s*(\d+(?:\.\d+)?)\s*(%)?\s*$/.exec(text ?? '');
+  if (!m) return {};
+  return { discount: Number(m[1]), ...(m[2] ? { discountPercent: true } : {}) };
 }
 
 const KEY = 'maxsen.quote.draft.v1';
@@ -48,6 +59,7 @@ function loadDraft(prefix: string): Draft {
     number: invoiceNumber(prefix, new Date()),
     lines: [],
     unread: [],
+    edits: {},
   };
   try {
     const raw = window.localStorage.getItem(KEY);
@@ -140,7 +152,28 @@ export function QuoteScreen() {
       },
     ];
   });
-  const invoice = buildInvoice(inputs, (id) => variants.get(id)?.price ?? null, pricing);
+  const base = buildInvoice(inputs, (id) => variants.get(id)?.price ?? null, pricing);
+  const invoice = applyPriceEdits(
+    base,
+    Object.fromEntries(
+      Object.entries(draft.edits).map(([k, e]) => [
+        k,
+        { unitPrice: e.unitPrice, ...parseDiscount(e.discount) },
+      ]),
+    ),
+    pricing.depositPercent,
+  );
+  const listPrice = new Map(
+    base.rows.flatMap((r) => (r.kind === 'item' ? [[r.key, r.unitPrice] as const] : [])),
+  );
+  const editRow = (key: string, patch: { unitPrice?: number; discount?: string }) =>
+    setDraft((d) => {
+      const next = { ...d.edits[key], ...patch };
+      const edits = { ...d.edits };
+      if (next.unitPrice === undefined && !next.discount) delete edits[key];
+      else edits[key] = next;
+      return { ...d, edits };
+    });
 
   const updateLine = (i: number, patch: Partial<QuoteLine>) =>
     set({ lines: draft.lines.map((l, j) => (j === i ? { ...l, ...patch } : l)) });
@@ -157,6 +190,10 @@ export function QuoteScreen() {
       else if (row.kind === 'item') {
         n++;
         const price = row.unitPrice ?? 0;
+        if (row.discount) {
+          out.push(`   ${row.description}: ${money(price)}`);
+          continue;
+        }
         out.push(
           `${n}. ${row.description.split('\n')[0]}`,
           `   ${row.quantity} × ${money(price)} = ${money(row.quantity * price)}`,
@@ -230,6 +267,7 @@ export function QuoteScreen() {
                 number: invoiceNumber(pricing.invoicePrefix, new Date()),
                 lines: [],
                 unread: [],
+                edits: {},
               })
             }
           >
@@ -380,7 +418,8 @@ export function QuoteScreen() {
                     <tr className="border-b border-rule-2 text-left text-meta text-ink-2">
                       <th className="py-1.5 font-medium">Item</th>
                       <th className="py-1.5 pl-3 text-right font-medium">Qty</th>
-                      <th className="py-1.5 pl-4 text-right font-medium">Unit price</th>
+                      <th className="py-1.5 pl-3 text-right font-medium">Unit price (S$)</th>
+                      <th className="py-1.5 pl-3 text-right font-medium">Discount</th>
                       <th className="py-1.5 pl-4 text-right font-medium">Amount</th>
                     </tr>
                   </thead>
@@ -388,8 +427,17 @@ export function QuoteScreen() {
                     {invoice.rows.map((row, i) =>
                       row.kind === 'section' ? (
                         <tr key={i}>
-                          <td colSpan={4} className="pt-3 pb-1 text-meta font-semibold text-ink-2">
+                          <td colSpan={5} className="pt-3 pb-1 text-meta font-semibold text-ink-2">
                             {row.title}
+                          </td>
+                        </tr>
+                      ) : row.kind === 'item' && row.discount ? (
+                        <tr key={i} className="border-b border-rule align-top text-danger">
+                          <td colSpan={4} className="py-1.5 pl-3">
+                            {row.description}
+                          </td>
+                          <td className="tnum py-1.5 pl-4 text-right whitespace-nowrap">
+                            {money(row.unitPrice ?? 0)}
                           </td>
                         </tr>
                       ) : row.kind === 'item' ? (
@@ -404,8 +452,47 @@ export function QuoteScreen() {
                             </span>
                           </td>
                           <td className="tnum py-1.5 pl-3 text-right">{row.quantity}</td>
-                          <td className="tnum py-1.5 pl-4 text-right whitespace-nowrap">
-                            {row.unitPrice === null ? '—' : money(row.unitPrice)}
+                          <td className="py-1 pl-3">
+                            <NumberField
+                              compact
+                              live
+                              allowEmpty
+                              min={-100000}
+                              max={1000000}
+                              precision={2}
+                              className="w-28"
+                              aria-label={`Unit price of ${row.description.split('\n')[0]}`}
+                              placeholder={listPrice.get(row.key) == null ? 'Price' : undefined}
+                              value={row.unitPrice}
+                              onChange={(v) =>
+                                editRow(row.key, {
+                                  unitPrice:
+                                    v === null || v === listPrice.get(row.key) ? undefined : v,
+                                })
+                              }
+                            />
+                            {draft.edits[row.key]?.unitPrice !== undefined && (
+                              <p className="mt-0.5 text-right text-meta text-ink-3">
+                                List{' '}
+                                {listPrice.get(row.key) == null
+                                  ? '—'
+                                  : money(listPrice.get(row.key)!)}
+                              </p>
+                            )}
+                          </td>
+                          <td className="py-1 pl-3">
+                            <Input
+                              compact
+                              className="w-24 text-right"
+                              aria-label={`Discount on ${row.description.split('\n')[0]}`}
+                              placeholder="S$ or %"
+                              value={draft.edits[row.key]?.discount ?? ''}
+                              aria-invalid={
+                                !!draft.edits[row.key]?.discount &&
+                                parseDiscount(draft.edits[row.key]?.discount).discount === undefined
+                              }
+                              onChange={(e) => editRow(row.key, { discount: e.target.value })}
+                            />
                           </td>
                           <td className="tnum py-1.5 pl-4 text-right whitespace-nowrap">
                             {money(row.quantity * (row.unitPrice ?? 0))}
@@ -416,7 +503,7 @@ export function QuoteScreen() {
                   </tbody>
                   <tfoot>
                     <tr>
-                      <td colSpan={3} className="pt-3 text-right font-semibold text-ink">
+                      <td colSpan={4} className="pt-3 text-right font-semibold text-ink">
                         Total
                       </td>
                       <td className="tnum pt-3 text-right text-body font-semibold text-ink">
@@ -424,7 +511,7 @@ export function QuoteScreen() {
                       </td>
                     </tr>
                     <tr>
-                      <td colSpan={3} className="py-1 text-right text-ink-2">
+                      <td colSpan={4} className="py-1 text-right text-ink-2">
                         Deposit ({pricing.depositPercent}%)
                       </td>
                       <td className="tnum py-1 text-right text-ink-2">{money(invoice.deposit)}</td>
