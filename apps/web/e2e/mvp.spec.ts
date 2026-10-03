@@ -62,6 +62,32 @@ test.describe('MVP editing', () => {
     await expect.poll(() => totalFor(page, 'Control Panels')).toBe('2');
   });
 
+  test('switching to Lighting and back shows the Smart Home plan again after editing it', async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'The library starts closed on iPad');
+    await page.goto('/projects/proj_sample_tan/plan?level=lvl_tan_1&type=smart-home');
+    await expect(page.getByTestId('plan-canvas')).toHaveAttribute('data-scale', '1.00');
+    // Edit the Smart Home plan: place a control panel.
+    await page.getByPlaceholder('Search products and variants').fill('Nova S8');
+    await page
+      .getByRole('button', { name: /Nova S8/ })
+      .first()
+      .click();
+    const at = await viewport(page);
+    const p = at(500, 400);
+    await page.mouse.click(p.x, p.y);
+    await page.keyboard.press('Escape');
+    const legend = page.getByRole('region', { name: 'Legend' });
+    await expect(legend).toContainText('Smart Switches');
+
+    await page.getByRole('radio', { name: 'Lighting' }).click();
+    await expect(legend).toContainText('Downlights');
+    await page.getByRole('radio', { name: 'Smart Home' }).click();
+    await expect(legend).toContainText('Smart Switches');
+    await expect(legend).not.toContainText('Downlights');
+  });
+
   test('draw an LED strip, add and drag points, and settle its length in Review totals', async ({
     page,
   }) => {

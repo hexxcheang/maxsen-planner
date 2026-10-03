@@ -67,8 +67,9 @@ states; `/dev/styleguide` (dev server only) shows every UI primitive and categor
 
 1. **Rooms.** Choose the type of home: a 2- to 5-room flat, an executive flat, a 2- or 3-bedroom condo,
    or "Other". The app lists the rooms that home has. A 5-room flat, for example, has a master bedroom,
-   3 bedrooms, the living/dining room, the kitchen and 2 toilets. For each room, drag a rough box over
-   it on the drawing, then tap where its door is. Add or remove rooms as needed, for example a service
+   3 bedrooms, the living/dining room, the kitchen and 2 toilets. Drag a rough box over each room on
+   the drawing, then tap where its door is; each box outlines the next room in the list, so there's no
+   need to pick rooms first. Tap a box to select its room (to add an area, redraw it or move its door). Add or remove rooms as needed, for example a service
    yard, shelter, study or corridor. The floor area sets the drawing's scale, for spacing. Your outlines
    are kept, so the next run starts from them. The sample drawings come already outlined.
 2. **What to place.** Tick the categories, then review the counts and place everything. One Undo
@@ -111,7 +112,7 @@ only some rooms doesn't inflate them.
 - **Smart devices:**
   - control panels at the entrance and in the master bedroom;
   - curtains at the windows of living rooms, bedrooms and the study;
-  - a router, gateway and mesh nodes.
+  - a router, gateway and mesh nodes, when ticked (they're off by default).
 
 **Optional: Claude.** If an Anthropic API key is set up, the Rooms step has a _Suggest rooms with Claude_
 button that outlines the rooms for you to check:

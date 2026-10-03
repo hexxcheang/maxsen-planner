@@ -142,10 +142,21 @@ async function loadAssets(settings: Settings): Promise<Assets> {
   return { logo: l, art, pattern };
 }
 
-function drawLogo(doc: JsPdf, img: Picture, x: number, y: number, h: number, alignRight = false) {
+/** The logo, `h` mm tall but no wider than `maxW`, its top edge at `y` (centred on that height). */
+function drawLogo(
+  doc: JsPdf,
+  img: Picture,
+  x: number,
+  y: number,
+  h: number,
+  alignRight = false,
+  maxW = Infinity,
+) {
   if (!img) return;
-  const w = (img.width / img.height) * h;
-  doc.addImage(img.dataUrl, 'PNG', alignRight ? x - w : x, y, w, h);
+  const k = Math.min(h / img.height, maxW / img.width);
+  const w = img.width * k;
+  const lh = img.height * k;
+  doc.addImage(img.dataUrl, 'PNG', alignRight ? x - w : x, y + (h - lh) / 2, w, lh);
 }
 
 /**
@@ -242,7 +253,7 @@ async function cover(
 
   // Logo and the proposal mark, over a fine rose-gold rule.
   const head = M * 0.9;
-  drawLogo(doc, assets.logo, M, head - 6, 12);
+  drawLogo(doc, assets.logo, M, head - 4, 8, false, 58);
   if (!assets.logo) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(15);
@@ -302,7 +313,7 @@ function pageHeader(doc: JsPdf, assets: Assets, label: string, title: string, M:
   doc.setFontSize(17);
   doc.setTextColor(...DEEP);
   doc.text(title, M, M + 11);
-  drawLogo(doc, assets.logo, W - M, M, 9, true);
+  drawLogo(doc, assets.logo, W - M, M + 1, 6, true, 40);
   doc.setDrawColor(...DEEP);
   doc.setLineWidth(0.25);
   doc.line(M, M + 16, W - M, M + 16);

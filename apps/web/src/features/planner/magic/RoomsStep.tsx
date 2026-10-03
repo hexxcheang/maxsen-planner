@@ -74,18 +74,22 @@ export function RoomsStep({
       y: Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height)),
     };
   };
+  // Every press starts a box; on release, a tap and a drag mean different things (see `up`).
   const down = (e: PointerEvent) => {
-    if (!active && !windowMode) return;
     const p = at(e);
-    if (!windowMode && active && mode === 'door') {
-      const rooms = layout.rooms.map((r) => (r.id === active.id ? { ...r, door: p } : r));
-      onChange({ ...layout, rooms });
-      advance(rooms, active.id);
-      return;
-    }
     (e.target as Element).setPointerCapture?.(e.pointerId);
     setBox({ x0: p.x, y0: p.y, x1: p.x, y1: p.y });
   };
+  /** The smallest outlined room (counting its added areas) under a point. */
+  const roomAt = (p: { x: number; y: number }) =>
+    layout.rooms
+      .filter(drawn)
+      .filter((r) =>
+        [r, ...(r.parts ?? [])].some(
+          (b) => p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h,
+        ),
+      )
+      .sort((a, b) => a.w * a.h - b.w * b.h)[0];
   const move = (e: PointerEvent) => {
     if (!box) return;
     const p = at(e);
@@ -109,20 +113,38 @@ export function RoomsStep({
       setWindowNote(null);
       return;
     }
-    if (!box || !active) return;
+    if (!box) return;
     const x = Math.min(box.x0, box.x1);
     const y = Math.min(box.y0, box.y1);
     const w = Math.abs(box.x1 - box.x0);
     const h = Math.abs(box.y1 - box.y0);
     setBox(null);
-    if (w < 0.02 || h < 0.02) return; // a stray tap, not a room
-    if (mode === 'part') {
+    if (w < 0.02 || h < 0.02) {
+      // A tap: the door, while one is being marked; otherwise pick the room tapped.
+      const p = { x: box.x0, y: box.y0 };
+      if (active && mode === 'door') {
+        const rooms = layout.rooms.map((r) => (r.id === active.id ? { ...r, door: p } : r));
+        onChange({ ...layout, rooms });
+        advance(rooms, active.id);
+        return;
+      }
+      const hit = roomAt(p);
+      if (hit && mode !== 'part') select(hit, 'done');
+      return;
+    }
+    if (active && mode === 'part') {
       // Another area joined on to the room (an L-shaped living room, say).
       update(active.id, { parts: [...(active.parts ?? []), { x, y, w, h }] });
       setMode(active.door ? 'done' : 'door');
       return;
     }
-    update(active.id, { x, y, w, h, door: null, parts: [] });
+    // A drag outlines the room being drawn, or else the next room still to outline, so rooms can
+    // be boxed one after another without picking each from the list.
+    const target =
+      active && mode === 'draw' ? active : (layout.rooms.find((r) => !drawn(r)) ?? null);
+    if (!target) return;
+    update(target.id, { x, y, w, h, door: null, parts: [] });
+    setActiveId(target.id);
     setMode('door');
   };
 
@@ -162,14 +184,14 @@ export function RoomsStep({
       : 'Put an X on each window: tap its line. Tap an X again to remove it.'
     : !active
       ? done === layout.rooms.length && done > 0
-        ? 'All rooms are outlined. Select a room to redraw it or move its door.'
-        : 'Choose the type of home, or add rooms, then outline them on the drawing.'
+        ? 'All rooms are outlined. Tap a room to change it.'
+        : 'Drag a box over each room, in the order listed. Tap a box to select it.'
       : mode === 'draw'
         ? `Drag a box over the ${active.name}.`
         : mode === 'part'
           ? `Drag a box over the rest of the ${active.name}. It joins on to the room.`
           : mode === 'done'
-            ? `The ${active.name} is outlined. Odd shape? Press + to add another area, or drag a new box to redraw it.`
+            ? `The ${active.name} is outlined. Odd shape? Press + to add another area.`
             : `Tap where the ${active.name}’s door is (or skip if it has none). Odd shape? Press + first.`;
   /** Adds another area to the active room. */
   const addPart = () => {
@@ -371,9 +393,17 @@ export function RoomsStep({
             </Button>
           )}
           {!windowMode && active && mode === 'done' && (
-            <Button size="sm" onClick={() => advance(layout.rooms, active.id)}>
-              Next room
-            </Button>
+            <span className="flex gap-2">
+              <Button size="sm" variant="ghost" onClick={() => setMode('draw')}>
+                Redraw
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setMode('door')}>
+                Move door
+              </Button>
+              <Button size="sm" onClick={() => advance(layout.rooms, active.id)}>
+                Next room
+              </Button>
+            </span>
           )}
         </div>
         <div className="flex items-center justify-center bg-desk p-3">
@@ -382,7 +412,7 @@ export function RoomsStep({
             data-testid="room-canvas"
             className={cn(
               'relative w-full touch-none select-none border border-rule-2 bg-surface',
-              active || windowMode ? 'cursor-crosshair' : 'cursor-default',
+              'cursor-crosshair',
             )}
             style={{
               aspectRatio: String(aspect),

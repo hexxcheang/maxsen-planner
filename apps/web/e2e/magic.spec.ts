@@ -15,7 +15,7 @@ test.describe('Magic Plan', () => {
     await page.screenshot({
       path: `test-results/screens/magic-rooms-sample-${testInfo.project.name}.png`,
     });
-    await dialog.getByRole('button', { name: 'Next' }).click();
+    await dialog.getByRole('button', { name: 'Next', exact: true }).click();
     await expect(dialog.getByRole('group', { name: 'Smart Home Plan categories' })).toBeVisible();
 
     // Leave curtains out.
@@ -63,7 +63,7 @@ test.describe('Magic Plan', () => {
     const dialog = page.getByRole('dialog', { name: 'Magic Plan' });
     await expect(dialog.getByRole('combobox', { name: 'Type of home' })).toHaveValue('hdb-4');
     await expect(dialog.getByText(/0 of 7 outlined/)).toBeVisible();
-    await expect(dialog.getByRole('button', { name: 'Next' })).toBeDisabled();
+    await expect(dialog.getByRole('button', { name: 'Next', exact: true })).toBeDisabled();
 
     const canvas = dialog.getByTestId('room-canvas');
     const box = (await canvas.boundingBox())!;
@@ -121,8 +121,37 @@ test.describe('Magic Plan', () => {
     await page.mouse.up();
     await expect(dialog.getByTestId('room-part')).toHaveCount(1);
     await outline('Kitchen', [280, 100, 280, 260], [480, 358]);
-    await outline('Master Toilet', [1140, 100, 160, 200], [1142, 255]);
-    await outline('Common Toilet', [720, 100, 160, 200], [795, 298]);
+    // The rest straight onto the drawing: each box outlines the next room in the list.
+    const drawNext = async (
+      name: string,
+      [x, y, w, h]: [number, number, number, number],
+      door: [number, number],
+    ) => {
+      await canvas.scrollIntoViewIfNeeded();
+      const b = (await canvas.boundingBox())!;
+      const Pn = (px: number, py: number) => ({
+        x: b.x + (px / 1400) * b.width,
+        y: b.y + (py / 1000) * b.height,
+      });
+      const a = Pn(x + 8, y + 8);
+      const z = Pn(x + w - 8, y + h - 8);
+      await page.mouse.move(a.x, a.y);
+      await page.mouse.down();
+      await page.mouse.move(z.x, z.y, { steps: 5 });
+      await page.mouse.up();
+      await expect(dialog.getByText(new RegExp(`Tap where the ${name}’s door is`))).toBeVisible();
+      const d = Pn(door[0], door[1]);
+      await page.mouse.click(d.x, d.y);
+    };
+    await drawNext('Master Toilet', [1140, 100, 160, 200], [1142, 255]);
+    await drawNext('Common Toilet', [720, 100, 160, 200], [795, 298]);
+    // Tapping a box selects its room.
+    const b3 = (await canvas.boundingBox())!;
+    await page.mouse.click(b3.x + (1000 / 1400) * b3.width, b3.y + (560 / 1000) * b3.height);
+    await expect(dialog.getByRole('button', { name: /^Bedroom 2:/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
     await expect(dialog.getByText(/7 of 7 outlined/)).toBeVisible();
 
     // Windows are marked by hand: an X on each window line finds the whole window.
@@ -169,7 +198,7 @@ test.describe('Magic Plan', () => {
       path: `test-results/screens/magic-rooms-drawn-${testInfo.project.name}.png`,
     });
 
-    await dialog.getByRole('button', { name: 'Next' }).click();
+    await dialog.getByRole('button', { name: 'Next', exact: true }).click();
     await dialog.getByRole('button', { name: 'Create Magic Plan' }).click();
     await expect(dialog.getByText(/Found 7 rooms/)).toBeVisible();
     await dialog.getByRole('button', { name: /Place \d+ items/ }).click();

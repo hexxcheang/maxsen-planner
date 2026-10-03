@@ -145,7 +145,9 @@ export function PlannerScreen() {
   // arriving from the data layer that we didn't just save (plan switch, external change) is loaded.
   const saved = useRef<unknown>(null);
   useEffect(() => {
-    if (plan && plan.document === saved.current) return;
+    // Our own save coming back: nothing to load, as long as that plan is the one already open.
+    // (Back on a plan after viewing another, it must be loaded even if it was the last one saved.)
+    if (plan && plan.document === saved.current && store.getState().planId === plan.id) return;
     store.getState().load({
       projectId: project.id,
       levelId,

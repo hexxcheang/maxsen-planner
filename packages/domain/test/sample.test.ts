@@ -240,7 +240,7 @@ describe('sample sources and files', () => {
   });
 
   it('sampleFileUrl maps ids to /sample URLs and throws on unknown ids', () => {
-    assert.match(sampleFileUrl('file_sample_logo'), /^\/sample\/.*\.svg$/);
+    assert.match(sampleFileUrl('file_sample_logo'), /^\/sample\/maxsen-logo\.png$/);
     for (const f of SAMPLE_FILES) assert.match(sampleFileUrl(f.id), /^\/sample\//);
     assert.throws(() => sampleFileUrl('file_nope'), /Unknown sample file/);
   });

@@ -27,7 +27,7 @@ export function PasscodeScreen() {
     <main data-screen-ready className="flex min-h-dvh flex-col bg-paper">
       <div className="flex flex-1 items-center justify-center px-5">
         <div className="w-full max-w-[340px]">
-          <img src="/sample/maxsen-logo.svg" alt="Maxsen" className="mb-10 h-8 w-auto" />
+          <img src="/sample/maxsen-logo.png" alt="Maxsen" className="mb-10 h-7 w-auto" />
           <p className="text-meta text-ink-2">Maxsen Smart Home Planner</p>
           <h1 className="mt-1 text-title text-ink">Enter the team passcode</h1>
           <form onSubmit={submit} className="mt-6 flex flex-col gap-4">

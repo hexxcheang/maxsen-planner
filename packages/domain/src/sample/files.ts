@@ -24,6 +24,14 @@ const svg = (
   url,
 });
 
+const png = (
+  id: string,
+  kind: FileRecord['kind'],
+  url: string,
+  width: number,
+  height: number,
+): SampleFile => ({ ...svg(id, kind, url, width, height), mime: 'image/png' });
+
 const PRODUCT_IMAGES = [
   'switch-1gang',
   'switch-2gang',
@@ -52,7 +60,7 @@ const PRODUCT_IMAGES = [
 ];
 
 const FILES: SampleFile[] = [
-  svg('file_sample_logo', 'logo', '/sample/maxsen-logo.svg', 360, 96),
+  png('file_sample_logo', 'logo', '/sample/maxsen-logo.png', 1752, 275),
   svg('file_sample_plan_hdb', 'page', '/sample/floorplan-hdb-4room.svg', 1400, 1000),
   svg('file_sample_plan_condo', 'page', '/sample/floorplan-condo-2bed.svg', 1400, 1000),
   svg('file_sample_plan_landed_l1', 'page', '/sample/floorplan-landed-l1.svg', 1400, 1000),
