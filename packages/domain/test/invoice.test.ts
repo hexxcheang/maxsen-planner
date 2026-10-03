@@ -148,3 +148,67 @@ describe('pricing settings', () => {
     assert.equal(invoiceNumber('MXN-HX-', new Date(2026, 8, 16), 2), 'MXN-HX-26091602');
   });
 });
+
+describe('switch packages per series', () => {
+  const sw = (variantId: string, productName: string, n: number): InvoiceInputLine => ({
+    ...line(variantId, 'smart-switches', n),
+    productName,
+  });
+  const pkgOf = (inv: ReturnType<typeof buildInvoice>) => items(inv).filter((r) => r.highlight);
+
+  it('prices 10 Ark switches as the Ark Core package at S$1,390, more as S$100 add-ons', () => {
+    const inv = buildInvoice([sw('var_ark_2g', 'Ark Series', 12)], priceOf, DEFAULT_PRICING);
+    assert.deepEqual(
+      pkgOf(inv).map((r) => [r.quantity, r.unitPrice]),
+      [[1, 1390]],
+    );
+    assert.match(pkgOf(inv)[0]!.description, /^Ark Core Package/);
+    const addOn = items(inv).find((r) => /Add-On Per Ark Series/.test(r.description))!;
+    assert.deepEqual([addOn.quantity, addOn.unitPrice], [2, 100]);
+    assert.equal(inv.total, 1390 + 200);
+  });
+
+  it('keeps Nova+ Pro at S$1,990 and Lusano+ at S$3,590', () => {
+    const nova = buildInvoice(
+      [sw('var_nova_pro_1g_black', 'Nova+ Pro', 10)],
+      priceOf,
+      DEFAULT_PRICING,
+    );
+    assert.equal(pkgOf(nova)[0]!.unitPrice, 1990);
+    const lusano = buildInvoice(
+      [sw('var_lusano_1g', 'Lusano+ Prestige', 10)],
+      priceOf,
+      DEFAULT_PRICING,
+    );
+    assert.equal(pkgOf(lusano)[0]!.unitPrice, 3590);
+  });
+
+  it('gives the one switch package to the series with most switches; the rest are priced singly', () => {
+    const inv = buildInvoice(
+      [sw('var_ark_1g', 'Ark Series', 12), sw('var_nova_pro_1g_black', 'Nova+ Pro', 10)],
+      priceOf,
+      DEFAULT_PRICING,
+    );
+    assert.equal(inv.packages.switches, 1);
+    assert.match(pkgOf(inv)[0]!.description, /^Ark Core Package/);
+    const nova = items(inv).find((r) => r.description.startsWith('Nova+ Pro'))!;
+    assert.deepEqual([nova.quantity, nova.unitPrice], [10, 180]);
+  });
+
+  it('turns a single saved switch package (from before series) into the Nova+ Pro one', () => {
+    const p = resolvePricing({
+      pricing: {
+        ...DEFAULT_PRICING,
+        switches: { ...DEFAULT_PRICING.switches[1]!, packagePrice: 1890 } as never,
+      },
+    });
+    assert.deepEqual(
+      p.switches.map((s) => [s.id, s.packagePrice]),
+      [
+        ['ark', 1390],
+        ['nova', 1890],
+        ['lusano', 3590],
+      ],
+    );
+  });
+});

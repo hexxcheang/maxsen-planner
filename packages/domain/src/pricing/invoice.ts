@@ -5,7 +5,7 @@
  * beyond it is charged at add-on rates, and everything else at its catalogue price.
  */
 import { SYSTEM_VARIANT_IDS, type CategoryId } from '../categories.ts';
-import type { PricingSettings } from './pricing.ts';
+import type { PricingSettings, SwitchPackage } from './pricing.ts';
 
 /** The parts of a Review totals line the invoice needs. */
 export interface InvoiceInputLine {
@@ -90,18 +90,45 @@ export function buildInvoice(
   };
 
   // --- smart home packages --------------------------------------------------------------------
-  const sw = pricing.switches;
+  // Each switch series has its own package (Ark, Nova+ Pro, Lusano+). Still at most one switch
+  // package per quotation: it goes to the series with the most switches, if that fills one; every
+  // other switch is priced individually (at its catalogue price, else its series' add-on rate).
   const isSwitch = (l: InvoiceInputLine) => l.categoryId === 'smart-switches';
-  const switches = qty(isSwitch);
-  const swPackages = packagesFor(switches, sw.packageSize);
-  if (swPackages > 0) {
+  const seriesOf = (l: InvoiceInputLine): SwitchPackage | undefined => {
+    const name = l.productName.toLowerCase();
+    return pricing.switches.find((s) =>
+      s.match
+        .split(',')
+        .map((w) => w.trim().toLowerCase())
+        .some((w) => w && name.includes(w)),
+    );
+  };
+  const counts = pricing.switches.map((s) => ({
+    s,
+    count: qty((l) => isSwitch(l) && seriesOf(l) === s),
+  }));
+  const packaged = counts
+    .filter(({ s, count }) => packagesFor(count, s.packageSize) > 0)
+    .sort((a, b) => b.count - a.count)[0];
+  let swPackages = 0;
+  if (packaged) {
+    const { s: sw, count } = packaged;
+    swPackages = packagesFor(count, sw.packageSize);
     item(sw.description, swPackages, sw.packagePrice, true);
-    item(sw.addOnName, switches - swPackages * sw.packageSize, sw.addOnPrice);
-    for (const l of lines.filter(isSwitch)) used.add(l.variantId);
-  } else perVariant(isSwitch, sw.addOnPrice);
-  // IR blasters and gateways in the switch packages aren't charged again.
-  perVariant((l) => l.categoryId === 'aircon-controllers', null, swPackages * sw.includesAircon);
-  perVariant((l) => l.categoryId === 'gateways', null, swPackages * sw.includesGateways);
+    item(sw.addOnName, count - swPackages * sw.packageSize, sw.addOnPrice);
+    for (const l of lines.filter((x) => isSwitch(x) && seriesOf(x) === sw)) used.add(l.variantId);
+  }
+  for (const { s } of counts)
+    if (s !== packaged?.s) perVariant((l) => isSwitch(l) && seriesOf(l) === s, s.addOnPrice);
+  perVariant((l) => isSwitch(l) && !seriesOf(l), null);
+  // IR blasters and gateways in the switch package aren't charged again.
+  const sw = packaged?.s;
+  perVariant(
+    (l) => l.categoryId === 'aircon-controllers',
+    null,
+    swPackages * (sw?.includesAircon ?? 0),
+  );
+  perVariant((l) => l.categoryId === 'gateways', null, swPackages * (sw?.includesGateways ?? 0));
 
   // --- lighting --------------------------------------------------------------------------------
   const lt = pricing.lights;

@@ -13,7 +13,10 @@ test.describe('pricing', () => {
     await page.goto('/admin');
     await page.getByRole('tab', { name: 'Pricing' }).click();
     const form = page.getByRole('form', { name: 'Pricing' });
-    await expect(form.getByLabel('Switches per package')).toHaveValue('10');
+    // One switch package per series, from the catalogue: Ark, Nova+ Pro and Lusano+.
+    await expect(form.getByLabel('Switches per package')).toHaveCount(3);
+    await expect(form.getByLabel('Package price (S$)').first()).toHaveValue('1390');
+    await expect(form.getByText('Ark Series switch package')).toBeVisible();
     await expect(form.getByLabel('Lights per package')).toHaveValue('12');
     await expect(form.getByLabel('Metres per package')).toHaveValue('30');
     await expect(form.getByLabel('Drivers per package')).toHaveValue('6');

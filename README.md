@@ -139,13 +139,19 @@ button that outlines the rooms for you to check:
 (`apps/web/public/templates/invoice-template.xlsx`). Quantities come from Review totals and are grouped
 into packages:
 
-| Package | Contents                                                 | Price   |
-| ------- | -------------------------------------------------------- | ------- |
-| Switch  | 10 smart switches (includes 4 IR blasters and 1 gateway) | S$1,990 |
-| Light   | 12 downlights / surface lights                           | S$988   |
-| LED     | 30 m of LED strip with 6 drivers                         | S$988   |
+| Package                  | Contents                                                      | Price   |
+| ------------------------ | ------------------------------------------------------------- | ------- |
+| Ark Core switch package  | 10 Ark switches, 4 aircon IR, 1 gateway (add-on S$100 each)   | S$1,390 |
+| Nova+ Pro switch package | 10 Nova+ Pro switches, 4 IR, 1 gateway (add-on S$180 each)    | S$1,990 |
+| Lusano+ Prestige package | 10 Lusano+ switches, 4 IR, 1 gateway (add-on S$360 each)      | S$3,590 |
+| Light                    | 12 downlights / surface lights (add-on S$78 each)             | S$988   |
+| LED                      | 30 m of LED strip with 6 drivers (add-on S$18/m, S$78/driver) | S$988   |
 
-A quotation has at most one of each package; everything beyond it is charged at the add-on rates. Integration per light and per driver is listed
+Switches belong to a series by product name (Ark, Nova, Lusano). The full catalogue is transcribed in
+[`docs/pricing-catalogue.md`](docs/pricing-catalogue.md).
+
+A quotation has at most one switch package (for the series with most switches), one light package and
+one LED package; everything beyond is charged at the add-on rates. Integration per light and per driver is listed
 and waived. Every other device is charged at its catalogue price, and the invoice adds the total and a
 60% deposit.
 

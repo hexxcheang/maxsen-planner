@@ -1,6 +1,6 @@
 import { useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { FileText, Upload } from 'lucide-react';
-import { resolvePricing, type PricingSettings } from '@maxsen/domain';
+import { resolvePricing, type PricingSettings, type SwitchPackage } from '@maxsen/domain';
 import {
   Button,
   buttonClass,
@@ -44,7 +44,12 @@ export function PricingSection() {
 
   const set = <K extends keyof PricingSettings>(k: K, v: PricingSettings[K]) =>
     setDraft((d) => ({ ...d, [k]: v }));
-  const setIn = <K extends 'company' | 'switches' | 'lights' | 'led'>(
+  const setSeries = (i: number, patch: Partial<SwitchPackage>) =>
+    setDraft((d) => ({
+      ...d,
+      switches: d.switches.map((s, j) => (j === i ? { ...s, ...patch } : s)),
+    }));
+  const setIn = <K extends 'company' | 'lights' | 'led'>(
     k: K,
     patch: Partial<PricingSettings[K]>,
   ) => setDraft((d) => ({ ...d, [k]: { ...d[k], ...patch } }));
@@ -132,61 +137,64 @@ export function PricingSection() {
         </Button>
       </div>
 
-      <Group
-        title="Switch package"
-        note="Every this many smart switches on a project make one package. Extra switches are charged at the add-on rate."
-      >
-        <Field label="Switches per package">
-          <NumberField
-            value={draft.switches.packageSize}
-            min={1}
-            onChange={(v) => setIn('switches', { packageSize: num(v) })}
-          />
-        </Field>
-        <Field label="Package price (S$)">
-          <NumberField
-            value={draft.switches.packagePrice}
-            min={0}
-            precision={2}
-            onChange={(v) => setIn('switches', { packagePrice: num(v) })}
-          />
-        </Field>
-        <Field label="IR blasters included per package">
-          <NumberField
-            value={draft.switches.includesAircon}
-            min={0}
-            onChange={(v) => setIn('switches', { includesAircon: num(v) })}
-          />
-        </Field>
-        <Field label="Gateways included per package">
-          <NumberField
-            value={draft.switches.includesGateways}
-            min={0}
-            onChange={(v) => setIn('switches', { includesGateways: num(v) })}
-          />
-        </Field>
-        <Field label="Add-on line" className="col-span-1">
-          <Input
-            value={draft.switches.addOnName}
-            onChange={(e) => setIn('switches', { addOnName: e.target.value })}
-          />
-        </Field>
-        <Field label="Add-on price per switch (S$)">
-          <NumberField
-            value={draft.switches.addOnPrice}
-            min={0}
-            precision={2}
-            onChange={(v) => setIn('switches', { addOnPrice: num(v) })}
-          />
-        </Field>
-        <Field label="Package text on the invoice" className={wide}>
-          <Textarea
-            rows={6}
-            value={draft.switches.description}
-            onChange={(e) => setIn('switches', { description: e.target.value })}
-          />
-        </Field>
-      </Group>
+      {draft.switches.map((sw, i) => (
+        <Group
+          key={sw.id}
+          title={`${sw.name} switch package`}
+          note={`Switches whose product name has “${sw.match}” in it. A quotation gets at most one switch package (for the series with most switches); switches beyond it are add-ons.`}
+        >
+          <Field label="Switches per package">
+            <NumberField
+              value={sw.packageSize}
+              min={1}
+              onChange={(v) => setSeries(i, { packageSize: num(v) })}
+            />
+          </Field>
+          <Field label="Package price (S$)">
+            <NumberField
+              value={sw.packagePrice}
+              min={0}
+              precision={2}
+              onChange={(v) => setSeries(i, { packagePrice: num(v) })}
+            />
+          </Field>
+          <Field label="IR blasters included">
+            <NumberField
+              value={sw.includesAircon}
+              min={0}
+              onChange={(v) => setSeries(i, { includesAircon: num(v) })}
+            />
+          </Field>
+          <Field label="Gateways included">
+            <NumberField
+              value={sw.includesGateways}
+              min={0}
+              onChange={(v) => setSeries(i, { includesGateways: num(v) })}
+            />
+          </Field>
+          <Field label="Add-on line" className="col-span-1">
+            <Input
+              value={sw.addOnName}
+              onChange={(e) => setSeries(i, { addOnName: e.target.value })}
+            />
+          </Field>
+          <Field label="Add-on price per switch (S$)">
+            <NumberField
+              value={sw.addOnPrice}
+              min={0}
+              precision={2}
+              onChange={(v) => setSeries(i, { addOnPrice: num(v) })}
+            />
+          </Field>
+          <Field label="Package text on the invoice" className={wide}>
+            <Textarea
+              rows={6}
+              value={sw.description}
+              onChange={(e) => setSeries(i, { description: e.target.value })}
+            />
+          </Field>
+        </Group>
+      ))}
 
       <Group
         title="Light package"
