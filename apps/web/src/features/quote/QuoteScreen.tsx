@@ -332,6 +332,7 @@ export function QuoteScreen() {
                       <NumberField
                         compact
                         aria-label={`Quantity of item ${i + 1}`}
+                        live
                         value={l.quantity}
                         min={0}
                         max={10000}

@@ -35,6 +35,14 @@ test.describe('quick quote', () => {
       quote.getByText('Add-On Per Nova+ Pro Smart Switch', { exact: false }),
     ).toBeVisible();
     await expect(quote).toContainText('Total');
+
+    // Typing a new quantity updates the quotation straight away, without leaving the box:
+    // 25 switches is the one package plus 15 add-ons.
+    const addOn = quote.getByRole('row', { name: /Add-On Per Nova\+ Pro Smart Switch/ });
+    await expect(addOn).toContainText('2');
+    await page.getByLabel('Quantity of item 1').fill('25');
+    await expect(addOn.getByRole('cell').nth(1)).toHaveText('15');
+    await expect(page.getByLabel('Quantity of item 1')).toBeFocused();
     await page.screenshot({
       path: `test-results/screens/quote-${testInfo.project.name}.png`,
       fullPage: true,

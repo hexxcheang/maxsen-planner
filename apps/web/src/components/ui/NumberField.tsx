@@ -17,6 +17,8 @@ interface NumberFieldProps {
   allowEmpty?: boolean;
   /** Shows −/+ buttons. */
   stepper?: boolean;
+  /** Also reports each valid number as it's typed, so what depends on it updates at once. */
+  live?: boolean;
   disabled?: boolean;
   compact?: boolean;
   placeholder?: string;
@@ -37,6 +39,7 @@ export function NumberField({
   unit,
   allowEmpty = false,
   stepper = false,
+  live = false,
   disabled,
   compact,
   placeholder,
@@ -48,7 +51,12 @@ export function NumberField({
   const [text, setText] = useState(format(value));
   // Re-entering the current value still commits (e.g. confirming an adjustment after a warning).
   const edited = useRef(false);
-  useEffect(() => setText(format(value)), [value]);
+  // Follow the value from outside, but leave what's being typed alone when it already means that
+  // value (so typing "1." or "02" isn't rewritten mid-way while live).
+  useEffect(
+    () => setText((t) => (t.trim() !== '' && Number(t) === value ? t : format(value))),
+    [value],
+  );
 
   const clamp = (n: number) => {
     const f = 10 ** precision;
@@ -119,6 +127,14 @@ export function NumberField({
           onChange={(e) => {
             edited.current = true;
             setText(e.target.value);
+            if (live) {
+              const trimmed = e.target.value.trim();
+              const n = Number(trimmed);
+              if (trimmed !== '' && Number.isFinite(n)) {
+                const next = clamp(n);
+                if (next !== value) onChange?.(next);
+              }
+            }
           }}
           onBlur={(e) => commit(e.target.value)}
           onKeyDown={onKeyDown}
