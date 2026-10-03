@@ -213,7 +213,23 @@ export interface Project extends ProjectDetails {
   exportSettings: ExportSettings;
   /** Most recently used variant ids, newest first, at most 12. */
   recentVariantIds: string[];
+  /** Key dates on site, as YYYY-MM-DD. */
+  schedule?: ProjectSchedule;
 }
+
+/** The on-site milestones, in the order they happen. */
+export const SCHEDULE_STEPS = [
+  'siteLiaison',
+  'lightsDelivery',
+  'installation',
+  'integration',
+] as const;
+export type ScheduleStep = (typeof SCHEDULE_STEPS)[number];
+
+export type ProjectSchedule = Partial<Record<ScheduleStep, string | null>> & {
+  /** No lights are delivered for this project, so that step is skipped. */
+  noLightsDelivery?: boolean;
+};
 
 export interface Level {
   id: string;

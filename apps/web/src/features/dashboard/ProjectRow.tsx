@@ -14,6 +14,7 @@ import { fileUrl } from '@/lib/files';
 import { formatUpdated, STATUS_LABELS } from '@/lib/format';
 import { useActions } from '@/lib/data/hooks';
 import { ProjectDetailsDialog } from '@/features/project/ProjectDetailsDialog';
+import { ProjectSchedule } from './ProjectSchedule';
 
 export function ProjectThumbnail({
   fileId,
@@ -111,6 +112,9 @@ export function ProjectRow({ project }: { project: Project }) {
             },
           ]}
         />
+      </div>
+      <div className="col-start-2 col-end-[-1] mt-3 border-t border-dashed border-rule pt-2.5 max-[900px]:row-start-3">
+        <ProjectSchedule project={project} />
       </div>
       <ConfirmDialog
         open={confirming}

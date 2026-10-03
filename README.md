@@ -36,6 +36,11 @@ states; `/dev/styleguide` (dev server only) shows every UI primitive and categor
 
 1. **Sign in** with `maxsen`; unlock admin with `admin`.
 2. **New project** from blank or a template (templates copy levels and export settings).
+   On **Projects**, click a project's status to change it (Draft, Planning, Quoted, Deposit paid,
+   Installing, Completed) and filter by status. Each project also shows its schedule: site liaising,
+   lights delivery (or _No lights to deliver_), installation and integration. Click a step to pick its
+   date from a calendar; past steps tick off, the next one is highlighted with how far away it is, and
+   a date earlier than the step before it is flagged.
 3. **Setup:** upload PDFs (each page is rendered in the browser) or JPG/PNG images, add and order levels,
    set paper size and orientation, and choose a drawing for each Smart Home or Lighting plan. Turn it
    upright, then crop it: the app suggests a crop to just the floor plan (trimming borders, title blocks

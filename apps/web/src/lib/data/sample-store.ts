@@ -28,6 +28,7 @@ import {
   type Product,
   type Project,
   type ProjectDetails,
+  type ProjectSchedule,
   type Settings,
   type SourceFile,
   type SourcePage,
@@ -326,6 +327,15 @@ export function createSampleStore(
         const p = d.projects.find((x) => x.id === projectId);
         if (!p) return;
         Object.assign(p, details);
+        p.updatedAt = now();
+      });
+    },
+
+    updateProjectSchedule(projectId: string, patch: ProjectSchedule) {
+      update((d) => {
+        const p = d.projects.find((x) => x.id === projectId);
+        if (!p) return;
+        p.schedule = { ...p.schedule, ...patch };
         p.updatedAt = now();
       });
     },

@@ -4,8 +4,11 @@ import userEvent from '@testing-library/user-event';
 import { TestApp } from '@/test/TestApp';
 import { createSampleStore } from '@/lib/data/sample-store';
 
+// Project rows only (each row also holds a list of schedule steps).
 const rows = () =>
-  screen.getAllByRole('listitem').filter((li) => li.closest('[aria-label="Projects"]'));
+  screen
+    .getAllByRole('listitem')
+    .filter((li) => li.parentElement?.getAttribute('aria-label') === 'Projects');
 
 describe('DashboardScreen', () => {
   it('renders sample projects with status badges', async () => {
