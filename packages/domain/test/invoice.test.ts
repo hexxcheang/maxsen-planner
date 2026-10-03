@@ -43,19 +43,37 @@ describe('buildInvoice', () => {
     DEFAULT_PRICING,
   );
 
-  it('forms packages from every 10 switches, 12 lights and 30 m + 6 drivers', () => {
-    assert.deepEqual(inv.packages, { switches: 1, lights: 2, led: 2 });
+  it('forms one package each of 10 switches, 12 lights and 30 m + 6 drivers, at most', () => {
+    assert.deepEqual(inv.packages, { switches: 1, lights: 1, led: 1 });
     const pkg = items(inv).filter((r) => r.highlight);
     assert.deepEqual(
       pkg.map((r) => [r.quantity, r.unitPrice]),
       [
         [1, 1990],
-        [2, 988],
-        [2, 988],
+        [1, 988],
+        [1, 988],
       ],
     );
-    assert.match(pkg[1]!.description, /Total 24 Selection/);
-    assert.match(pkg[2]!.description, /Total 60Meters, 12 Drivers/);
+    assert.match(pkg[1]!.description, /Total 12 Selection/);
+    assert.match(pkg[2]!.description, /Total 30Meters, 6 Drivers/);
+  });
+
+  it('charges everything beyond the one package as add-ons', () => {
+    const find = (re: RegExp) => items(inv).find((r) => re.test(r.description));
+    // 24 lights: 12 in the package, 12 add-ons; 60 m with 12 drivers: 30 m and 6 drivers more.
+    assert.equal(find(/Add On Per Luna/)!.quantity, 12);
+    assert.equal(find(/Per 1 Meter/)!.quantity, 30);
+    assert.equal(find(/Per Smart Control \+ Driver/)!.quantity, 6);
+    const switches = buildInvoice(
+      [line('var_nova_pro_1g_black', 'smart-switches', 25)],
+      priceOf,
+      DEFAULT_PRICING,
+    );
+    assert.equal(switches.packages.switches, 1);
+    assert.equal(
+      items(switches).find((r) => /Add-On Per Nova\+ Pro/.test(r.description))!.quantity,
+      15,
+    );
   });
 
   it('does not charge again for the IR blasters and gateway in the switch package', () => {
@@ -79,7 +97,7 @@ describe('buildInvoice', () => {
     assert.ok(
       items(inv).some((r) => r.description.startsWith('var_temp_sensor') && r.unitPrice === 48),
     );
-    assert.equal(inv.total, 1990 + 2 * 988 + 2 * 988 + 3 * 48 + 680);
+    assert.equal(inv.total, 1990 + 988 + 12 * 78 + 988 + 30 * 18 + 6 * 78 + 3 * 48 + 680);
     assert.equal(inv.deposit, Math.round(inv.total * 0.6 * 100) / 100);
     assert.equal(inv.rows.at(-1)!.kind, 'note');
   });

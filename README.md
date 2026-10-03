@@ -139,13 +139,13 @@ button that outlines the rooms for you to check:
 (`apps/web/public/templates/invoice-template.xlsx`). Quantities come from Review totals and are grouped
 into packages:
 
-| Package | Contents                                                       | Price   |
-| ------- | -------------------------------------------------------------- | ------- |
-| Switch  | every 10 smart switches (includes 4 IR blasters and 1 gateway) | S$1,990 |
-| Light   | every 12 downlights / surface lights                           | S$988   |
-| LED     | every 30 m of LED strip with 6 drivers                         | S$988   |
+| Package | Contents                                                 | Price   |
+| ------- | -------------------------------------------------------- | ------- |
+| Switch  | 10 smart switches (includes 4 IR blasters and 1 gateway) | S$1,990 |
+| Light   | 12 downlights / surface lights                           | S$988   |
+| LED     | 30 m of LED strip with 6 drivers                         | S$988   |
 
-Anything beyond a package is charged at the add-on rates. Integration per light and per driver is listed
+A quotation has at most one of each package; everything beyond it is charged at the add-on rates. Integration per light and per driver is listed
 and waived. Every other device is charged at its catalogue price, and the invoice adds the total and a
 60% deposit.
 

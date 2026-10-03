@@ -1,8 +1,8 @@
 /**
  * Turns a project's final quantities (Review totals) into invoice lines the way Maxsen quotes:
- * every 10 switches make a switch package, every 12 downlights/surface lights a light package, and
- * every 30 m of LED strip with 6 drivers an LED package; what's left over is charged at add-on
- * rates, and everything else at its catalogue price.
+ * 10 switches make the switch package, 12 downlights/surface lights the light package, and 30 m of
+ * LED strip with 6 drivers the LED package. A quotation has at most one of each package; everything
+ * beyond it is charged at add-on rates, and everything else at its catalogue price.
  */
 import { SYSTEM_VARIANT_IDS, type CategoryId } from '../categories.ts';
 import type { PricingSettings } from './pricing.ts';
@@ -42,6 +42,10 @@ export interface Invoice {
 }
 
 const LIGHT_CATEGORIES: CategoryId[] = ['downlights', 'surface-lights'];
+/** At most this many of each package in one quotation; the rest are add-ons. */
+export const MAX_PACKAGES = 1;
+const packagesFor = (amount: number, size: number) =>
+  size > 0 ? Math.min(MAX_PACKAGES, Math.floor(amount / size)) : 0;
 
 export function buildInvoice(
   lines: InvoiceInputLine[],
@@ -89,7 +93,7 @@ export function buildInvoice(
   const sw = pricing.switches;
   const isSwitch = (l: InvoiceInputLine) => l.categoryId === 'smart-switches';
   const switches = qty(isSwitch);
-  const swPackages = Math.floor(switches / sw.packageSize);
+  const swPackages = packagesFor(switches, sw.packageSize);
   if (swPackages > 0) {
     item(sw.description, swPackages, sw.packagePrice, true);
     item(sw.addOnName, switches - swPackages * sw.packageSize, sw.addOnPrice);
@@ -109,7 +113,7 @@ export function buildInvoice(
   const drivers = qty(isDriver);
   if (lights + metres + drivers > 0) rows.push({ kind: 'section', title: 'Lighting' });
 
-  const ltPackages = Math.floor(lights / lt.packageSize);
+  const ltPackages = packagesFor(lights, lt.packageSize);
   if (ltPackages > 0) {
     item(
       fill(lt.description, { total: ltPackages * lt.packageSize }),
@@ -126,7 +130,7 @@ export function buildInvoice(
   }
 
   const led = pricing.led;
-  const ledPackages = Math.floor(metres / led.packageMetres);
+  const ledPackages = packagesFor(metres, led.packageMetres);
   if (ledPackages > 0) {
     item(
       fill(led.description, {
