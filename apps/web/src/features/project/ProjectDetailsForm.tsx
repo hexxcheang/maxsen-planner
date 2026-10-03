@@ -1,6 +1,11 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
-import { projectDetailsSchema, type ProjectDetails, type ProjectStatus } from '@maxsen/domain';
-import { Field, Input, SegmentedControl, Select } from '@/components/ui';
+import {
+  PROJECT_STATUSES,
+  projectDetailsSchema,
+  type ProjectDetails,
+  type ProjectStatus,
+} from '@maxsen/domain';
+import { Field, Input, Select } from '@/components/ui';
 import { PROPERTY_TYPES, STATUS_LABELS } from '@/lib/format';
 
 interface ProjectDetailsFormProps {
@@ -88,18 +93,13 @@ export function ProjectDetailsForm({
         />
       </Field>
       {showStatus && (
-        <div className="flex flex-col gap-1.5">
-          <span className="text-control font-medium text-ink">Status</span>
-          <SegmentedControl<ProjectStatus>
-            label="Status"
+        <Field label="Status">
+          <Select
             value={values.status}
-            onChange={(v) => set('status', v)}
-            options={(Object.keys(STATUS_LABELS) as ProjectStatus[]).map((s) => ({
-              value: s,
-              label: STATUS_LABELS[s],
-            }))}
+            onChange={(v) => set('status', v as ProjectStatus)}
+            options={PROJECT_STATUSES.map((s) => ({ value: s, label: STATUS_LABELS[s] }))}
           />
-        </div>
+        </Field>
       )}
       {children}
     </form>

@@ -1,9 +1,12 @@
 import { useState } from 'react';
+import { PROJECT_STATUSES, type ProjectStatus } from '@maxsen/domain';
 import { Link } from 'react-router';
 import { FolderOpen, Plus, Search } from 'lucide-react';
 import { buttonClass, EmptyState, Input, PageHeader, Skeleton } from '@/components/ui';
 import { Page } from '@/components/Page';
 import { useProjects } from '@/lib/data/hooks';
+import { STATUS_LABELS } from '@/lib/format';
+import { cn } from '@/lib/cn';
 import { ProjectRow } from './ProjectRow';
 
 function NewProjectLink() {
@@ -18,7 +21,10 @@ function NewProjectLink() {
 export function DashboardScreen() {
   const [search, setSearch] = useState('');
   const { data: all, isLoading } = useProjects();
-  const { data: projects } = useProjects(search);
+  const { data: found } = useProjects(search);
+  const [status, setStatus] = useState<ProjectStatus | 'all'>('all');
+  const projects = status === 'all' ? found : found.filter((p) => p.status === status);
+  const count = (s: ProjectStatus) => all.filter((p) => p.status === s).length;
 
   return (
     <Page>
@@ -44,6 +50,29 @@ export function DashboardScreen() {
         />
       ) : (
         <>
+          <div role="group" aria-label="Filter by status" className="mb-3 flex flex-wrap gap-1.5">
+            {(['all', ...PROJECT_STATUSES] as const).map((s) => {
+              const n = s === 'all' ? all.length : count(s);
+              if (s !== 'all' && n === 0 && status !== s) return null;
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  aria-pressed={status === s}
+                  onClick={() => setStatus(s)}
+                  className={cn(
+                    'rounded-chip border px-2.5 py-1 text-meta font-medium',
+                    status === s
+                      ? 'border-ink bg-ink text-surface'
+                      : 'border-rule-2 text-ink-2 hover:border-ink-3 hover:text-ink',
+                  )}
+                >
+                  {s === 'all' ? 'All' : STATUS_LABELS[s]}{' '}
+                  <span className="tnum opacity-70">{n}</span>
+                </button>
+              );
+            })}
+          </div>
           <div className="mb-3 max-w-sm">
             <Input
               type="search"
@@ -56,7 +85,9 @@ export function DashboardScreen() {
           </div>
           {projects.length === 0 ? (
             <p className="border-t border-rule py-10 text-body text-ink-2">
-              No projects match “{search.trim()}”
+              {search.trim()
+                ? `No projects match “${search.trim()}”`
+                : `No ${STATUS_LABELS[status as ProjectStatus].toLowerCase()} projects`}
             </p>
           ) : (
             <ul aria-label="Projects" className="border-t border-rule">

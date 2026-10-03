@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { CATEGORIES, type ProjectStatus } from '@maxsen/domain';
+import { CATEGORIES, PROJECT_STATUSES } from '@maxsen/domain';
 import { FolderOpen, MoreHorizontal, Plus, Search, Trash2, ZoomIn } from 'lucide-react';
 import { CategoryGlyph } from '@/components/CategoryGlyph';
 import {
@@ -245,7 +245,7 @@ export function StyleguideScreen() {
 
       <Section title="Status and badges">
         <div className="flex flex-wrap items-center gap-4">
-          {(['draft', 'in-progress', 'completed'] as ProjectStatus[]).map((s) => (
+          {PROJECT_STATUSES.map((s) => (
             <StatusBadge key={s} status={s} />
           ))}
           <Badge>Hidden</Badge>

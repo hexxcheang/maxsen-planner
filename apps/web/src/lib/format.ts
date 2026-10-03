@@ -5,7 +5,10 @@ const TIME_ZONE = 'Asia/Singapore';
 
 export const STATUS_LABELS: Record<ProjectStatus, string> = {
   draft: 'Draft',
-  'in-progress': 'In progress',
+  'in-progress': 'Planning',
+  quoted: 'Quoted',
+  'deposit-paid': 'Deposit paid',
+  installing: 'Installing',
   completed: 'Completed',
 };
 

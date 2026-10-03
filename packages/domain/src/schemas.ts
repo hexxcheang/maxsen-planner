@@ -5,6 +5,7 @@
  */
 import { z } from 'zod';
 import { CATEGORIES, type CategoryId } from './categories.ts';
+import { PROJECT_STATUSES } from './types.ts';
 import type {
   CategoryStyleOverride,
   ExportSettings,
@@ -183,5 +184,5 @@ export const projectDetailsSchema = z.object({
   customerContact: optionalText,
   propertyAddress: optionalText,
   propertyType: z.enum(['HDB', 'Condo', 'Landed', 'Commercial', 'Other']).nullable(),
-  status: z.enum(['draft', 'in-progress', 'completed']),
+  status: z.enum(PROJECT_STATUSES),
 }) satisfies z.ZodType<ProjectDetails>;

@@ -187,7 +187,11 @@ export async function imageToArtwork(
   ctx.fillStyle = '#FFFFFF';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-  return { dataUrl: canvas.toDataURL('image/jpeg', 0.9), width: canvas.width, height: canvas.height };
+  return {
+    dataUrl: canvas.toDataURL('image/jpeg', 0.9),
+    width: canvas.width,
+    height: canvas.height,
+  };
 }
 
 export async function imageToPngDataUrl(

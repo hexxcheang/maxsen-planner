@@ -107,7 +107,16 @@ export interface PlanDocument {
 export type PaperSize = 'A4' | 'A3';
 export type Orientation = 'portrait' | 'landscape';
 export type PropertyType = 'HDB' | 'Condo' | 'Landed' | 'Commercial' | 'Other';
-export type ProjectStatus = 'draft' | 'in-progress' | 'completed';
+/** Where a project is, from first sketch to handover; in the order they usually happen. */
+export const PROJECT_STATUSES = [
+  'draft',
+  'in-progress',
+  'quoted',
+  'deposit-paid',
+  'installing',
+  'completed',
+] as const;
+export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
 
 /** The product/variant facts a project keeps from the moment it first used a variant. */
 export interface VariantSnapshot {

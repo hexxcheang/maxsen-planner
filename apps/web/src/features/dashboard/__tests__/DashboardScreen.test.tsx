@@ -16,9 +16,26 @@ describe('DashboardScreen', () => {
     expect(
       screen.getByRole('link', { name: 'Lim Family Home — Serangoon Gardens' }),
     ).toBeInTheDocument();
-    expect(screen.getByText('In progress')).toBeInTheDocument();
-    expect(screen.getByText('Draft')).toBeInTheDocument();
-    expect(screen.getByText('Completed')).toBeInTheDocument();
+    const list = screen.getByRole('list', { name: 'Projects' });
+    expect(within(list).getByText('Planning')).toBeInTheDocument();
+    expect(within(list).getByText('Draft')).toBeInTheDocument();
+    expect(within(list).getByText('Completed')).toBeInTheDocument();
+    expect(rows()).toHaveLength(3);
+  });
+
+  it('changes a status from the list and filters by it', async () => {
+    const user = userEvent.setup();
+    render(<TestApp path="/" signedIn />);
+    await user.click(await screen.findByRole('button', { name: /^Status of Marina One Showflat/ }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Deposit paid' }));
+    expect(
+      await screen.findByRole('button', {
+        name: 'Status of Marina One Showflat: Deposit paid. Change status',
+      }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Deposit paid 1' }));
+    expect(rows()).toHaveLength(1);
+    await user.click(screen.getByRole('button', { name: 'All 3' }));
     expect(rows()).toHaveLength(3);
   });
 

@@ -5,12 +5,18 @@ import { STATUS_LABELS } from '@/lib/format';
 const DOT: Record<ProjectStatus, string> = {
   draft: 'bg-ink-3',
   'in-progress': 'bg-brass',
+  quoted: 'bg-ink-2',
+  'deposit-paid': 'bg-warn',
+  installing: 'bg-brass-2',
   completed: 'bg-ok',
 };
 
 const TEXT: Record<ProjectStatus, string> = {
   draft: 'text-ink-2',
   'in-progress': 'text-brass-2',
+  quoted: 'text-ink',
+  'deposit-paid': 'text-warn',
+  installing: 'text-ink',
   completed: 'text-ok',
 };
 
