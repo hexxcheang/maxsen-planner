@@ -101,11 +101,6 @@ export function prepareRooms(imageUrl: string) {
   void roomsFor(imageUrl).catch(() => undefined);
 }
 
-/** The room around a tap at (x, y) on the drawing (fractions), or null if its walls don't close. */
-export async function roomAt(imageUrl: string, x: number, y: number): Promise<FoundRoom | null> {
-  return (await roomsFor(imageUrl)).at(x, y);
-}
-
 /** Every closed room on the drawing, largest first. */
 export async function roomsOnDrawing(imageUrl: string): Promise<FoundRoom[]> {
   return (await roomsFor(imageUrl)).all();

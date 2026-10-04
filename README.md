@@ -84,11 +84,10 @@ is kept in the browser until _New quote_. In the quotation, change any row's _Un
 
 1. **Rooms.** Choose the type of home: a 2- to 5-room flat, an executive flat, a 2- or 3-bedroom condo,
    or "Other". The app lists the rooms that home has. A 5-room flat, for example, has a master bedroom,
-   3 bedrooms, the living/dining room, the kitchen and 2 toilets. **Tap inside each room** on the
-   drawing: the app follows its walls, outlines it (an L-shaped room gets its extra area too), finds
-   its door and moves on to the next room in the list. Tapped the wrong room? Its name on the
-   drawing is a list: pick the right one. Where the walls don't close (an open-plan area, a faint
-   scan), drag a rough box instead. Rooms are outlined one after another (a tap or drag away from the last room starts the next); then press _Mark doors_ and tap every door in one go, as with windows: each goes to the room whose wall it's on, and tapping a door again takes it off. Tap an outlined room to select it (to add an
+   3 bedrooms, the living/dining room, the kitchen and 2 toilets. **Tap each room** on the drawing to drop
+   a small box there, then drag the box to move it and pull its corners or edges to fit the room (or
+   drag a box out in one go). Tapped the wrong room? Its name on the drawing is a list: pick the right
+   one. Rooms are outlined one after another (a tap or drag away from the last room starts the next); then press _Mark doors_ and tap every door in one go, as with windows: each goes to the room whose wall it's on, and tapping a door again takes it off. Tap an outlined room to select it (to add an
    area, redraw it or move its door). **Quickest:** _Find all rooms_ (or _Skip: find rooms for me_)
    outlines every room at once, door and all; unnamed rooms are planned by size and shape (narrow
    ones as corridors, small ones as toilets or stores, the largest as the living room, the rest as

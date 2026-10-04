@@ -18,6 +18,7 @@ import {
   partBoxes,
   roomTypeFromName,
   withFoundRooms,
+  type Box,
   type DrawnRoom,
   type DrawnWindow,
   type FoundRoom,
@@ -38,10 +39,53 @@ interface Props {
   suggesting?: boolean;
   /** The window on the drawing under an X marked at (x, y), or null when there's no line there. */
   readWindow?: (x: number, y: number) => Promise<DrawnWindow | null>;
-  /** The room around a tap, read from the drawing's walls; null when they don't close. */
-  readRoom?: (x: number, y: number) => Promise<FoundRoom | null>;
   /** Every closed room on the drawing. */
   findRooms?: () => Promise<FoundRoom[]>;
+}
+
+type Edge = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
+interface Op {
+  kind: 'move' | Edge;
+  /** The room's main box, or one of its extra areas (by index). */
+  target: 'main' | number;
+  from: { x: number; y: number };
+  orig: Box;
+  moved: boolean;
+}
+/** The square a tap drops, as a share of the drawing's width; how close a handle must be, in px. */
+const DROP = 0.07;
+const HANDLE_PX = 10;
+const MIN_SIDE = 0.015;
+const CURSORS: Record<Op['kind'], string> = {
+  move: 'cursor-move',
+  n: 'cursor-ns-resize',
+  s: 'cursor-ns-resize',
+  e: 'cursor-ew-resize',
+  w: 'cursor-ew-resize',
+  ne: 'cursor-nesw-resize',
+  sw: 'cursor-nesw-resize',
+  nw: 'cursor-nwse-resize',
+  se: 'cursor-nwse-resize',
+};
+
+/** A box moved, or resized by an edge or corner, kept on the drawing. */
+function reshape(b: Box, kind: Op['kind'], dx: number, dy: number): Box {
+  if (kind === 'move') {
+    return {
+      ...b,
+      x: Math.min(1 - b.w, Math.max(0, b.x + dx)),
+      y: Math.min(1 - b.h, Math.max(0, b.y + dy)),
+    };
+  }
+  let x0 = b.x;
+  let y0 = b.y;
+  let x1 = b.x + b.w;
+  let y1 = b.y + b.h;
+  if (kind.includes('w')) x0 = Math.max(0, Math.min(x0 + dx, x1 - MIN_SIDE));
+  if (kind.includes('e')) x1 = Math.min(1, Math.max(x1 + dx, x0 + MIN_SIDE));
+  if (kind.includes('n')) y0 = Math.max(0, Math.min(y0 + dy, y1 - MIN_SIDE));
+  if (kind.includes('s')) y1 = Math.min(1, Math.max(y1 + dy, y0 + MIN_SIDE));
+  return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
 }
 
 /** "Room n" for a room tapped beyond the list, numbered after the rooms there. */
@@ -66,7 +110,6 @@ export function RoomsStep({
   onSuggest,
   suggesting,
   readWindow,
-  readRoom,
   findRooms,
 }: Props) {
   /** Reading the room under a tap, or all rooms; and why a tap found nothing. */
@@ -84,6 +127,10 @@ export function RoomsStep({
   const [activeId, setActiveId] = useState<string | null>(firstTodo?.id ?? null);
   const [mode, setMode] = useState<Mode>('draw');
   const [box, setBox] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
+  /** Moving or resizing the selected room's box, and where it is while dragged. */
+  const [op, setOp] = useState<Op | null>(null);
+  const [draft, setDraft] = useState<Box | null>(null);
+  const [hover, setHover] = useState<Op['kind'] | null>(null);
   const frame = useRef<HTMLDivElement>(null);
   const active = layout.rooms.find((r) => r.id === activeId) ?? null;
 
@@ -109,10 +156,45 @@ export function RoomsStep({
       y: Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height)),
     };
   };
-  // Every press starts a box; on release, a tap and a drag mean different things (see `up`).
+  /**
+   * The selected room's box (or one of its extra areas) under a point: a corner or edge to resize
+   * it by, or its inside to move it.
+   */
+  const grab = (p: { x: number; y: number }): Omit<Op, 'from' | 'moved'> | null => {
+    if (windowMode || doorMode || !active || !drawn(active) || mode === 'door' || mode === 'part')
+      return null;
+    const rect = frame.current!.getBoundingClientRect();
+    const tx = HANDLE_PX / rect.width;
+    const ty = HANDLE_PX / rect.height;
+    const boxes: { target: 'main' | number; b: Box }[] = [
+      ...(active.parts ?? []).map((b, i) => ({ target: i, b })),
+      { target: 'main' as const, b: active },
+    ];
+    for (const { target, b } of boxes) {
+      const nearX = (v: number) => Math.abs(p.x - v) <= tx;
+      const nearY = (v: number) => Math.abs(p.y - v) <= ty;
+      const withinX = p.x >= b.x - tx && p.x <= b.x + b.w + tx;
+      const withinY = p.y >= b.y - ty && p.y <= b.y + b.h + ty;
+      if (!withinX || !withinY) continue;
+      const v = nearY(b.y) ? 'n' : nearY(b.y + b.h) ? 's' : '';
+      const h = nearX(b.x) ? 'w' : nearX(b.x + b.w) ? 'e' : '';
+      const edge = (v + h) as Edge | '';
+      const orig = { x: b.x, y: b.y, w: b.w, h: b.h };
+      if (edge) return { kind: edge, target, orig };
+      return { kind: 'move', target, orig };
+    }
+    return null;
+  };
+  // A press on the selected room's box moves or resizes it; anywhere else it starts a new box, and
+  // on release a tap and a drag mean different things (see `up`).
   const down = (e: PointerEvent) => {
     const p = at(e);
     (e.target as Element).setPointerCapture?.(e.pointerId);
+    const hit = grab(p);
+    if (hit) {
+      setOp({ ...hit, from: p, moved: false });
+      return;
+    }
     setBox({ x0: p.x, y0: p.y, x1: p.x, y1: p.y });
   };
   /** The smallest outlined room (counting its added areas) under a point. */
@@ -126,11 +208,33 @@ export function RoomsStep({
       )
       .sort((a, b) => a.w * a.h - b.w * b.h)[0];
   const move = (e: PointerEvent) => {
-    if (!box) return;
     const p = at(e);
+    if (op) {
+      const next = reshape(op.orig, op.kind, p.x - op.from.x, p.y - op.from.y);
+      if (!op.moved && Math.hypot(p.x - op.from.x, p.y - op.from.y) < 0.004) return;
+      setOp({ ...op, moved: true });
+      setDraft(next);
+      return;
+    }
+    if (!box) {
+      setHover(grab(p)?.kind ?? null);
+      return;
+    }
     setBox({ ...box, x1: p.x, y1: p.y });
   };
   const up = () => {
+    if (op) {
+      if (op.moved && draft && active) {
+        if (op.target === 'main') update(active.id, draft);
+        else
+          update(active.id, {
+            parts: (active.parts ?? []).map((b, i) => (i === op.target ? draft : b)),
+          });
+      }
+      setOp(null);
+      setDraft(null);
+      return;
+    }
     if (box && windowMode) {
       const dx = Math.abs(box.x1 - box.x0);
       const dy = Math.abs(box.y1 - box.y0) / aspect;
@@ -176,7 +280,7 @@ export function RoomsStep({
         select(hit, 'done');
         return;
       }
-      void outlineAt(p);
+      dropBox(p);
       return;
     }
     if (active && mode === 'part') {
@@ -240,44 +344,33 @@ export function RoomsStep({
   };
 
   /**
-   * A tap inside a room: finds its walls and outlines it (with its door, and extra areas for an odd
-   * shape) as the room being drawn, else the next room still to outline, else a new room.
+   * A tap on the drawing drops a small square there for the room being drawn (else the next room
+   * still to outline, else a new room), selected so it can be dragged and its corners pulled to fit.
+   * While adding an area, the square is that extra area.
    */
-  const outlineAt = async (p: { x: number; y: number }) => {
-    if (!readRoom) return;
-    setFinding(true);
-    setRoomNote(null);
-    try {
-      const found = await readRoom(p.x, p.y);
-      if (!found) {
-        setRoomNote('Couldn’t find closed walls around there. Drag a box over the room instead.');
-        return;
-      }
-      const shape = { x: found.box.x, y: found.box.y, w: found.box.w, h: found.box.h };
-      if (active && mode === 'part') {
-        update(active.id, { parts: [...(active.parts ?? []), shape, ...found.parts] });
-        setMode('done');
-        return;
-      }
-      let rooms = layout.rooms;
-      let target =
-        active && mode === 'draw' ? active : (layout.rooms.find((r) => !drawn(r)) ?? null);
-      if (!target) {
-        target = blank('other', nextRoomName(layout.rooms));
-        rooms = [...rooms, target];
-      }
-      const id = target.id;
-      rooms = rooms.map((r) =>
-        r.id === id ? { ...r, ...shape, parts: found.parts, door: found.door } : r,
-      );
-      onChange({ ...layout, rooms });
-      setActiveId(id);
+  const dropBox = (p: { x: number; y: number }) => {
+    const w = DROP;
+    const h = DROP * aspect;
+    const x = Math.min(1 - w, Math.max(0, p.x - w / 2));
+    const y = Math.min(1 - h, Math.max(0, p.y - h / 2));
+    if (active && mode === 'part') {
+      update(active.id, { parts: [...(active.parts ?? []), { x, y, w, h }] });
       setMode('done');
-    } catch {
-      setRoomNote('The drawing couldn’t be read here. Drag a box over the room instead.');
-    } finally {
-      setFinding(false);
+      return;
     }
+    let rooms = layout.rooms;
+    let target = active && mode === 'draw' ? active : (layout.rooms.find((r) => !drawn(r)) ?? null);
+    if (!target) {
+      target = blank('other', nextRoomName(layout.rooms));
+      rooms = [...rooms, target];
+    }
+    const id = target.id;
+    onChange({
+      ...layout,
+      rooms: rooms.map((r) => (r.id === id ? { ...r, x, y, w, h, door: null, parts: [] } : r)),
+    });
+    setActiveId(id);
+    setMode('done');
   };
 
   /** Outlines every room on the drawing at once; listed rooms not outlined yet are dropped. */
@@ -380,7 +473,6 @@ export function RoomsStep({
   };
 
   const done = layout.rooms.filter((r) => drawn(r)).length;
-  const how = readRoom ? 'Tap inside' : 'Drag a box over';
   const nextName = nextTodo ? `the ${nextTodo.name}` : 'another room';
   const prompt = windowMode
     ? reading
@@ -389,21 +481,17 @@ export function RoomsStep({
     : doorMode
       ? 'Tap each door on the drawing, on the wall where it opens. Tap a green dot to take it off.'
       : finding
-        ? 'Finding the room’s walls…'
+        ? 'Finding the rooms…'
         : !active
           ? done === layout.rooms.length && done > 0
             ? 'All rooms are outlined. Now press Mark doors and tap each door.'
-            : readRoom
-              ? 'Tap inside each room (or drag a box over it), in the order listed.'
-              : 'Drag a box over each room, in the order listed. Tap a box to select it.'
+            : 'Tap each room to drop a box, then drag it and its corners to fit (or drag a box out), in the order listed.'
           : mode === 'draw'
-            ? readRoom
-              ? `Tap inside the ${active.name} (or drag a box over it).`
-              : `Drag a box over the ${active.name}.`
+            ? `Tap the ${active.name} to drop a box there (or drag one out).`
             : mode === 'part'
               ? `Tap or drag a box over the rest of the ${active.name}. It joins on to the room.`
               : mode === 'done'
-                ? `The ${active.name} is outlined. ${how} ${nextName} next. Odd shape? Press +.`
+                ? `Drag the ${active.name}’s box or its corners to fit. Then tap ${nextName}. Odd shape? Press +.`
                 : `Tap where the ${active.name}’s door is.`;
   /** Adds another area to the active room. */
   const addPart = () => {
@@ -675,7 +763,7 @@ export function RoomsStep({
             data-testid="room-canvas"
             className={cn(
               'relative w-full touch-none select-none border border-rule-2 bg-surface',
-              'cursor-crosshair',
+              op ? CURSORS[op.kind] : hover ? CURSORS[hover] : 'cursor-crosshair',
             )}
             style={{
               aspectRatio: String(aspect),
@@ -685,7 +773,12 @@ export function RoomsStep({
             onPointerDown={down}
             onPointerMove={move}
             onPointerUp={up}
-            onPointerCancel={() => setBox(null)}
+            onPointerCancel={() => {
+              setBox(null);
+              setOp(null);
+              setDraft(null);
+            }}
+            onPointerLeave={() => setHover(null)}
           >
             <img
               src={imageUrl}
@@ -694,11 +787,24 @@ export function RoomsStep({
               draggable={false}
             />
             <svg className="pointer-events-none absolute inset-0 size-full" aria-hidden>
-              {layout.rooms.filter(drawn).map((r) => {
-                const on = r.id === activeId;
+              {layout.rooms.filter(drawn).map((shown) => {
+                const on = shown.id === activeId;
+                // The box being dragged shows where it's going.
+                const r =
+                  on && op && draft
+                    ? op.target === 'main'
+                      ? { ...shown, ...draft }
+                      : {
+                          ...shown,
+                          parts: (shown.parts ?? []).map((b, i) => (i === op.target ? draft : b)),
+                        }
+                    : shown;
                 return (
                   <g key={r.id}>
                     <rect
+                      data-testid="room-box"
+                      data-room={r.name}
+                      data-box={[r.x, r.y, r.w, r.h].map((v) => v.toFixed(3)).join(',')}
                       x={pct(r.x)}
                       y={pct(r.y)}
                       width={pct(r.w)}
@@ -742,6 +848,45 @@ export function RoomsStep({
                         strokeWidth={2}
                       />
                     )}
+                    {/* Corner and edge handles to pull the selected room's box to fit. */}
+                    {on &&
+                      !windowMode &&
+                      !doorMode &&
+                      mode !== 'door' &&
+                      mode !== 'part' &&
+                      [r, ...(r.parts ?? [])].map((b, j) =>
+                        (
+                          [
+                            [0, 0],
+                            [0.5, 0],
+                            [1, 0],
+                            [0, 0.5],
+                            [1, 0.5],
+                            [0, 1],
+                            [0.5, 1],
+                            [1, 1],
+                          ] as const
+                        ).map(([fx, fy]) => (
+                          <svg
+                            key={`${j}-${fx}-${fy}`}
+                            data-testid="room-handle"
+                            x={pct(b.x + b.w * fx)}
+                            y={pct(b.y + b.h * fy)}
+                            overflow="visible"
+                          >
+                            <rect
+                              x={-4.5}
+                              y={-4.5}
+                              width={9}
+                              height={9}
+                              rx={1.5}
+                              fill="#FFFFFF"
+                              stroke="#876B29"
+                              strokeWidth={1.5}
+                            />
+                          </svg>
+                        )),
+                      )}
                   </g>
                 );
               })}
@@ -865,7 +1010,7 @@ export function RoomsStep({
                     type="button"
                     aria-label={`Add another area to the ${active.name}`}
                     title="Add another area to this room"
-                    className="absolute z-10 flex size-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-brass text-white shadow-md hover:bg-brass-2 focus-visible:outline-2"
+                    className="absolute z-10 flex size-7 translate-x-1.5 -translate-y-[calc(100%+6px)] items-center justify-center rounded-full border-2 border-white bg-brass text-white shadow-md hover:bg-brass-2 focus-visible:outline-2"
                     style={{ left: pct(active.x + active.w), top: pct(active.y) }}
                     onPointerDown={(e) => e.stopPropagation()}
                     onClick={addPart}
@@ -878,8 +1023,8 @@ export function RoomsStep({
                       type="button"
                       aria-label={`Remove area ${k + 2} of the ${active.name}`}
                       title="Remove this area"
-                      className="absolute z-10 flex size-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-ink-2 text-white shadow-md hover:bg-danger focus-visible:outline-2"
-                      style={{ left: pct(p.x + p.w), top: pct(p.y + p.h) }}
+                      className="absolute z-10 flex size-6 translate-x-1.5 -translate-y-[calc(100%+6px)] items-center justify-center rounded-full border-2 border-white bg-ink-2 text-white shadow-md hover:bg-danger focus-visible:outline-2"
+                      style={{ left: pct(p.x + p.w), top: pct(p.y) }}
                       onPointerDown={(e) => e.stopPropagation()}
                       onClick={() =>
                         update(active.id, {
@@ -895,9 +1040,9 @@ export function RoomsStep({
           </div>
         </div>
         <p className="text-meta text-ink-2">
-          Tap inside a room to outline it from its walls, door and all; or drag a box (it can be
-          rough). The green dot is the door; the switch goes beside it. Each X marks a window; its
-          blue line shows how far it runs.
+          Tap a room to drop a box, then drag it and its corners to fit; or drag a box out (it can
+          be rough). The green dot is the door; the switch goes beside it. Each X marks a window;
+          its blue line shows how far it runs.
         </p>
       </div>
     </div>

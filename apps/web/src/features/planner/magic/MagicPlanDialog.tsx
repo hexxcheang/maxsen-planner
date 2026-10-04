@@ -23,14 +23,7 @@ import { Button, Checkbox, Dialog, Switch } from '@/components/ui';
 import { useActions, useCatalogue, useSettings } from '@/lib/data/hooks';
 import { fileUrl } from '@/lib/files';
 import { analyseBackground, magicPlanConfigured, MagicPlanError } from './analysis-source';
-import {
-  drawn,
-  prepareRooms,
-  roomAt,
-  roomsOnDrawing,
-  startingLayout,
-  windowAt,
-} from './room-layouts';
+import { drawn, prepareRooms, roomsOnDrawing, startingLayout, windowAt } from './room-layouts';
 import { RoomsStep } from './RoomsStep';
 
 export interface MagicPlanOutcome {
@@ -263,7 +256,6 @@ export function MagicPlanDialog({ open, onOpenChange, level, plans, onApply }: P
             onChange={changeLayout}
             onSuggest={!builtIn && configured ? () => void suggest() : undefined}
             readWindow={(x, y) => windowAt(fileUrl(source.background.fileId), x, y)}
-            readRoom={(x, y) => roomAt(fileUrl(source.background.fileId), x, y)}
             findRooms={() => roomsOnDrawing(fileUrl(source.background.fileId))}
             suggesting={suggesting}
           />
