@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildApp } from './app.ts';
 import { createAnalyser } from './magic/analyse.ts';
+import { createRenderer } from './sample/render.ts';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -17,7 +18,9 @@ const webDist = path.resolve(here, '../../web/dist');
 const port = Number(process.env.PORT ?? 3000);
 const configured = Boolean(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN);
 
-export const app = buildApp({ analyse: configured ? createAnalyser() : undefined });
+const render = createRenderer();
+
+export const app = buildApp({ analyse: configured ? createAnalyser() : undefined, render });
 
 if (existsSync(webDist)) {
   const root = path.relative(process.cwd(), webDist);
@@ -30,6 +33,11 @@ if (process.env.NODE_ENV !== 'test') {
     console.log(`Maxsen Smart Home Planner server listening on http://localhost:${info.port}`);
     console.log(
       configured ? 'Magic Plan: ready' : 'Magic Plan: add ANTHROPIC_API_KEY to .env to enable it',
+    );
+    console.log(
+      render
+        ? `Product samples: ready (${render.provider === 'gemini' ? 'Gemini' : 'OpenAI'})`
+        : 'Product samples: add GEMINI_API_KEY to .env to make pictures',
     );
   });
 }

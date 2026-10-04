@@ -146,6 +146,22 @@ button that outlines the rooms for you to check:
    `ANTHROPIC_API_KEY=`. The `.env` file is never uploaded to GitHub.
 3. Restart the app (Control + C, then `pnpm dev`). The Terminal shows `Magic Plan: ready`.
 
+**Product sample pictures (the Sample tab):** upload a photo of a product, say what it is (category,
+and the product from the catalogue), and choose the room, interior style and light. The app writes
+the instructions (where that kind of product is installed, keeping the product exactly as
+photographed, a premium Singapore interior shot like a magazine feature) and an image model makes a
+4:3 picture, downloaded as JPG. Claude reads images but doesn't make them, so this uses Google's
+Gemini image model (recommended: best at keeping the product unchanged, about US$0.04 a picture) or
+OpenAI's:
+
+1. Create a key at https://aistudio.google.com/apikey (or an OpenAI key).
+2. Put it in `.env` as `GEMINI_API_KEY=` (or `OPENAI_API_KEY=`).
+3. Restart the app. The Terminal shows `Product samples: ready (Gemini)`.
+
+Without a key, the Sample tab still writes the instructions: copy them into the Gemini app with your
+photo. For the best pictures, photograph the product straight on, on a plain background, in soft
+daylight, filling most of the frame.
+
 **Prices and the invoice:** the _Invoice_ export fills in your own invoice template
 (`apps/web/public/templates/invoice-template.xlsx`). Quantities come from Review totals and are grouped
 into packages:

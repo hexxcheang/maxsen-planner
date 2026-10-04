@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { AnalysisError, type Analyser } from './magic/analyse.ts';
+import { RenderError, type Renderer } from './sample/render.ts';
 
 const analyseBody = z.object({
   image: z.string().min(100).max(15_000_000),
@@ -9,9 +10,50 @@ const analyseBody = z.object({
   notes: z.string().max(2000).optional(),
 });
 
-/** The API. `analyse` is absent when no Anthropic credentials are configured. */
-export function buildApp({ analyse }: { analyse?: Analyser } = {}) {
+const renderBody = z.object({
+  image: z.string().min(100).max(15_000_000),
+  mediaType: z.enum(['image/png', 'image/jpeg', 'image/webp']),
+  prompt: z.string().min(10).max(4000),
+});
+
+const RENDER_STATUS = { auth: 502, busy: 429, refused: 422, upstream: 502 } as const;
+
+/**
+ * The API. `analyse` is absent when no Anthropic credentials are configured, `render` when no
+ * image model key is.
+ */
+export function buildApp({ analyse, render }: { analyse?: Analyser; render?: Renderer } = {}) {
   const app = new Hono();
+
+  app.get('/api/product-sample/status', (c) =>
+    c.json({ configured: Boolean(render), provider: render?.provider ?? null }),
+  );
+
+  app.post('/api/product-sample/render', async (c) => {
+    if (!render) {
+      return c.json(
+        {
+          error: 'not-configured',
+          message: 'Product samples need an image model key (GEMINI_API_KEY) on the server.',
+        },
+        503,
+      );
+    }
+    const body = renderBody.safeParse(await c.req.json().catch(() => null));
+    if (!body.success)
+      return c.json({ error: 'bad-request', message: 'Send a JPEG or PNG product photo.' }, 400);
+    try {
+      return c.json(await render.render(body.data));
+    } catch (e) {
+      if (e instanceof RenderError)
+        return c.json({ error: e.code, message: e.message }, RENDER_STATUS[e.code]);
+      console.error('Product sample failed', e);
+      return c.json(
+        { error: 'upstream', message: 'The picture couldn’t be made. Try again shortly.' },
+        502,
+      );
+    }
+  });
 
   app.get('/api/health', (c) => c.json({ ok: true }));
 
