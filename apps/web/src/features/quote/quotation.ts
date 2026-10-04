@@ -1,4 +1,10 @@
-import type { Invoice, PricingSettings, RowEdit } from '@maxsen/domain';
+import {
+  STAGE_LABEL,
+  type Invoice,
+  type PricingSettings,
+  type RowEdit,
+  type StageAmounts,
+} from '@maxsen/domain';
 import { formatMoney } from '@/lib/format';
 
 export const money = (n: number) => `${n < 0 ? '-' : ''}S$${formatMoney(Math.abs(n))}`;
@@ -22,11 +28,14 @@ export function quotationText({
   pricing,
   number,
   clientName,
+  payment,
 }: {
   invoice: Invoice;
   pricing: PricingSettings;
   number: string;
   clientName: string;
+  /** For a 2nd or final payment: what's been paid and what's due now. */
+  payment?: StageAmounts;
 }): string {
   const out: string[] = [
     `Quotation ${number}${clientName ? ` for ${clientName}` : ''}`,
@@ -52,7 +61,12 @@ export function quotationText({
   out.push(
     '',
     `Total: ${money(invoice.total)}`,
-    `Deposit (${pricing.depositPercent}%): ${money(invoice.deposit)}`,
+    ...(payment && payment.stage !== 'deposit'
+      ? [
+          `Paid: ${money(-payment.paid)}`,
+          `${STAGE_LABEL[payment.stage]} due: ${money(payment.due)}`,
+        ]
+      : [`Deposit (${pricing.depositPercent}%): ${money(invoice.deposit)}`]),
     '',
     pricing.warranty,
     '',

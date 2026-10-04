@@ -176,6 +176,16 @@ and waived. Every other device is charged at its catalogue price, and the invoic
   payment invoice asks for 90% (deposit + 2nd payment %) of today's total less what was paid; the
   final invoice asks for the balance. _Already paid_ is suggested from the earlier invoices generated
   for the project; change it to what was actually collected.
+- **Old invoices:** in **Quote**, choose _Old invoice: next payment_ and open the invoice's Excel file
+  (or paste its rows). Every line comes in as invoiced (quantity and unit price) with what it asked
+  for already; the next payment is picked (2nd payment after a deposit invoice, final after a 2nd
+  payment invoice) and the amount already paid suggested. Edit quantities and prices, give
+  discounts, add or remove lines, then download the invoice as Excel or PDF, or copy it as text.
+- **Electrical:** the **Electrical** tab lists average Singapore rates for electrical works (lighting
+  and power points, dedicated circuits, DB and protection, data/TV, wiring, testing), supply and
+  install, laid out as electricians quote. Enter quantities to price a job, change any rate to your
+  electrician's, add GST, and download the quotation as Excel. See
+  [`docs/electrical-rates.md`](docs/electrical-rates.md).
 - **Prices and discounts:** in **Exports › Invoice**, _Prices and discounts_ opens the invoice as an
   editable quotation, as in Quick quote. Quantities stay in sync with Review totals; unit prices and
   discounts (`50` or `10%`) are saved with the project and used on every invoice (deposit, 2nd and

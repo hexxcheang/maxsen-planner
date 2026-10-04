@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
+import { Trash2 } from 'lucide-react';
 import { parseDiscount, type Invoice, type RowEdit } from '@maxsen/domain';
-import { Input, NumberField } from '@/components/ui';
+import { IconButton, Input, NumberField } from '@/components/ui';
 import { money } from './quotation';
 
 /**
@@ -14,6 +15,9 @@ export function QuotationTable({
   onEdit,
   depositPercent,
   footer,
+  onQuantity,
+  onRemove,
+  showDeposit = true,
 }: {
   base: Invoice;
   invoice: Invoice;
@@ -22,6 +26,11 @@ export function QuotationTable({
   depositPercent: number;
   /** Extra rows under the deposit (e.g. what's been paid). */
   footer?: ReactNode;
+  /** Makes quantities editable (an old invoice's lines; a quote's come from its items). */
+  onQuantity?: (key: string, quantity: number) => void;
+  /** Lets rows be taken off. */
+  onRemove?: (key: string) => void;
+  showDeposit?: boolean;
 }) {
   const listPrice = new Map(
     base.rows.flatMap((r) => (r.kind === 'item' ? [[r.key, r.unitPrice] as const] : [])),
@@ -57,9 +66,35 @@ export function QuotationTable({
           ) : row.kind === 'item' ? (
             <tr key={i} className="border-b border-rule align-top">
               <td className={row.highlight ? 'py-1.5 font-semibold text-ink' : 'py-1.5 text-ink'}>
-                <span className="line-clamp-3 whitespace-pre-line">{row.description}</span>
+                <span className="flex items-start gap-1">
+                  <span className="line-clamp-3 flex-1 whitespace-pre-line">{row.description}</span>
+                  {onRemove && (
+                    <IconButton
+                      size="sm"
+                      label={`Remove ${row.description.split('\n')[0]}`}
+                      icon={<Trash2 className="size-4" />}
+                      onClick={() => onRemove(row.key)}
+                    />
+                  )}
+                </span>
               </td>
-              <td className="tnum py-1.5 pl-3 text-right">{row.quantity}</td>
+              {onQuantity ? (
+                <td className="py-1 pl-3">
+                  <NumberField
+                    compact
+                    live
+                    min={0}
+                    max={100000}
+                    precision={1}
+                    className="w-20"
+                    aria-label={`Quantity of ${row.description.split('\n')[0]}`}
+                    value={row.quantity}
+                    onChange={(v) => v !== null && onQuantity(row.key, v)}
+                  />
+                </td>
+              ) : (
+                <td className="tnum py-1.5 pl-3 text-right">{row.quantity}</td>
+              )}
               <td className="py-1 pl-3">
                 <NumberField
                   compact
@@ -114,12 +149,14 @@ export function QuotationTable({
             {money(invoice.total)}
           </td>
         </tr>
-        <tr>
-          <td colSpan={4} className="py-1 text-right text-ink-2">
-            Deposit ({depositPercent}%)
-          </td>
-          <td className="tnum py-1 text-right text-ink-2">{money(invoice.deposit)}</td>
-        </tr>
+        {showDeposit && (
+          <tr>
+            <td colSpan={4} className="py-1 text-right text-ink-2">
+              Deposit ({depositPercent}%)
+            </td>
+            <td className="tnum py-1 text-right text-ink-2">{money(invoice.deposit)}</td>
+          </tr>
+        )}
         {footer}
       </tfoot>
     </table>

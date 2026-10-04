@@ -7,6 +7,7 @@ import {
   buildScene,
   categoryById,
   resolveCategoryStyle,
+  STAGE_LABEL,
   type CategoryId,
   type Invoice,
   type PricingSettings,
@@ -15,6 +16,7 @@ import {
   type Project,
   type ReviewLine,
   type Settings,
+  type StageAmounts,
   type VariantResolver,
   type Variant,
 } from '@maxsen/domain';
@@ -755,12 +757,15 @@ export async function buildQuotationPdf({
   pricing,
   number,
   settings,
+  payment,
 }: {
   client: { name: string; contact: string };
   invoice: Invoice;
   pricing: PricingSettings;
   number: string;
   settings: Settings;
+  /** For a 2nd or final payment: what's been paid and what's due now, shown under the total. */
+  payment?: StageAmounts;
 }): Promise<Blob> {
   const doc = await newPdf(PAPER.A4, false);
   const assets = await loadAssets(settings);
@@ -909,11 +914,26 @@ export async function buildQuotationPdf({
   doc.setTextColor(...INK_2);
   doc.text(money(invoice.total), col.amount - 2, y, { align: 'right' });
   y += 9;
-  eyebrow(doc, `Deposit (${pricing.depositPercent}%)`, left, y, BRONZE, 7.5);
+  const later = payment && payment.stage !== 'deposit';
+  if (later) {
+    eyebrow(doc, 'Less paid', left, y, BRONZE, 7);
+    doc.text(money(-payment.paid), col.amount - 2, y, { align: 'right' });
+    y += 9;
+  }
+  eyebrow(
+    doc,
+    later ? `${STAGE_LABEL[payment.stage]} due` : `Deposit (${pricing.depositPercent}%)`,
+    left,
+    y,
+    BRONZE,
+    7.5,
+  );
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(15);
   doc.setTextColor(...DEEP);
-  doc.text(money(invoice.deposit), col.amount - 2, y + 0.5, { align: 'right' });
+  doc.text(money(later ? payment.due : invoice.deposit), col.amount - 2, y + 0.5, {
+    align: 'right',
+  });
   y += 12;
 
   // Warranty, terms and payment details.

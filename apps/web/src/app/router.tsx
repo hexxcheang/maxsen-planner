@@ -10,6 +10,7 @@ import { PlannerScreen } from '@/features/planner/PlannerScreen';
 import { ReviewTotalsScreen } from '@/features/review/ReviewTotalsScreen';
 import { ExportsScreen } from '@/features/exports/ExportsScreen';
 import { QuoteScreen } from '@/features/quote/QuoteScreen';
+import { ElectricalScreen } from '@/features/electrical/ElectricalScreen';
 import { CatalogueScreen } from '@/features/catalogue/CatalogueScreen';
 import { TemplatesScreen } from '@/features/templates/TemplatesScreen';
 import { AdminScreen } from '@/features/admin/AdminScreen';
@@ -41,6 +42,7 @@ export const appRoutes: RouteObject[] = [
         ],
       },
       { path: 'quote', element: <QuoteScreen /> },
+      { path: 'electrical', element: <ElectricalScreen /> },
       { path: 'catalogue', element: <CatalogueScreen /> },
       { path: 'templates', element: <TemplatesScreen /> },
       { path: 'admin', element: <AdminScreen /> },

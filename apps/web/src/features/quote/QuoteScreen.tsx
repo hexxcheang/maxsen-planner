@@ -20,6 +20,7 @@ import {
   Input,
   NumberField,
   PageHeader,
+  SegmentedControl,
   Select,
   Textarea,
   useToast,
@@ -29,6 +30,7 @@ import { useCatalogue, useSettings } from '@/lib/data/hooks';
 import { buildInvoiceXlsx } from '@/features/exports/build/invoice';
 import { buildQuotationPdf } from '@/features/exports/build/generate';
 import { QuotationTable } from './QuotationTable';
+import { OldInvoiceSection } from './OldInvoiceSection';
 import { money, quotationText, withRowEdit } from './quotation';
 
 interface Draft {
@@ -68,7 +70,25 @@ function loadDraft(prefix: string): Draft {
  * quotation (packages, add-ons and deposit priced as on the invoice), to copy back as text or
  * download as the invoice spreadsheet.
  */
+type QuoteMode = 'new' | 'old';
+const MODE_KEY = 'maxsen.quote.mode';
+
 export function QuoteScreen() {
+  const [quoteMode, setQuoteMode] = useState<QuoteMode>(() => {
+    try {
+      return window.localStorage.getItem(MODE_KEY) === 'old' ? 'old' : 'new';
+    } catch {
+      return 'new';
+    }
+  });
+  const changeMode = (m: QuoteMode) => {
+    setQuoteMode(m);
+    try {
+      window.localStorage.setItem(MODE_KEY, m);
+    } catch {
+      // Not kept across reloads.
+    }
+  };
   const { data: catalogue } = useCatalogue();
   const { data: settings } = useSettings();
   const { toast } = useToast();
@@ -196,204 +216,224 @@ export function QuoteScreen() {
     <Page wide>
       <PageHeader
         title="Quick quote"
-        description="Paste a client’s message to price it exactly: packages, add-ons and deposit, as on the invoice. Check the items, then copy the quotation back or download it."
-        actions={
-          <Button
-            variant="ghost"
-            onClick={() =>
-              setDraft({
-                message: '',
-                clientName: '',
-                clientContact: '',
-                number: invoiceNumber(pricing.invoicePrefix, new Date()),
-                lines: [],
-                unread: [],
-                edits: {},
-              })
-            }
-          >
-            New quote
-          </Button>
+        description={
+          quoteMode === 'old'
+            ? 'Open an old invoice to collect the next payment: its lines as invoiced, editable like a quote, with the 2nd or final payment worked out from what was paid.'
+            : 'Paste a client’s message to price it exactly: packages, add-ons and deposit, as on the invoice. Check the items, then copy the quotation back or download it.'
         }
-      />
-      <div className="grid grid-cols-[minmax(0,5fr)_minmax(0,7fr)] gap-8 max-[1100px]:grid-cols-1">
-        {/* The message and who it's for. */}
-        <section aria-label="Client's message" className="flex flex-col gap-4">
-          <Field label="Client’s message" hint="Paste it as it is: a list, or a sentence.">
-            <Textarea
-              rows={11}
-              value={draft.message}
-              placeholder={
-                'Hi, can I get a quote for\n- 10 switches (3 of them 2 gang)\n- 15 downlights warm white\n- 2 motorised curtains\n- 20m LED strip'
-              }
-              onChange={(e) => set({ message: e.target.value })}
-            />
-          </Field>
-          <Button
-            variant="primary"
-            icon={<Sparkles className="size-4" />}
-            disabled={!draft.message.trim()}
-            onClick={read}
-          >
-            Read message
-          </Button>
-          {draft.unread.length > 0 && (
-            <div
-              role="alert"
-              className="flex gap-2 border-l-[3px] border-warn bg-warn-tint px-3 py-2 text-control text-ink"
-            >
-              <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-warn" />
-              <div>
-                <p className="font-semibold">Not recognised, add these by hand if needed:</p>
-                <ul className="mt-1 list-disc pl-4">
-                  {draft.unread.map((u) => (
-                    <li key={u}>{u}</li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          )}
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Client’s name">
-              <Input
-                value={draft.clientName}
-                onChange={(e) => set({ clientName: e.target.value })}
-              />
-            </Field>
-            <Field label="Contact number">
-              <Input
-                type="tel"
-                value={draft.clientContact}
-                onChange={(e) => set({ clientContact: e.target.value })}
-              />
-            </Field>
-            <Field label="Quotation number" className="col-span-2">
-              <Input value={draft.number} onChange={(e) => set({ number: e.target.value })} />
-            </Field>
-          </div>
-        </section>
-
-        <div className="flex min-w-0 flex-col gap-8">
-          {/* The items read from the message, to check and adjust. */}
-          <section aria-label="Items" className="flex flex-col gap-2">
-            <h2 className="border-b border-rule pb-1.5 text-section text-ink">Items</h2>
-            {draft.lines.length === 0 ? (
-              <p className="flex items-center gap-2 py-4 text-control text-ink-2">
-                <MessageSquareText aria-hidden className="size-4 text-ink-3" />
-                Read a message, or add items below.
-              </p>
-            ) : (
-              <ul aria-label="Quoted items" className="flex flex-col">
-                {draft.lines.map((l, i) => {
-                  const v = variants.get(l.variantId);
-                  return (
-                    <li
-                      key={`${l.variantId}-${i}`}
-                      className="grid grid-cols-[minmax(0,1fr)_150px_auto] items-center gap-2 border-b border-rule py-1.5"
-                    >
-                      <div className="min-w-0">
-                        <Select
-                          compact
-                          aria-label={`Item ${i + 1}`}
-                          value={l.variantId}
-                          options={options}
-                          onChange={(variantId) =>
-                            updateLine(i, { variantId, unit: unitOf(variantId) })
-                          }
-                        />
-                        <p className="mt-0.5 truncate text-meta text-ink-3">
-                          {v?.price != null
-                            ? `${money(v.price)}${unitOf(l.variantId) === 'm' ? ' per m' : ' each'}`
-                            : 'No price in the catalogue'}
-                          {l.source ? ` · “${l.source}”` : ''}
-                        </p>
-                      </div>
-                      <NumberField
-                        compact
-                        aria-label={`Quantity of item ${i + 1}`}
-                        live
-                        value={l.quantity}
-                        min={0}
-                        max={10000}
-                        precision={unitOf(l.variantId) === 'm' ? 1 : 0}
-                        unit={unitOf(l.variantId) === 'm' ? 'm' : 'pcs'}
-                        onChange={(q) => q !== null && updateLine(i, { quantity: q })}
-                      />
-                      <IconButton
-                        size="sm"
-                        label={`Remove item ${i + 1}`}
-                        icon={<Trash2 />}
-                        onClick={() => set({ lines: draft.lines.filter((_, j) => j !== i) })}
-                      />
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-            <Select
-              compact
-              aria-label="Add an item"
-              value=""
-              placeholder="+ Add an item…"
-              options={options}
-              onChange={(variantId) =>
-                set({
-                  lines: [
-                    ...draft.lines,
-                    { variantId, quantity: 1, unit: unitOf(variantId), source: '' },
-                  ],
+        actions={
+          quoteMode === 'new' && (
+            <Button
+              variant="ghost"
+              onClick={() =>
+                setDraft({
+                  message: '',
+                  clientName: '',
+                  clientContact: '',
+                  number: invoiceNumber(pricing.invoicePrefix, new Date()),
+                  lines: [],
+                  unread: [],
+                  edits: {},
                 })
               }
-            />
+            >
+              New quote
+            </Button>
+          )
+        }
+      />
+      <SegmentedControl<QuoteMode>
+        label="Quote or old invoice"
+        className="mb-5"
+        value={quoteMode}
+        onChange={changeMode}
+        options={[
+          { value: 'new', label: 'New quote' },
+          { value: 'old', label: 'Old invoice: next payment' },
+        ]}
+      />
+      {quoteMode === 'old' ? (
+        <OldInvoiceSection />
+      ) : (
+        <div className="grid grid-cols-[minmax(0,5fr)_minmax(0,7fr)] gap-8 max-[1100px]:grid-cols-1">
+          {/* The message and who it's for. */}
+          <section aria-label="Client's message" className="flex flex-col gap-4">
+            <Field label="Client’s message" hint="Paste it as it is: a list, or a sentence.">
+              <Textarea
+                rows={11}
+                value={draft.message}
+                placeholder={
+                  'Hi, can I get a quote for\n- 10 switches (3 of them 2 gang)\n- 15 downlights warm white\n- 2 motorised curtains\n- 20m LED strip'
+                }
+                onChange={(e) => set({ message: e.target.value })}
+              />
+            </Field>
+            <Button
+              variant="primary"
+              icon={<Sparkles className="size-4" />}
+              disabled={!draft.message.trim()}
+              onClick={read}
+            >
+              Read message
+            </Button>
+            {draft.unread.length > 0 && (
+              <div
+                role="alert"
+                className="flex gap-2 border-l-[3px] border-warn bg-warn-tint px-3 py-2 text-control text-ink"
+              >
+                <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-warn" />
+                <div>
+                  <p className="font-semibold">Not recognised, add these by hand if needed:</p>
+                  <ul className="mt-1 list-disc pl-4">
+                    {draft.unread.map((u) => (
+                      <li key={u}>{u}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Client’s name">
+                <Input
+                  value={draft.clientName}
+                  onChange={(e) => set({ clientName: e.target.value })}
+                />
+              </Field>
+              <Field label="Contact number">
+                <Input
+                  type="tel"
+                  value={draft.clientContact}
+                  onChange={(e) => set({ clientContact: e.target.value })}
+                />
+              </Field>
+              <Field label="Quotation number" className="col-span-2">
+                <Input value={draft.number} onChange={(e) => set({ number: e.target.value })} />
+              </Field>
+            </div>
           </section>
 
-          {/* The quotation, priced as on the invoice. */}
-          <section aria-label="Quotation" className="flex flex-col gap-3">
-            <h2 className="border-b border-rule pb-1.5 text-section text-ink">Quotation</h2>
-            {items === 0 ? (
-              <p className="text-control text-ink-2">The priced quotation appears here.</p>
-            ) : (
-              <>
-                <QuotationTable
-                  base={base}
-                  invoice={invoice}
-                  edits={draft.edits}
-                  onEdit={(key, patch) =>
-                    setDraft((d) => ({ ...d, edits: withRowEdit(d.edits, key, patch) }))
-                  }
-                  depositPercent={pricing.depositPercent}
-                />
-                {invoice.unpriced.length > 0 && (
-                  <p role="alert" className="text-meta text-warn">
-                    No price yet for {invoice.unpriced.join(', ')}. Set it in Catalogue for an exact
-                    total.
-                  </p>
-                )}
-                <div className="flex flex-wrap gap-2">
-                  <Button icon={<Copy className="size-4" />} onClick={() => void copy()}>
-                    Copy as text
-                  </Button>
-                  <Button
-                    icon={<Download className="size-4" />}
-                    loading={making === 'xlsx'}
-                    onClick={() => void download('xlsx')}
-                  >
-                    Download quotation (Excel)
-                  </Button>
-                  <Button
-                    variant="primary"
-                    icon={<Download className="size-4" />}
-                    loading={making === 'pdf'}
-                    onClick={() => void download('pdf')}
-                  >
-                    Download quotation (PDF)
-                  </Button>
-                </div>
-              </>
-            )}
-          </section>
+          <div className="flex min-w-0 flex-col gap-8">
+            {/* The items read from the message, to check and adjust. */}
+            <section aria-label="Items" className="flex flex-col gap-2">
+              <h2 className="border-b border-rule pb-1.5 text-section text-ink">Items</h2>
+              {draft.lines.length === 0 ? (
+                <p className="flex items-center gap-2 py-4 text-control text-ink-2">
+                  <MessageSquareText aria-hidden className="size-4 text-ink-3" />
+                  Read a message, or add items below.
+                </p>
+              ) : (
+                <ul aria-label="Quoted items" className="flex flex-col">
+                  {draft.lines.map((l, i) => {
+                    const v = variants.get(l.variantId);
+                    return (
+                      <li
+                        key={`${l.variantId}-${i}`}
+                        className="grid grid-cols-[minmax(0,1fr)_150px_auto] items-center gap-2 border-b border-rule py-1.5"
+                      >
+                        <div className="min-w-0">
+                          <Select
+                            compact
+                            aria-label={`Item ${i + 1}`}
+                            value={l.variantId}
+                            options={options}
+                            onChange={(variantId) =>
+                              updateLine(i, { variantId, unit: unitOf(variantId) })
+                            }
+                          />
+                          <p className="mt-0.5 truncate text-meta text-ink-3">
+                            {v?.price != null
+                              ? `${money(v.price)}${unitOf(l.variantId) === 'm' ? ' per m' : ' each'}`
+                              : 'No price in the catalogue'}
+                            {l.source ? ` · “${l.source}”` : ''}
+                          </p>
+                        </div>
+                        <NumberField
+                          compact
+                          aria-label={`Quantity of item ${i + 1}`}
+                          live
+                          value={l.quantity}
+                          min={0}
+                          max={10000}
+                          precision={unitOf(l.variantId) === 'm' ? 1 : 0}
+                          unit={unitOf(l.variantId) === 'm' ? 'm' : 'pcs'}
+                          onChange={(q) => q !== null && updateLine(i, { quantity: q })}
+                        />
+                        <IconButton
+                          size="sm"
+                          label={`Remove item ${i + 1}`}
+                          icon={<Trash2 />}
+                          onClick={() => set({ lines: draft.lines.filter((_, j) => j !== i) })}
+                        />
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              <Select
+                compact
+                aria-label="Add an item"
+                value=""
+                placeholder="+ Add an item…"
+                options={options}
+                onChange={(variantId) =>
+                  set({
+                    lines: [
+                      ...draft.lines,
+                      { variantId, quantity: 1, unit: unitOf(variantId), source: '' },
+                    ],
+                  })
+                }
+              />
+            </section>
+
+            {/* The quotation, priced as on the invoice. */}
+            <section aria-label="Quotation" className="flex flex-col gap-3">
+              <h2 className="border-b border-rule pb-1.5 text-section text-ink">Quotation</h2>
+              {items === 0 ? (
+                <p className="text-control text-ink-2">The priced quotation appears here.</p>
+              ) : (
+                <>
+                  <QuotationTable
+                    base={base}
+                    invoice={invoice}
+                    edits={draft.edits}
+                    onEdit={(key, patch) =>
+                      setDraft((d) => ({ ...d, edits: withRowEdit(d.edits, key, patch) }))
+                    }
+                    depositPercent={pricing.depositPercent}
+                  />
+                  {invoice.unpriced.length > 0 && (
+                    <p role="alert" className="text-meta text-warn">
+                      No price yet for {invoice.unpriced.join(', ')}. Set it in Catalogue for an
+                      exact total.
+                    </p>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    <Button icon={<Copy className="size-4" />} onClick={() => void copy()}>
+                      Copy as text
+                    </Button>
+                    <Button
+                      icon={<Download className="size-4" />}
+                      loading={making === 'xlsx'}
+                      onClick={() => void download('xlsx')}
+                    >
+                      Download quotation (Excel)
+                    </Button>
+                    <Button
+                      variant="primary"
+                      icon={<Download className="size-4" />}
+                      loading={making === 'pdf'}
+                      onClick={() => void download('pdf')}
+                    >
+                      Download quotation (PDF)
+                    </Button>
+                  </div>
+                </>
+              )}
+            </section>
+          </div>
         </div>
-      </div>
+      )}
     </Page>
   );
 }
