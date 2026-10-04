@@ -78,6 +78,15 @@ test.describe('old invoices', () => {
     expect(rows.find((r) => r.e === 'LESS PAID (S$)')?.f).toBe(deposit.result);
     const second = rows.find((r) => r.e === '2ND PAYMENT (S$)')!.f as { result: number };
     expect(second.result).toBeCloseTo(await amount(), 2);
+
+    // The PDF says what was paid as the deposit.
+    const [pdf] = await Promise.all([
+      page.waitForEvent('download'),
+      page.getByRole('button', { name: 'Download invoice (PDF)' }).click(),
+    ]);
+    const pdfPath = testInfo.outputPath('second.pdf');
+    await pdf.saveAs(pdfPath);
+    expect((await readFile(pdfPath)).subarray(0, 5).toString()).toBe('%PDF-');
   });
 });
 

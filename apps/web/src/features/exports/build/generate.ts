@@ -916,7 +916,12 @@ export async function buildQuotationPdf({
   y += 9;
   const later = payment && payment.stage !== 'deposit';
   if (later) {
-    eyebrow(doc, 'Less paid', left, y, BRONZE, 7);
+    // What the client has paid so far: the deposit, or for the final payment the 2nd one too.
+    const paidLabel = payment.stage === 'final' ? 'Deposit & 2nd payment paid' : 'Deposit paid';
+    eyebrow(doc, paidLabel, left, y, BRONZE, 7);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10.5);
+    doc.setTextColor(...INK_2);
     doc.text(money(-payment.paid), col.amount - 2, y, { align: 'right' });
     y += 9;
   }
