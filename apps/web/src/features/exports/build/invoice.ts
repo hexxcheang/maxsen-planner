@@ -233,8 +233,20 @@ export async function buildInvoiceXlsx({
     'GRANT TOTAL (S$)',
     { formula: `F${totalRow}`, result: invoice.total },
   ]);
+  /** The amount asked for stands out: bigger than the grand total above it. */
+  const emphasise = (row: number) => {
+    ws.getRow(row).height = 26;
+    for (const [col, size] of [
+      ['E', 12],
+      ['F', 14],
+    ] as const) {
+      const cell = ws.getCell(`${col}${row}`);
+      cell.font = { ...cell.font, size, bold: true };
+      cell.alignment = { ...cell.alignment, vertical: 'middle' };
+    }
+  };
   if (!payment || payment.stage === 'deposit') {
-    put('deposit', [
+    const due = put('deposit', [
       null,
       null,
       null,
@@ -242,13 +254,14 @@ export async function buildInvoiceXlsx({
       'DEPOSIT REQUEST (S$)',
       { formula: `F${grandRow}*${pricing.depositPercent}/100`, result: invoice.deposit },
     ]);
+    emphasise(due);
   } else {
     const paidRow = put('deposit', [null, null, null, null, 'LESS PAID (S$)', payment.paid]);
     ws.getCell(`E${paidRow}`).font = {
       ...ws.getCell(`E${paidRow}`).font,
       color: { argb: INK.text },
     };
-    put('deposit', [
+    const due = put('deposit', [
       null,
       null,
       null,
@@ -259,6 +272,7 @@ export async function buildInvoiceXlsx({
         result: payment.due,
       },
     ]);
+    emphasise(due);
   }
   put('rule', []);
   const details = put('details', [

@@ -902,17 +902,18 @@ export async function buildQuotationPdf({
   doc.setFillColor(...ROSE);
   doc.rect(left, y - 0.6, 18, 1.2, 'F');
   y += 8;
-  eyebrow(doc, 'Total', left, y, BRONZE, 7.5);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(15);
-  doc.setTextColor(...DEEP);
-  doc.text(money(invoice.total), col.amount - 2, y + 0.5, { align: 'right' });
-  y += 8;
-  eyebrow(doc, `Deposit (${pricing.depositPercent}%)`, left, y, BRONZE, 7);
+  // The total, then the deposit asked for now, set larger: it's what the client pays first.
+  eyebrow(doc, 'Total', left, y, BRONZE, 7);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10.5);
   doc.setTextColor(...INK_2);
-  doc.text(money(invoice.deposit), col.amount - 2, y, { align: 'right' });
+  doc.text(money(invoice.total), col.amount - 2, y, { align: 'right' });
+  y += 9;
+  eyebrow(doc, `Deposit (${pricing.depositPercent}%)`, left, y, BRONZE, 7.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(15);
+  doc.setTextColor(...DEEP);
+  doc.text(money(invoice.deposit), col.amount - 2, y + 0.5, { align: 'right' });
   y += 12;
 
   // Warranty, terms and payment details.
