@@ -769,7 +769,7 @@ export async function buildQuotationPdf({
     doc,
     assets,
     `Quotation ${number}`,
-    client.name ? `Smart home quotation for ${client.name}` : 'Smart home quotation',
+    client.name ? `Smart Home for ${client.name}` : 'Smart Home',
     customer,
     settings,
   );
@@ -793,6 +793,8 @@ export async function buildQuotationPdf({
     eyebrow(doc, 'Amount', col.amount - 2, y + 5.2, BRONZE, 6.5, true);
     y += 12;
   };
+  // The items and totals are headed "Invoice", the warranty and terms after them on their own page.
+  let section = 'Invoice';
   const newPage = (continued: boolean, table = true) => {
     doc.addPage();
     y =
@@ -800,7 +802,7 @@ export async function buildQuotationPdf({
         doc,
         assets,
         `Quotation ${number}`,
-        continued ? 'Your quotation (continued)' : 'Your quotation',
+        continued ? `${section} (continued)` : section,
         M,
       ) + 4;
     if (table) head();
@@ -914,6 +916,8 @@ export async function buildQuotationPdf({
   y += 12;
 
   // Warranty, terms and payment details.
+  section = 'Terms and Conditions';
+  newPage(false, false);
   const paragraph = (label: string, text: string) => {
     if (!text.trim()) return;
     doc.setFont('helvetica', 'normal');
