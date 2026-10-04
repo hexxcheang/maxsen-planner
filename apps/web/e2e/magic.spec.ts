@@ -72,6 +72,8 @@ test.describe('Magic Plan', () => {
       x: box.x + (x / 1400) * box.width,
       y: box.y + (y / 1000) * box.height,
     });
+    // Rooms are boxed one after another; the doors are marked afterwards, all at once.
+    const doors: [number, number][] = [];
     const outline = async (
       name: string,
       [x, y, w, h]: [number, number, number, number],
@@ -84,9 +86,8 @@ test.describe('Magic Plan', () => {
       await page.mouse.down();
       await page.mouse.move(b.x, b.y, { steps: 5 });
       await page.mouse.up();
-      await expect(dialog.getByText(new RegExp(`Tap where the ${name}’s door is`))).toBeVisible();
-      const d = P(door[0], door[1]);
-      await page.mouse.click(d.x, d.y);
+      await expect(dialog.getByRole('button', { name: `${name}: Door not marked` })).toBeVisible();
+      doors.push(door);
     };
     await outline('Master Bedroom', [880, 100, 420, 360], [882, 360]);
     await outline('Bedroom 2', [880, 460, 420, 220], [882, 540]);
@@ -139,9 +140,8 @@ test.describe('Magic Plan', () => {
       await page.mouse.down();
       await page.mouse.move(z.x, z.y, { steps: 5 });
       await page.mouse.up();
-      await expect(dialog.getByText(new RegExp(`Tap where the ${name}’s door is`))).toBeVisible();
-      const d = Pn(door[0], door[1]);
-      await page.mouse.click(d.x, d.y);
+      await expect(dialog.getByRole('button', { name: `${name}: Door not marked` })).toBeVisible();
+      doors.push(door);
     };
     await drawNext('Master Toilet', [1140, 100, 160, 200], [1142, 255]);
     await drawNext('Common Toilet', [720, 100, 160, 200], [795, 298]);
@@ -153,6 +153,31 @@ test.describe('Magic Plan', () => {
       'true',
     );
     await expect(dialog.getByText(/7 of 7 outlined/)).toBeVisible();
+
+    // Then every door in one go: each tap goes to the room whose wall it's on.
+    await expect(dialog.getByText('Doors (0 of 7)')).toBeVisible();
+    await dialog.getByRole('button', { name: 'Mark doors' }).click();
+    for (const [x, y] of doors) {
+      await canvas.scrollIntoViewIfNeeded();
+      const b = (await canvas.boundingBox())!;
+      await page.mouse.click(b.x + (x / 1400) * b.width, b.y + (y / 1000) * b.height);
+    }
+    await expect(dialog.getByText('Doors (7 of 7)')).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Master Toilet: Done' })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Kitchen: Done' })).toBeVisible();
+    // Tapping a door again takes it off; tapping its place puts it back.
+    {
+      const b = (await canvas.boundingBox())!;
+      const k = { x: b.x + (480 / 1400) * b.width, y: b.y + (358 / 1000) * b.height };
+      await page.mouse.click(k.x, k.y);
+      await expect(dialog.getByText('Doors (6 of 7)')).toBeVisible();
+      await page.mouse.click(k.x, k.y);
+      await expect(dialog.getByText('Doors (7 of 7)')).toBeVisible();
+    }
+    await page.screenshot({
+      path: `test-results/screens/magic-doors-${testInfo.project.name}.png`,
+    });
+    await dialog.getByRole('button', { name: 'Done marking doors' }).click();
 
     // Windows are marked by hand: an X on each window line finds the whole window.
     await expect(dialog.getByText('Windows (0)')).toBeVisible();
@@ -244,7 +269,9 @@ test.describe('Magic Plan', () => {
     await expect(dialog.getByRole('button', { name: 'Master Bedroom: Done' })).toBeVisible();
     await expect(dialog.getByRole('button', { name: /^Master Bedroom:/ })).toContainText('2 areas');
     await expect(
-      dialog.getByText('Tap inside the Bedroom 2 (or drag a box over it).'),
+      dialog.getByText(
+        'The Master Bedroom is outlined. Tap inside the Bedroom 2 next. Odd shape? Press +.',
+      ),
     ).toBeVisible();
     await tap(1090, 570);
     await expect(dialog.getByRole('button', { name: 'Bedroom 2: Done' })).toBeVisible();

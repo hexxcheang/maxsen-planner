@@ -77,25 +77,30 @@ export function RoomsStep({
   const [reading, setReading] = useState(false);
   const [windowNote, setWindowNote] = useState<string | null>(null);
   const windows = layout.windows ?? [];
-  const firstTodo = layout.rooms.find((r) => !drawn(r) || !r.door);
+  /** Marking doors, all at once, once the rooms are outlined. */
+  const [doorMode, setDoorMode] = useState(false);
+  const [doorNote, setDoorNote] = useState<string | null>(null);
+  const firstTodo = layout.rooms.find((r) => !drawn(r));
   const [activeId, setActiveId] = useState<string | null>(firstTodo?.id ?? null);
-  const [mode, setMode] = useState<Mode>(firstTodo && drawn(firstTodo) ? 'door' : 'draw');
+  const [mode, setMode] = useState<Mode>('draw');
   const [box, setBox] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
   const frame = useRef<HTMLDivElement>(null);
   const active = layout.rooms.find((r) => r.id === activeId) ?? null;
 
   const update = (id: string, patch: Partial<DrawnRoom>) =>
     onChange({ ...layout, rooms: layout.rooms.map((r) => (r.id === id ? { ...r, ...patch } : r)) });
-  const select = (r: DrawnRoom, m: Mode = drawn(r) ? 'door' : 'draw') => {
+  const select = (r: DrawnRoom, m: Mode = drawn(r) ? 'done' : 'draw') => {
     setActiveId(r.id);
     setMode(m);
   };
-  /** After a room is done, move on to the next room still to draw. */
+  /** On to the next room still to outline. */
   const advance = (rooms: DrawnRoom[], doneId: string) => {
-    const next = rooms.find((r) => r.id !== doneId && (!drawn(r) || !r.door));
+    const next = rooms.find((r) => r.id !== doneId && !drawn(r));
     setActiveId(next?.id ?? null);
-    setMode(next && drawn(next) ? 'door' : 'draw');
+    setMode('draw');
   };
+  /** The next room in the list still to outline (what a drag or tap on empty floor outlines). */
+  const nextTodo = layout.rooms.find((r) => !drawn(r) && r.id !== activeId) ?? null;
 
   const at = (e: PointerEvent) => {
     const rect = frame.current!.getBoundingClientRect();
@@ -143,6 +148,13 @@ export function RoomsStep({
       setWindowNote(null);
       return;
     }
+    if (box && doorMode) {
+      setBox(null);
+      const dx = Math.abs(box.x1 - box.x0);
+      const dy = Math.abs(box.y1 - box.y0);
+      if (Math.max(dx, dy) < 0.02) markDoor({ x: box.x0, y: box.y0 });
+      return;
+    }
     if (!box) return;
     const x = Math.min(box.x0, box.x1);
     const y = Math.min(box.y0, box.y1);
@@ -153,9 +165,8 @@ export function RoomsStep({
       // A tap: the door, while one is being marked; otherwise pick the room tapped.
       const p = { x: box.x0, y: box.y0 };
       if (active && mode === 'door') {
-        const rooms = layout.rooms.map((r) => (r.id === active.id ? { ...r, door: p } : r));
-        onChange({ ...layout, rooms });
-        advance(rooms, active.id);
+        update(active.id, { door: p });
+        setMode('done');
         return;
       }
       const hit = roomAt(p);
@@ -171,17 +182,61 @@ export function RoomsStep({
     if (active && mode === 'part') {
       // Another area joined on to the room (an L-shaped living room, say).
       update(active.id, { parts: [...(active.parts ?? []), { x, y, w, h }] });
-      setMode(active.door ? 'done' : 'door');
+      setMode('done');
       return;
     }
-    // A drag outlines the room being drawn, or else the next room still to outline, so rooms can
-    // be boxed one after another without picking each from the list.
-    const target =
-      active && mode === 'draw' ? active : (layout.rooms.find((r) => !drawn(r)) ?? null);
-    if (!target) return;
-    update(target.id, { x, y, w, h, door: null, parts: [] });
-    setActiveId(target.id);
-    setMode('door');
+    // A drag outlines the room being drawn, or else the next room still to outline (or a new
+    // room), so rooms are boxed one after another; doors are marked afterwards, all at once.
+    let rooms = layout.rooms;
+    let target = active && mode === 'draw' ? active : (layout.rooms.find((r) => !drawn(r)) ?? null);
+    if (!target) {
+      target = blank('other', nextRoomName(layout.rooms));
+      rooms = [...rooms, target];
+    }
+    const id = target.id;
+    onChange({
+      ...layout,
+      rooms: rooms.map((r) => (r.id === id ? { ...r, x, y, w, h, door: null, parts: [] } : r)),
+    });
+    setActiveId(id);
+    setMode('done');
+  };
+
+  /**
+   * A door tapped on the drawing: it goes to the room whose wall it's on (a room still without a
+   * door first, then the room it opens into rather than a living area or corridor, then the
+   * smaller). Tapping a door again removes it.
+   */
+  const markDoor = (p: { x: number; y: number }) => {
+    const dist = (q: { x: number; y: number }) => Math.hypot(p.x - q.x, (p.y - q.y) / aspect);
+    const hit = layout.rooms.find((r) => r.door && dist(r.door) < 0.018);
+    if (hit) {
+      update(hit.id, { door: null });
+      setDoorNote(`Door taken off the ${hit.name}.`);
+      return;
+    }
+    const gap = (r: DrawnRoom) =>
+      Math.min(
+        ...[r, ...(r.parts ?? [])].map((b) => {
+          const dx = Math.max(b.x - p.x, 0, p.x - (b.x + b.w));
+          const dy = Math.max(b.y - p.y, 0, p.y - (b.y + b.h)) / aspect;
+          return Math.hypot(dx, dy);
+        }),
+      );
+    const open = ['living', 'living-dining', 'dining', 'family', 'corridor', 'foyer', 'other'];
+    const near = layout.rooms.filter((r) => drawn(r) && gap(r) < 0.03);
+    const owner = near.sort(
+      (a, b) =>
+        Number(!!a.door) - Number(!!b.door) ||
+        Number(open.includes(a.type)) - Number(open.includes(b.type)) ||
+        a.w * a.h - b.w * b.h,
+    )[0];
+    if (!owner) {
+      setDoorNote('That’s not by any room. Tap on a room’s wall, where its door is.');
+      return;
+    }
+    update(owner.id, { door: p });
+    setDoorNote(`Door for the ${owner.name}. Tap it again to take it off.`);
   };
 
   /**
@@ -201,7 +256,7 @@ export function RoomsStep({
       const shape = { x: found.box.x, y: found.box.y, w: found.box.w, h: found.box.h };
       if (active && mode === 'part') {
         update(active.id, { parts: [...(active.parts ?? []), shape, ...found.parts] });
-        setMode(active.door ? 'done' : 'door');
+        setMode('done');
         return;
       }
       let rooms = layout.rooms;
@@ -216,11 +271,8 @@ export function RoomsStep({
         r.id === id ? { ...r, ...shape, parts: found.parts, door: found.door } : r,
       );
       onChange({ ...layout, rooms });
-      if (found.door) advance(rooms, id);
-      else {
-        setActiveId(id);
-        setMode('door');
-      }
+      setActiveId(id);
+      setMode('done');
     } catch {
       setRoomNote('The drawing couldn’t be read here. Drag a box over the room instead.');
     } finally {
@@ -241,9 +293,8 @@ export function RoomsStep({
       }
       const next = withFoundRooms(layout, found);
       onChange(next);
-      const todo = next.rooms.find((r) => !r.door);
-      setActiveId(todo?.id ?? null);
-      setMode(todo ? 'door' : 'draw');
+      setActiveId(null);
+      setMode('draw');
     } catch {
       setRoomNote('The drawing couldn’t be read. Outline the rooms with boxes instead.');
     } finally {
@@ -329,27 +380,31 @@ export function RoomsStep({
   };
 
   const done = layout.rooms.filter((r) => drawn(r)).length;
+  const how = readRoom ? 'Tap inside' : 'Drag a box over';
+  const nextName = nextTodo ? `the ${nextTodo.name}` : 'another room';
   const prompt = windowMode
     ? reading
       ? 'Finding the window…'
       : 'Put an X on each window: tap its line. Tap an X again to remove it.'
-    : finding
-      ? 'Finding the room’s walls…'
-      : !active
-        ? done === layout.rooms.length && done > 0
-          ? 'All rooms are outlined. Tap a room to change it.'
-          : readRoom
-            ? 'Tap inside each room (or drag a box over it), in the order listed.'
-            : 'Drag a box over each room, in the order listed. Tap a box to select it.'
-        : mode === 'draw'
-          ? readRoom
-            ? `Tap inside the ${active.name} (or drag a box over it).`
-            : `Drag a box over the ${active.name}.`
-          : mode === 'part'
-            ? `Tap or drag a box over the rest of the ${active.name}. It joins on to the room.`
-            : mode === 'done'
-              ? `The ${active.name} is outlined. Odd shape? Press + to add another area.`
-              : `Tap where the ${active.name}’s door is (or skip if it has none). Odd shape? Press + first.`;
+    : doorMode
+      ? 'Tap each door on the drawing, on the wall where it opens. Tap a green dot to take it off.'
+      : finding
+        ? 'Finding the room’s walls…'
+        : !active
+          ? done === layout.rooms.length && done > 0
+            ? 'All rooms are outlined. Now press Mark doors and tap each door.'
+            : readRoom
+              ? 'Tap inside each room (or drag a box over it), in the order listed.'
+              : 'Drag a box over each room, in the order listed. Tap a box to select it.'
+          : mode === 'draw'
+            ? readRoom
+              ? `Tap inside the ${active.name} (or drag a box over it).`
+              : `Drag a box over the ${active.name}.`
+            : mode === 'part'
+              ? `Tap or drag a box over the rest of the ${active.name}. It joins on to the room.`
+              : mode === 'done'
+                ? `The ${active.name} is outlined. ${how} ${nextName} next. Odd shape? Press +.`
+                : `Tap where the ${active.name}’s door is.`;
   /** Adds another area to the active room. */
   const addPart = () => {
     if (!active) return;
@@ -373,9 +428,9 @@ export function RoomsStep({
             onChange={(id) => {
               const next = applyPreset(layout, id);
               onChange(next);
-              const first = next.rooms.find((r) => !drawn(r) || !r.door);
+              const first = next.rooms.find((r) => !drawn(r));
               setActiveId(first?.id ?? null);
-              setMode(first && drawn(first) ? 'door' : 'draw');
+              setMode('draw');
             }}
           />
         </Field>
@@ -468,6 +523,29 @@ export function RoomsStep({
           }}
         />
         <div className="flex items-center justify-between border-b border-rule pt-1 pb-1.5">
+          <span className="text-control font-semibold text-ink">
+            Doors ({layout.rooms.filter((r) => drawn(r) && r.door).length} of {done})
+          </span>
+        </div>
+        <p className="text-meta text-ink-2">
+          Once the rooms are outlined, mark all the doors in one go: tap each on the wall where it
+          opens. The switch goes beside it. Rooms found by tapping already have theirs.
+        </p>
+        <Button
+          size="sm"
+          aria-pressed={doorMode}
+          icon={<DoorOpen className="size-4" />}
+          disabled={done === 0}
+          onClick={() => {
+            setDoorMode((v) => !v);
+            setWindowMode(false);
+            setBox(null);
+            setDoorNote(null);
+          }}
+        >
+          {doorMode ? 'Done marking doors' : 'Mark doors'}
+        </Button>
+        <div className="flex items-center justify-between border-b border-rule pt-1 pb-1.5">
           <span className="text-control font-semibold text-ink">Windows ({windows.length})</span>
           {windows.length > 0 && (
             <Button size="sm" variant="ghost" onClick={() => onChange({ ...layout, windows: [] })}>
@@ -509,6 +587,7 @@ export function RoomsStep({
           icon={<X className="size-4" />}
           onClick={() => {
             setWindowMode((v) => !v);
+            setDoorMode(false);
             setBox(null);
             setWindowNote(null);
           }}
@@ -555,23 +634,28 @@ export function RoomsStep({
                 {windowNote}
               </p>
             )}
-            {!windowMode && roomNote && (
+            {doorMode && doorNote && (
+              <p role="status" className="text-meta text-ink-2">
+                {doorNote}
+              </p>
+            )}
+            {!windowMode && !doorMode && roomNote && (
               <p role="alert" className="text-meta text-warn">
                 {roomNote}
               </p>
             )}
           </div>
-          {!windowMode && active && mode === 'door' && (
-            <Button size="sm" onClick={() => advance(layout.rooms, active.id)}>
-              Skip
-            </Button>
-          )}
-          {!windowMode && active && mode === 'part' && (
-            <Button size="sm" onClick={() => setMode(active.door ? 'done' : 'door')}>
+          {!windowMode && !doorMode && active && mode === 'door' && (
+            <Button size="sm" onClick={() => setMode('done')}>
               Cancel
             </Button>
           )}
-          {!windowMode && active && mode === 'done' && (
+          {!windowMode && !doorMode && active && mode === 'part' && (
+            <Button size="sm" onClick={() => setMode('done')}>
+              Cancel
+            </Button>
+          )}
+          {!windowMode && !doorMode && active && mode === 'done' && (
             <span className="flex gap-2">
               <Button size="sm" variant="ghost" onClick={() => setMode('draw')}>
                 Redraw
@@ -721,7 +805,7 @@ export function RoomsStep({
                 />
               )}
             </svg>
-            {!windowMode && active && drawn(active) && (
+            {!windowMode && !doorMode && active && drawn(active) && (
               <div
                 className="absolute z-10 -translate-x-1/2 -translate-y-1/2"
                 style={{ left: pct(active.x + active.w / 2), top: pct(active.y + active.h / 2) }}
@@ -770,39 +854,44 @@ export function RoomsStep({
                 })()}
               </div>
             )}
-            {!windowMode && active && drawn(active) && mode !== 'part' && mode !== 'draw' && (
-              <>
-                <button
-                  type="button"
-                  aria-label={`Add another area to the ${active.name}`}
-                  title="Add another area to this room"
-                  className="absolute z-10 flex size-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-brass text-white shadow-md hover:bg-brass-2 focus-visible:outline-2"
-                  style={{ left: pct(active.x + active.w), top: pct(active.y) }}
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={addPart}
-                >
-                  <Plus aria-hidden className="size-4" />
-                </button>
-                {(active.parts ?? []).map((p, k) => (
+            {!windowMode &&
+              !doorMode &&
+              active &&
+              drawn(active) &&
+              mode !== 'part' &&
+              mode !== 'draw' && (
+                <>
                   <button
-                    key={k}
                     type="button"
-                    aria-label={`Remove area ${k + 2} of the ${active.name}`}
-                    title="Remove this area"
-                    className="absolute z-10 flex size-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-ink-2 text-white shadow-md hover:bg-danger focus-visible:outline-2"
-                    style={{ left: pct(p.x + p.w), top: pct(p.y + p.h) }}
+                    aria-label={`Add another area to the ${active.name}`}
+                    title="Add another area to this room"
+                    className="absolute z-10 flex size-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-brass text-white shadow-md hover:bg-brass-2 focus-visible:outline-2"
+                    style={{ left: pct(active.x + active.w), top: pct(active.y) }}
                     onPointerDown={(e) => e.stopPropagation()}
-                    onClick={() =>
-                      update(active.id, {
-                        parts: (active.parts ?? []).filter((_, n) => n !== k),
-                      })
-                    }
+                    onClick={addPart}
                   >
-                    <X aria-hidden className="size-3.5" />
+                    <Plus aria-hidden className="size-4" />
                   </button>
-                ))}
-              </>
-            )}
+                  {(active.parts ?? []).map((p, k) => (
+                    <button
+                      key={k}
+                      type="button"
+                      aria-label={`Remove area ${k + 2} of the ${active.name}`}
+                      title="Remove this area"
+                      className="absolute z-10 flex size-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-ink-2 text-white shadow-md hover:bg-danger focus-visible:outline-2"
+                      style={{ left: pct(p.x + p.w), top: pct(p.y + p.h) }}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={() =>
+                        update(active.id, {
+                          parts: (active.parts ?? []).filter((_, n) => n !== k),
+                        })
+                      }
+                    >
+                      <X aria-hidden className="size-3.5" />
+                    </button>
+                  ))}
+                </>
+              )}
           </div>
         </div>
         <p className="text-meta text-ink-2">

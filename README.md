@@ -88,7 +88,7 @@ is kept in the browser until _New quote_. In the quotation, change any row's _Un
    drawing: the app follows its walls, outlines it (an L-shaped room gets its extra area too), finds
    its door and moves on to the next room in the list. Tapped the wrong room? Its name on the
    drawing is a list: pick the right one. Where the walls don't close (an open-plan area, a faint
-   scan), drag a rough box instead and tap the door. Tap an outlined room to select it (to add an
+   scan), drag a rough box instead. Rooms are outlined one after another (a tap or drag away from the last room starts the next); then press _Mark doors_ and tap every door in one go, as with windows: each goes to the room whose wall it's on, and tapping a door again takes it off. Tap an outlined room to select it (to add an
    area, redraw it or move its door). **Quickest:** _Find all rooms_ (or _Skip: find rooms for me_)
    outlines every room at once, door and all; unnamed rooms are planned by size and shape (narrow
    ones as corridors, small ones as toilets or stores, the largest as the living room, the rest as
