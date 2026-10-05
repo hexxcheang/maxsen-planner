@@ -146,6 +146,14 @@ button that outlines the rooms for you to check:
    `ANTHROPIC_API_KEY=`. The `.env` file is never uploaded to GitHub.
 3. Restart the app (Control + C, then `pnpm dev`). The Terminal shows `Magic Plan: ready`.
 
+**On a tablet (e.g. Honor MagicPad 4):** with `pnpm dev` running on the Mac, open the _Network_
+address it prints (e.g. `http://192.168.1.23:5173`) in Chrome on the tablet, on the same Wi-Fi.
+On a touch screen the app is finger-friendly: bigger buttons and handles; on the plan, pinch to
+zoom, drag empty plan with one finger (or two) to pan, tap to place, and _Finish_ / _Remove last
+point_ buttons while drawing a strip or track. The toolbar's Copy, Paste, Duplicate and Delete
+replace the keyboard shortcuts, and the magnet turns light snapping off (instead of holding Alt).
+Chrome's _Add to home screen_ gives it the Maxsen icon. Each browser keeps its own projects.
+
 **Product sample pictures (the Sample tab):** upload a photo of a product, say what it is (category,
 and the product from the catalogue), and choose the room, interior style and light. The app writes
 the instructions (where that kind of product is installed, keeping the product exactly as

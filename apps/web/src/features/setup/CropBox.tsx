@@ -102,7 +102,7 @@ export function CropBox({ imageUrl, aspect, crop, onChange }: Props) {
             type="button"
             aria-label={`${g.label} of the crop`}
             className={cn(
-              'absolute size-4 rounded-full border-2 border-brass bg-surface focus-visible:outline-offset-1',
+              'absolute size-4 rounded-full border-2 border-brass bg-surface focus-visible:outline-offset-1 pointer-coarse:before:absolute pointer-coarse:before:-inset-2.5 pointer-coarse:before:content-[""]',
               g.className,
             )}
             onPointerDown={begin(g.grip)}

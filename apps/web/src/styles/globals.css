@@ -65,6 +65,19 @@
     margin: 0;
     min-height: 100dvh;
     overscroll-behavior: none;
+    /* No grey flash on tap, on Android tablets. */
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Taps act at once: no wait to see if it's a double-tap zoom. */
+  button,
+  a,
+  input,
+  select,
+  textarea,
+  label,
+  [role='button'] {
+    touch-action: manipulation;
   }
 
   /* Every interactive control shows the same brass focus ring, keyboard only. */

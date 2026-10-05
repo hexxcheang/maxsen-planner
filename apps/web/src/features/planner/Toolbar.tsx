@@ -1,7 +1,12 @@
 import type { ReactNode } from 'react';
 import {
   Circle,
+  ClipboardPaste,
+  Copy,
+  CopyPlus,
   Eye,
+  Magnet,
+  Trash2,
   Hand,
   ListTree,
   Maximize,
@@ -46,6 +51,16 @@ interface ToolbarProps {
   canRedo: boolean;
   onUndo: () => void;
   onRedo: () => void;
+  /** On-screen editing, for touch screens without Ctrl/Cmd keys. */
+  hasSelection: boolean;
+  canPaste: boolean;
+  onCopy: () => void;
+  onPaste: () => void;
+  onDuplicate: () => void;
+  onDelete: () => void;
+  /** Lights snap into line; off places them freely (like holding Alt). */
+  snap: boolean;
+  onSnap: (snap: boolean) => void;
 }
 
 const Sep = () => <span aria-hidden className="mx-1 h-5 w-px bg-rule" />;
@@ -140,6 +155,40 @@ export function Toolbar(p: ToolbarProps) {
       )}
       <Sep />
       {group(
+        'Edit',
+        <>
+          <IconButton
+            size="sm"
+            label="Copy (Ctrl+C)"
+            icon={<Copy />}
+            onClick={p.onCopy}
+            disabled={!p.hasSelection}
+          />
+          <IconButton
+            size="sm"
+            label="Paste beside it (Ctrl+V)"
+            icon={<ClipboardPaste />}
+            onClick={p.onPaste}
+            disabled={!p.canPaste}
+          />
+          <IconButton
+            size="sm"
+            label="Duplicate (Ctrl+D)"
+            icon={<CopyPlus />}
+            onClick={p.onDuplicate}
+            disabled={!p.hasSelection}
+          />
+          <IconButton
+            size="sm"
+            label="Delete (Delete)"
+            icon={<Trash2 />}
+            onClick={p.onDelete}
+            disabled={!p.hasSelection}
+          />
+        </>,
+      )}
+      <Sep />
+      {group(
         'Zoom',
         <>
           <IconButton
@@ -180,6 +229,20 @@ export function Toolbar(p: ToolbarProps) {
       {group(
         'View',
         <>
+          {p.planType === 'lighting' && (
+            <IconButton
+              size="sm"
+              label={
+                p.snap
+                  ? 'Lights snap into line (tap to place freely)'
+                  : 'Lights placed freely (tap to snap into line)'
+              }
+              icon={<Magnet />}
+              active={p.snap}
+              onClick={() => p.onSnap(!p.snap)}
+              disabled={p.disabled}
+            />
+          )}
           <IconButton
             size="sm"
             label={p.legendVisible ? 'Hide legend' : 'Show legend'}

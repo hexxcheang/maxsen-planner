@@ -71,6 +71,11 @@ export function useStageViewport(store: PlannerStore, sheet: Size, container: Si
     zoomBy: (factor: number, around: { x: number; y: number }) =>
       zoomTo(liveZoom() * factor, around),
     panTo: (x: number, y: number) => setViewport({ ...store.getState().viewport, x, y }),
+    /** Moves the view by screen pixels (two-finger pan). */
+    panBy: (dx: number, dy: number) => {
+      const v = store.getState().viewport;
+      setViewport({ ...v, x: v.x + dx, y: v.y + dy });
+    },
   };
 }
 

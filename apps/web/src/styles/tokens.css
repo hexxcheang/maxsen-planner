@@ -85,3 +85,11 @@
     --gutter: 20px;
   }
 }
+
+/* Touch screens (a tablet): finger-sized buttons and fields. */
+@media (pointer: coarse) {
+  :root {
+    --control-h: 40px;
+    --control-h-compact: 36px;
+  }
+}

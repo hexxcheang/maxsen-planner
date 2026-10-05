@@ -26,6 +26,7 @@ import {
 } from '@maxsen/domain';
 import { Button, Field, IconButton, Input, Select } from '@/components/ui';
 import { cn } from '@/lib/cn';
+import { useCoarsePointer } from '@/lib/pointer';
 import { applyPreset, blank, drawn } from './room-layouts';
 
 interface Props {
@@ -112,6 +113,7 @@ export function RoomsStep({
   readWindow,
   findRooms,
 }: Props) {
+  const coarse = useCoarsePointer();
   /** Reading the room under a tap, or all rooms; and why a tap found nothing. */
   const [finding, setFinding] = useState(false);
   const [roomNote, setRoomNote] = useState<string | null>(null);
@@ -164,8 +166,10 @@ export function RoomsStep({
     if (windowMode || doorMode || !active || !drawn(active) || mode === 'door' || mode === 'part')
       return null;
     const rect = frame.current!.getBoundingClientRect();
-    const tx = HANDLE_PX / rect.width;
-    const ty = HANDLE_PX / rect.height;
+    // A fingertip needs more room than a mouse pointer.
+    const reach = coarse ? HANDLE_PX * 1.6 : HANDLE_PX;
+    const tx = reach / rect.width;
+    const ty = reach / rect.height;
     const boxes: { target: 'main' | number; b: Box }[] = [
       ...(active.parts ?? []).map((b, i) => ({ target: i, b })),
       { target: 'main' as const, b: active },
@@ -875,10 +879,10 @@ export function RoomsStep({
                             overflow="visible"
                           >
                             <rect
-                              x={-4.5}
-                              y={-4.5}
-                              width={9}
-                              height={9}
+                              x={coarse ? -8 : -4.5}
+                              y={coarse ? -8 : -4.5}
+                              width={coarse ? 16 : 9}
+                              height={coarse ? 16 : 9}
                               rx={1.5}
                               fill="#FFFFFF"
                               stroke="#876B29"

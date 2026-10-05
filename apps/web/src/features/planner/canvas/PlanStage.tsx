@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Circle,
   Group,
@@ -10,7 +10,8 @@ import {
   Stage,
   Text,
 } from 'react-konva';
-import type Konva from 'konva';
+import Konva from 'konva';
+import { useCoarsePointer } from '@/lib/pointer';
 import { alignPoint, snapToAxes, type AlignGuide, type Pt, type Scene } from '@maxsen/domain';
 import { ALIGNED_LIGHTS, lightSpots, SNAP_PX } from './align';
 import type { Armed, PlannerTool } from '../store/plannerStore';
@@ -18,6 +19,9 @@ import type { StageViewport } from './useStageViewport';
 import { SceneLayer } from './SceneLayer';
 
 const BRASS = '#A8873A';
+
+// Keep receiving touch moves while something is dragged, so a second finger can start a pinch.
+Konva.hitOnDragEnabled = true;
 /** Smart guides: a clear magenta, drawn hairline-thin so they never hide the plan. */
 const GUIDE = '#D6336C';
 
@@ -56,6 +60,8 @@ interface PlanStageProps {
   onEditPoints?: (elementId: string, points: Pt[]) => void;
   /** The armed device is a light that lines up with the others as it's placed. */
   armedAligns?: boolean;
+  /** Lights snap into line as they're placed or dragged (off: place freely, like holding Alt). */
+  snap?: boolean;
 }
 
 /** Most points an LED strip or track run can be given with the + handle. */
@@ -80,7 +86,17 @@ export function PlanStage({
   onFinishDraft,
   onEditPoints,
   armedAligns = false,
+  snap = true,
 }: PlanStageProps) {
+  // On a touch screen: one finger on empty plan pans, two fingers pinch to zoom and pan, and
+  // handles are finger-sized.
+  const coarse = useCoarsePointer();
+  const hs = coarse ? 2 : 1;
+  const pinch = useRef<{ dist: number; center: Pt } | null>(null);
+  const [pinching, setPinching] = useState(false);
+  /** When the last pinch ended: the lift of its fingers isn't a tap. */
+  const pinchEnded = useRef(0);
+  const justPinched = () => Date.now() - pinchEnded.current < 350;
   /** Smart guides shown while a light is dragged or about to be placed. */
   const [guides, setGuides] = useState<AlignGuide[]>([]);
   /** Points of the run being reshaped, while a handle is dragged. */
@@ -90,6 +106,7 @@ export function PlanStage({
   const { viewport } = view;
   const [spaceHeld, setSpaceHeld] = useState(false);
   const panning = tool === 'pan' || spaceHeld;
+  const fingerPan = coarse && !panning && !pinching;
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -123,6 +140,7 @@ export function PlanStage({
 
   const onPick = (id: string, e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
     if (panning || armed) return;
+    if ('touches' in e.evt && e.evt.touches.length > 1) return;
     const shift = 'shiftKey' in e.evt && e.evt.shiftKey;
     if (shift) onSelect([id], 'toggle');
     else if (!selection.includes(id)) onSelect([id], 'replace');
@@ -138,7 +156,7 @@ export function PlanStage({
   );
   /** A light being dragged: snap it into line with the lights that aren't moving with it. */
   const alignDrag = (id: string, at: Pt, free: boolean): Pt | null => {
-    if (free || !lightIds.has(id)) {
+    if (free || !snap || !lightIds.has(id)) {
       if (guides.length) setGuides([]);
       return null;
     }
@@ -149,7 +167,9 @@ export function PlanStage({
   };
   /** Where an armed light would be placed at `p`. */
   const placeAt = (p: Pt, free: boolean): { at: Pt; guides: AlignGuide[] } =>
-    armedAligns && !free ? alignPoint(p, lightSpots(scene), SNAP_PX * px) : { at: p, guides: [] };
+    armedAligns && snap && !free
+      ? alignPoint(p, lightSpots(scene), SNAP_PX * px)
+      : { at: p, guides: [] };
   // One open LED strip or track selected: show its points as handles, plus a + to add a point.
   const editable =
     onEditPoints && tool === 'select' && !panning && !armed && selectedItems.length === 1
@@ -168,7 +188,8 @@ export function PlanStage({
     const prev = editPoints.at(-2) ?? { x: last.x - 1, y: last.y };
     const d = Math.hypot(last.x - prev.x, last.y - prev.y) || 1;
     const dir = { x: (last.x - prev.x) / d, y: (last.y - prev.y) / d };
-    return { at: { x: last.x + dir.x * 22 * px, y: last.y + dir.y * 22 * px }, dir, last };
+    const gap = 22 * hs * px;
+    return { at: { x: last.x + dir.x * gap, y: last.y + dir.y * gap }, dir, last };
   })();
 
   return (
@@ -179,10 +200,41 @@ export function PlanStage({
       y={viewport.y}
       scaleX={viewport.scale}
       scaleY={viewport.scale}
-      draggable={panning}
+      draggable={panning || fingerPan}
       style={{ cursor: panning ? 'grab' : armed ? 'crosshair' : 'default' }}
       onDragEnd={(e) => {
         if (e.target === e.target.getStage()) view.panTo(e.target.x(), e.target.y());
+      }}
+      onTouchMove={(e) => {
+        const t = e.evt.touches;
+        if (t.length !== 2) return;
+        e.evt.preventDefault();
+        const stage = e.target.getStage();
+        if (!stage) return;
+        // Two fingers: whatever one finger was dragging (the plan or a device) lets go.
+        if (stage.isDragging()) {
+          stage.stopDrag();
+          view.panTo(stage.x(), stage.y());
+        }
+        if (!pinching) setPinching(true);
+        const rect = stage.container().getBoundingClientRect();
+        const a = { x: t[0]!.clientX - rect.left, y: t[0]!.clientY - rect.top };
+        const b = { x: t[1]!.clientX - rect.left, y: t[1]!.clientY - rect.top };
+        const center = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+        const dist = Math.hypot(a.x - b.x, a.y - b.y);
+        const last = pinch.current;
+        if (last && last.dist > 0) {
+          view.zoomBy(dist / last.dist, center);
+          view.panBy(center.x - last.center.x, center.y - last.center.y);
+        }
+        pinch.current = { dist, center };
+      }}
+      onTouchEnd={(e) => {
+        if (e.evt.touches.length < 2 && pinch.current) {
+          pinch.current = null;
+          pinchEnded.current = Date.now();
+          setPinching(false);
+        }
       }}
       onWheel={(e) => {
         e.evt.preventDefault();
@@ -216,10 +268,16 @@ export function PlanStage({
         if (e.target === e.target.getStage()) onSelect([], 'replace');
       }}
       onTap={(e) => {
-        if (panning) return;
+        if (panning || justPinched()) return;
         if (armed) {
           const p = e.target.getStage()?.getRelativePointerPosition();
-          if (p) onPlace(placeAt(p, false).at, false);
+          if (p) {
+            const at = placeAt(p, false);
+            onPlace(at.at, false);
+            // Show where it lined up for a moment (no hover on a touch screen).
+            setGuides(at.guides);
+            if (at.guides.length) window.setTimeout(() => setGuides([]), 900);
+          }
           return;
         }
         if (e.target === e.target.getStage()) onSelect([], 'replace');
@@ -240,7 +298,7 @@ export function PlanStage({
       <Layer>
         <SceneLayer
           scene={scene}
-          draggable={tool === 'select' && !panning && !armed}
+          draggable={tool === 'select' && !panning && !armed && !pinching}
           onPick={onPick}
           onDragMove={alignDrag}
           onDragEnd={(id, dx, dy) => {
@@ -325,8 +383,8 @@ export function PlanStage({
               name={`point-${i}`}
               x={p.x}
               y={p.y}
-              radius={7 * px}
-              hitStrokeWidth={10 * px}
+              radius={7 * hs * px}
+              hitStrokeWidth={10 * hs * px}
               fill="#FFFFFF"
               stroke={BRASS}
               strokeWidth={2 * px}
@@ -387,16 +445,16 @@ export function PlanStage({
                 ]);
               }}
             >
-              <Circle radius={9 * px} fill={BRASS} stroke="#FFFFFF" strokeWidth={1.5 * px} />
+              <Circle radius={9 * hs * px} fill={BRASS} stroke="#FFFFFF" strokeWidth={1.5 * px} />
               <Text
                 text="+"
-                fontSize={16 * px}
+                fontSize={16 * hs * px}
                 fontStyle="bold"
                 fill="#FFFFFF"
-                width={18 * px}
-                height={18 * px}
-                offsetX={9 * px}
-                offsetY={8.5 * px}
+                width={18 * hs * px}
+                height={18 * hs * px}
+                offsetX={9 * hs * px}
+                offsetY={8.5 * hs * px}
                 align="center"
                 verticalAlign="middle"
               />

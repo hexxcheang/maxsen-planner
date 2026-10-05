@@ -99,8 +99,15 @@ test.describe('Magic Plan', () => {
     await expect(
       dialog.getByText(/drag a box over the rest of the Living \/ Dining/),
     ).toBeVisible();
-    const p1 = P(700, 380);
-    const p2 = P(860, 640);
+    // Measure the drawing again: the dialog's layout can shift it (taller touch-sized controls).
+    await canvas.scrollIntoViewIfNeeded();
+    const now = (await canvas.boundingBox())!;
+    const atNow = (x: number, y: number) => ({
+      x: now.x + (x / 1400) * now.width,
+      y: now.y + (y / 1000) * now.height,
+    });
+    const p1 = atNow(700, 380);
+    const p2 = atNow(860, 640);
     await page.mouse.move(p1.x, p1.y);
     await page.mouse.down();
     await page.mouse.move(p2.x, p2.y, { steps: 5 });

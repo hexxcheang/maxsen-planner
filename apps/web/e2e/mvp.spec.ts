@@ -41,7 +41,7 @@ test.describe('MVP editing', () => {
     await page.getByRole('searchbox', { name: 'Search devices' }).fill('Nova S8');
     await page.getByRole('list', { name: 'Search results' }).getByRole('button').first().click();
     await expect(
-      page.getByRole('status').filter({ hasText: 'Click the plan to place' }),
+      page.getByRole('status').filter({ hasText: /(Click|Tap) the plan to place/ }),
     ).toBeVisible();
     const at = await viewport(page);
     const p = at(300, 300);
@@ -90,7 +90,7 @@ test.describe('MVP editing', () => {
 
   test('draw an LED strip, add and drag points, and settle its length in Review totals', async ({
     page,
-  }) => {
+  }, testInfo) => {
     await page.goto('/projects/proj_sample_tan/plan?level=lvl_tan_1&type=lighting');
     await expect(page.getByTestId('plan-canvas')).toHaveAttribute('data-scale', '1.00');
     await page.getByRole('button', { name: /Draw LED strip/ }).click();
@@ -108,11 +108,12 @@ test.describe('MVP editing', () => {
     await expect(details.getByText('2 points', { exact: true })).toBeVisible();
 
     // The + just past the end of the selected run adds a third point; dragging it bends the run.
-    // The + sits 22 screen pixels past the end of the run. (Details can resize the canvas.)
+    // The + sits 22 screen pixels past the end of the run, twice that on a touch screen where
+    // handles are finger-sized. (Details can resize the canvas.)
     await page.waitForTimeout(300);
     const at2 = await viewport(page);
     const end = at2(350, 600);
-    await page.mouse.click(end.x + 22, end.y);
+    await page.mouse.click(end.x + (testInfo.project.name === 'desktop' ? 22 : 44), end.y);
     await expect(details.getByText('3 points', { exact: true })).toBeVisible();
     const third = at2(400, 600);
     const target = at2(400, 680);

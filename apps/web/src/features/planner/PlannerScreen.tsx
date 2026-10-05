@@ -14,6 +14,7 @@ import { alignPoint, buildScene, categoryById, type PlanType } from '@maxsen/dom
 import { Button, buttonClass, IconButton, useToast } from '@/components/ui';
 import { cn } from '@/lib/cn';
 import { fileUrl } from '@/lib/files';
+import { useCoarsePointer } from '@/lib/pointer';
 import { useElementSize, useMediaQuery } from '@/lib/useElementSize';
 import {
   useActions,
@@ -108,6 +109,12 @@ export function PlannerScreen() {
   const { data: resolve } = useResolver(project.id);
   const [params, setParams] = useSearchParams();
   const narrow = useMediaQuery('(max-width: 1179px)');
+  const coarse = useCoarsePointer();
+  const click = coarse ? 'Tap' : 'Click';
+  /** Lights snap into line as they're placed (off: freely, as with Alt held). */
+  const [snap, setSnap] = useState(true);
+  /** Something has been copied, so Paste can be offered (counts copies, to re-render). */
+  const [copies, setCopies] = useState(0);
   const [libraryOpen, setLibraryOpen] = useState(!narrow);
   const [inspectorOpen, setInspectorOpen] = useState(!narrow);
   const [totalsOpen, setTotalsOpen] = useState(true);
@@ -348,6 +355,7 @@ export function PlannerScreen() {
         if (s.selection.length) {
           e.preventDefault();
           s.copySelection();
+          setCopies((n) => n + 1);
         }
       } else if (mod && key === 'v') {
         if (s.paste().length) e.preventDefault();
@@ -411,7 +419,7 @@ export function PlannerScreen() {
             data-testid="plan-canvas"
             data-scale={view.zoom.toFixed(2)}
             data-viewport={`${v.x.toFixed(2)},${v.y.toFixed(2)},${v.scale.toFixed(5)}`}
-            className="absolute inset-0 overflow-hidden"
+            className="absolute inset-0 touch-none overflow-hidden"
             onDragOver={(e) => {
               if (plan && e.dataTransfer.types.includes(VARIANT_DRAG_TYPE)) {
                 e.preventDefault();
@@ -430,7 +438,7 @@ export function PlannerScreen() {
               };
               // A light dropped near others lines up with them (Alt/Option places it freely).
               const snapped =
-                alignsAsLight(variantId) && !e.altKey
+                alignsAsLight(variantId) && snap && !e.altKey
                   ? alignPoint(at, lightSpots(scene), SNAP_PX / v.scale).at
                   : at;
               store.getState().addMarker(variantId, snapped);
@@ -458,6 +466,7 @@ export function PlannerScreen() {
                 armedAligns={armed?.kind === 'marker' && alignsAsLight(armed.variantId)}
                 onFinishDraft={finishDraft}
                 onEditPoints={(id, points) => store.getState().updateElement(id, { points })}
+                snap={snap}
               />
             )}
           </div>
@@ -528,24 +537,34 @@ export function PlannerScreen() {
             canRedo={canRedo}
             onUndo={() => store.getState().undo()}
             onRedo={() => store.getState().redo()}
+            hasSelection={selection.length > 0}
+            canPaste={copies > 0}
+            onCopy={() => {
+              if (store.getState().copySelection()) setCopies((n) => n + 1);
+            }}
+            onPaste={() => store.getState().paste()}
+            onDuplicate={() => store.getState().duplicateSelection(20)}
+            onDelete={() => store.getState().deleteSelection()}
+            snap={snap}
+            onSnap={setSnap}
           />
           {armed && plan && (
             <div
               role="status"
-              className="absolute top-3 left-1/2 z-[var(--z-toolbar)] flex max-w-[60%] -translate-x-1/2 items-center gap-3 rounded-popover border border-brass/50 bg-surface px-3 py-1.5 text-control text-ink shadow-float max-[1179px]:top-16"
+              className="absolute top-16 left-1/2 z-[var(--z-toolbar)] flex max-w-[70%] -translate-x-1/2 items-center gap-3 rounded-popover border border-brass/50 bg-surface px-3 py-1.5 text-control text-ink shadow-float"
             >
               <span className="min-w-0">
                 {armed.kind === 'marker' && (
                   <>
-                    Click the plan to place{' '}
+                    {click} the plan to place{' '}
                     <strong className="font-semibold">{nameOf(armed.variantId)}</strong>. Keep
-                    clicking to place more.
+                    {coarse ? 'tapping' : 'clicking'} to place more.
                   </>
                 )}
                 {armed.kind === 'path' &&
                   (draft.length === 0 ? (
                     <>
-                      Click the start of the{' '}
+                      {click} the start of the{' '}
                       {armed.elementKind === 'track'
                         ? 'track'
                         : armed.elementKind === 'curtain'
@@ -555,21 +574,43 @@ export function PlannerScreen() {
                     </>
                   ) : (
                     <>
-                      Click to add points, Shift for straight lines. Double-click or Enter to
-                      finish.
+                      {coarse
+                        ? 'Tap to add points; nearly level or upright runs straighten. Tap Finish when done.'
+                        : 'Click to add points, Shift for straight lines. Double-click or Enter to finish.'}
                     </>
                   ))}
                 {armed.kind === 'loop' && (
-                  <>Click the centre of the LED loop ({nameOf(armed.variantId)}).</>
+                  <>
+                    {click} the centre of the LED loop ({nameOf(armed.variantId)}).
+                  </>
                 )}
-                {armed.kind === 'note' && <>Click where the note should go.</>}
+                {armed.kind === 'note' && <>{click} where the note should go.</>}
               </span>
+              {armed.kind === 'path' && draft.length > 0 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => store.getState().popDraftPoint()}
+                    className="shrink-0 rounded-control px-2 py-1 text-meta text-ink-2 hover:bg-paper"
+                  >
+                    Remove last point
+                  </button>
+                  <button
+                    type="button"
+                    onClick={finishDraft}
+                    disabled={draft.length < 2}
+                    className="shrink-0 rounded-control bg-brass px-3 py-1 text-meta font-semibold text-white hover:bg-brass-2 disabled:opacity-50"
+                  >
+                    Finish
+                  </button>
+                </>
+              )}
               <button
                 type="button"
                 onClick={() => store.getState().arm(null)}
                 className="shrink-0 text-meta text-brass-2 hover:underline"
               >
-                Stop (Esc)
+                {coarse ? 'Stop' : 'Stop (Esc)'}
               </button>
             </div>
           )}
