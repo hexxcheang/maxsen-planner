@@ -31,6 +31,7 @@ import { buildInvoiceXlsx } from '@/features/exports/build/invoice';
 import { buildQuotationPdf } from '@/features/exports/build/generate';
 import { QuotationTable } from './QuotationTable';
 import { money, quotationText, withRowEdit } from './quotation';
+import { copyText } from '@/lib/clipboard';
 
 type Line =
   | { id: string; kind: 'item'; description: string; quantity: number; unitPrice: number }
@@ -304,7 +305,7 @@ export function OldInvoiceSection() {
   };
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(
+      await copyText(
         quotationText({
           invoice,
           pricing,

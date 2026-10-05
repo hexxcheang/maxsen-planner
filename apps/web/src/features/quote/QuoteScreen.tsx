@@ -32,6 +32,7 @@ import { buildQuotationPdf } from '@/features/exports/build/generate';
 import { QuotationTable } from './QuotationTable';
 import { OldInvoiceSection } from './OldInvoiceSection';
 import { money, quotationText, withRowEdit } from './quotation';
+import { copyText } from '@/lib/clipboard';
 
 interface Draft {
   message: string;
@@ -175,7 +176,7 @@ export function QuoteScreen() {
 
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(asText());
+      await copyText(asText());
       toast({ title: 'Quotation copied', body: 'Paste it into WhatsApp or an email.' });
     } catch {
       toast({

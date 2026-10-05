@@ -16,6 +16,9 @@ export default defineConfig({
     include: ['pdfjs-dist', 'jspdf', 'exceljs'],
   },
   server: {
+    // Also reachable from other devices on the same Wi-Fi (a tablet), at the Network address
+    // Vite prints when it starts.
+    host: true,
     port: 5173,
     strictPort: true,
     proxy: {

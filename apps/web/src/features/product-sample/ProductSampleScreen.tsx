@@ -16,6 +16,7 @@ import { Button, Field, PageHeader, Select, Textarea, useToast } from '@/compone
 import { Page } from '@/components/Page';
 import { useCatalogue } from '@/lib/data/hooks';
 import { loadImage } from '@/lib/images';
+import { copyText } from '@/lib/clipboard';
 
 /** A photo ready to send: resized, as JPEG. */
 interface Photo {
@@ -376,7 +377,7 @@ export function ProductSampleScreen() {
               icon={<Copy className="size-4" />}
               onClick={async () => {
                 try {
-                  await navigator.clipboard.writeText(prompt);
+                  await copyText(prompt);
                   toast({
                     title: 'Instructions copied',
                     body: 'Paste them into Gemini with your photo.',

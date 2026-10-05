@@ -12,6 +12,7 @@ import { Page } from '@/components/Page';
 import { useSettings } from '@/lib/data/hooks';
 import { formatMoney } from '@/lib/format';
 import { buildElectricalXlsx, electricalTotals, type ElectricalDraft } from './electrical-quote';
+import { copyText } from '@/lib/clipboard';
 
 const KEY = 'maxsen.electrical.v1';
 const money = (n: number) => `S$${formatMoney(n)}`;
@@ -243,7 +244,7 @@ export function ElectricalScreen() {
               disabled={totals.count === 0}
               onClick={async () => {
                 try {
-                  await navigator.clipboard.writeText(text());
+                  await copyText(text());
                   toast({ title: 'Quotation copied' });
                 } catch {
                   toast({ title: 'Couldn’t copy', tone: 'danger' });

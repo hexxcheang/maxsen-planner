@@ -13,6 +13,7 @@ import { useActions } from '@/lib/data/hooks';
 import { QuotationTable } from '@/features/quote/QuotationTable';
 import { money, quotationText, withRowEdit } from '@/features/quote/quotation';
 import { buildQuotationPdf } from './build/generate';
+import { copyText } from '@/lib/clipboard';
 
 /**
  * The project's invoice as an editable quotation, like Quick quote: change any row's unit price
@@ -48,9 +49,7 @@ export function InvoicePricesDialog({
 
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(
-        quotationText({ invoice, pricing, number, clientName: client.name }),
-      );
+      await copyText(quotationText({ invoice, pricing, number, clientName: client.name }));
       toast({ title: 'Quotation copied', body: 'Paste it into WhatsApp or an email.' });
     } catch {
       toast({
