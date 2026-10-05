@@ -3,6 +3,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { AnalysisError, type Analyser } from './magic/analyse.ts';
 import { RenderError, type Renderer } from './sample/render.ts';
+import { createAuth, type Auth } from './auth.ts';
 
 const analyseBody = z.object({
   image: z.string().min(100).max(15_000_000),
@@ -22,8 +23,28 @@ const RENDER_STATUS = { auth: 502, busy: 429, refused: 422, upstream: 502 } as c
  * The API. `analyse` is absent when no Anthropic credentials are configured, `render` when no
  * image model key is.
  */
-export function buildApp({ analyse, render }: { analyse?: Analyser; render?: Renderer } = {}) {
+export function buildApp({
+  analyse,
+  render,
+  auth = createAuth({}),
+}: { analyse?: Analyser; render?: Renderer; auth?: Auth } = {}) {
   const app = new Hono();
+
+  app.use('/api/*', auth.guard());
+
+  /** Whether the server checks the passcode (online), and whether this browser is signed in. */
+  app.get('/api/auth/status', (c) =>
+    c.json({ required: auth.required, signedIn: auth.signedIn(c) }),
+  );
+  app.post('/api/auth/sign-in', async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as { passcode?: unknown };
+    const ok = auth.signIn(c, typeof body.passcode === 'string' ? body.passcode : '');
+    return c.json({ ok, required: auth.required }, ok ? 200 : 401);
+  });
+  app.post('/api/auth/sign-out', (c) => {
+    auth.signOut(c);
+    return c.json({ ok: true });
+  });
 
   app.get('/api/product-sample/status', (c) =>
     c.json({ configured: Boolean(render), provider: render?.provider ?? null }),

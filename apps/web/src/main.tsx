@@ -19,3 +19,10 @@ createRoot(root).render(
     </Providers>
   </StrictMode>,
 );
+
+// Online (https), keep the app on the device so it opens offline and installs as an app.
+if (import.meta.env.PROD && 'serviceWorker' in navigator && window.isSecureContext) {
+  const register = () => void navigator.serviceWorker.register('/sw.js').catch(() => undefined);
+  if (document.readyState === 'complete') register();
+  else window.addEventListener('load', register);
+}

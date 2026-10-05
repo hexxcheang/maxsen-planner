@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { buildApp } from './app.ts';
 import { createAnalyser } from './magic/analyse.ts';
 import { createRenderer } from './sample/render.ts';
+import { createAuth } from './auth.ts';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -20,7 +21,12 @@ const configured = Boolean(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPI
 
 const render = createRenderer();
 
-export const app = buildApp({ analyse: configured ? createAnalyser() : undefined, render });
+const auth = createAuth({
+  passcode: process.env.PLANNER_PASSCODE,
+  secret: process.env.SESSION_SECRET,
+});
+
+export const app = buildApp({ analyse: configured ? createAnalyser() : undefined, render, auth });
 
 if (existsSync(webDist)) {
   const root = path.relative(process.cwd(), webDist);
@@ -34,6 +40,7 @@ if (process.env.NODE_ENV !== 'test') {
     console.log(
       configured ? 'Magic Plan: ready' : 'Magic Plan: add ANTHROPIC_API_KEY to .env to enable it',
     );
+    if (auth.required) console.log('Sign-in: checked on the server (PLANNER_PASSCODE)');
     console.log(
       render
         ? `Product samples: ready (${render.provider === 'gemini' ? 'Gemini' : 'OpenAI'})`

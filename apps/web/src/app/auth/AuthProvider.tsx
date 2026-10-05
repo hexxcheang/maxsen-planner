@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AdminContext, AuthContext, type AdminApi, type AuthApi } from './auth-context';
 import { AdminUnlockDialog } from './AdminUnlockDialog';
 
@@ -25,6 +25,27 @@ function write(storage: () => Storage, key: string, on: boolean) {
   }
 }
 
+/**
+ * Signs in on the server, which checks the passcode once the app is online (and lets the paid
+ * Claude and Gemini features answer). `open` when the server doesn't check one (on your own
+ * computer), `unavailable` when there's no server.
+ */
+async function serverSignIn(passcode: string): Promise<'ok' | 'wrong' | 'open' | 'unavailable'> {
+  try {
+    const res = await fetch('/api/auth/sign-in', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ passcode }),
+    });
+    if (res.status === 401) return 'wrong';
+    if (!res.ok) return 'unavailable';
+    const body = (await res.json()) as { required?: boolean };
+    return body.required ? 'ok' : 'open';
+  } catch {
+    return 'unavailable';
+  }
+}
+
 const local = () => window.localStorage;
 const session = () => window.sessionStorage;
 
@@ -41,15 +62,36 @@ export function AuthProvider({
   const pending = useRef<((ok: boolean) => void) | null>(null);
 
   const signIn = useCallback(async (passcode: string) => {
-    const ok = passcode.trim() === TEAM_PASSCODE;
+    const server = await serverSignIn(passcode);
+    // Online the server's passcode decides; on your own computer, the team passcode.
+    const ok = server === 'ok' || (server !== 'wrong' && passcode.trim() === TEAM_PASSCODE);
     if (ok) {
       write(local, SESSION_KEY, true);
       setSignedIn(true);
     }
-    return Promise.resolve(ok);
+    return ok;
   }, []);
 
+  // Online, a session the server no longer accepts (expired, or the passcode changed) signs out.
+  useEffect(() => {
+    if (!signedIn || initialSignedIn !== undefined) return;
+    let live = true;
+    fetch('/api/auth/status')
+      .then((r) => (r.ok ? (r.json() as Promise<{ required: boolean; signedIn: boolean }>) : null))
+      .then((s) => {
+        if (live && s?.required && !s.signedIn) {
+          write(local, SESSION_KEY, false);
+          setSignedIn(false);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [signedIn, initialSignedIn]);
+
   const signOut = useCallback(() => {
+    void fetch('/api/auth/sign-out', { method: 'POST' }).catch(() => undefined);
     write(local, SESSION_KEY, false);
     write(session, ADMIN_KEY, false);
     setSignedIn(false);

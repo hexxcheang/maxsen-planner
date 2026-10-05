@@ -146,6 +146,11 @@ button that outlines the rooms for you to check:
    `ANTHROPIC_API_KEY=`. The `.env` file is never uploaded to GitHub.
 3. Restart the app (Control + C, then `pnpm dev`). The Terminal shows `Magic Plan: ready`.
 
+**Online (no Mac needed):** the app can run on Render, in Singapore, from `render.yaml`; tablets,
+phones and computers then open it at its web address and can install it as an app that also works
+offline. Online, the passcode is checked on the server (`PLANNER_PASSCODE`). Step by step:
+[`docs/hosting.md`](docs/hosting.md).
+
 **On a tablet (e.g. Honor MagicPad 4):** with `pnpm dev` running on the Mac, open the _Network_
 address it prints (e.g. `http://192.168.1.23:5173`) in Chrome on the tablet, on the same Wi-Fi.
 On a touch screen the app is finger-friendly: bigger buttons and handles; on the plan, pinch to

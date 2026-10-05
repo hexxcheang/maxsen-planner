@@ -1,0 +1,27 @@
+# Render blueprint: the whole app (pages and API) as one web service in Singapore.
+# Render › New › Blueprint › pick this repository. It asks for the values marked sync: false.
+services:
+  - type: web
+    name: maxsen-planner
+    runtime: node
+    region: singapore
+    # Starter (about US$7 a month) is always on. "free" works too, but sleeps after 15 minutes
+    # idle, so the first open after that takes about a minute (the app on the tablet still opens).
+    plan: starter
+    buildCommand: corepack enable && pnpm install --frozen-lockfile --prod=false && pnpm build
+    startCommand: pnpm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: '22'
+      # The passcode your team signs in with (replaces "maxsen" once online).
+      - key: PLANNER_PASSCODE
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      # Optional: Claude for "Suggest rooms", Gemini for product sample pictures.
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
