@@ -43,5 +43,7 @@ describe('invoice payment stages', () => {
     assert.equal(exportFilename('Tan', 'invoice', 'second'), 'Tan - 2nd Payment Invoice.xlsx');
     assert.equal(exportFilename('Tan', 'invoice', 'final'), 'Tan - Final Invoice.xlsx');
     assert.equal(exportFilename('Tan', 'invoice'), 'Tan - Invoice.xlsx');
+    assert.equal(exportFilename('Tan', 'invoice-pdf'), 'Tan - Invoice.pdf');
+    assert.equal(exportFilename('Tan', 'invoice-pdf', 'final'), 'Tan - Final Invoice.pdf');
   });
 });

@@ -17,7 +17,7 @@ import {
   type StageAmounts,
 } from '@maxsen/domain';
 import type { Style as ExcelStyle } from 'exceljs';
-import type { ExportContext } from './generate';
+import { buildQuotationPdf, type ExportContext } from './generate';
 
 const TEMPLATE_URL = '/templates/invoice-template.xlsx';
 const COLS = ['A', 'B', 'C', 'D', 'E', 'F'] as const;
@@ -353,6 +353,20 @@ export function projectPayment(
     amounts,
     number: projectInvoiceNumber(ctx.project, pricing, amounts.stage),
   };
+}
+
+/** The project's invoice as the premium PDF (the Quick quote style), for the same payment. */
+export async function buildProjectInvoicePdf(ctx: ExportContext): Promise<Blob> {
+  const { pricing, invoice, amounts, number } = projectPayment(ctx);
+  return buildQuotationPdf({
+    client: { name: ctx.project.customerName, contact: ctx.project.customerContact },
+    invoice,
+    pricing,
+    number,
+    settings: ctx.settings,
+    payment: amounts,
+    label: 'Invoice',
+  });
 }
 
 export async function buildProjectInvoice(ctx: ExportContext): Promise<Blob> {

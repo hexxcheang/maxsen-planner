@@ -136,4 +136,21 @@ describe('createProject from a template', () => {
     const after = addNewSampleCategories(store.getState());
     expect(after.products.some((p) => p.categoryId === 'ceiling-fans')).toBe(false);
   });
+
+  it('saved showrooms still at the placeholder addresses get the real ones', () => {
+    const store = createSampleStore();
+    store.actions.updateSettings((d) => {
+      d.branding.showrooms = [
+        { name: 'Tampines Showroom', address: '10 Tampines Central 1, #02-11, Singapore 529536' },
+        { name: 'Yishun Showroom', address: '930 Yishun Avenue 2, #03-04, Singapore 769098' },
+        { name: 'My own', address: '5 Somewhere Road' },
+      ];
+    });
+    const after = addNewSampleCategories(store.getState());
+    expect(after.settings.branding.showrooms.map((r) => r.address)).toEqual([
+      '9004 Tampines St 93, #2-122, Singapore 528838',
+      '1 Yishun Industrial Street 1, #01-02',
+      '5 Somewhere Road',
+    ]);
+  });
 });

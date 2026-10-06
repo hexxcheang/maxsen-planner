@@ -27,6 +27,8 @@ function ExportPanel({
   children,
   state,
   onGenerate,
+  label,
+  also,
 }: {
   title: string;
   icon: ReactNode;
@@ -35,7 +37,14 @@ function ExportPanel({
   children?: ReactNode;
   state: ExportState;
   onGenerate: () => void;
+  /** What the file is, when the panel makes two (e.g. "Excel"). */
+  label?: string;
+  /** A second file made alongside (the invoice as PDF). */
+  also?: { state: ExportState; filename: string; label: string };
 }) {
+  const files = [{ state, label }, ...(also ? [{ state: also.state, label: also.label }] : [])];
+  const working = files.some((f) => f.state.status === 'working');
+  const ready = files.some((f) => f.state.status === 'ready');
   return (
     <section aria-label={title} className="flex min-w-0 flex-col border-t-2 border-ink pt-4">
       <div className="flex items-start gap-2.5">
@@ -45,41 +54,45 @@ function ExportPanel({
           <p className="text-meta text-ink-2">{summary}</p>
         </div>
       </div>
-      <p
-        className="mt-3 truncate rounded-chip border border-rule bg-surface px-2 py-1.5 text-meta text-ink"
-        title={filename}
-      >
-        {filename}
-      </p>
-      <div className="mt-3 flex flex-col gap-2">
-        <Button
-          variant="secondary"
-          className="w-full"
-          loading={state.status === 'working'}
-          onClick={onGenerate}
+      {[filename, ...(also ? [also.filename] : [])].map((name) => (
+        <p
+          key={name}
+          className="mt-3 truncate rounded-chip border border-rule bg-surface px-2 py-1.5 text-meta text-ink"
+          title={name}
         >
-          {state.status === 'ready' ? 'Generate again' : 'Generate'}
+          {name}
+        </p>
+      ))}
+      <div className="mt-3 flex flex-col gap-2">
+        <Button variant="secondary" className="w-full" loading={working} onClick={onGenerate}>
+          {ready ? 'Generate again' : 'Generate'}
         </Button>
-        {state.status === 'ready' && (
-          <div
-            role="status"
-            className="flex items-center gap-2 border-l-[3px] border-ok bg-surface px-3 py-2"
-          >
-            <CircleCheck aria-hidden className="size-4 shrink-0 text-ok" />
-            <span className="min-w-0 flex-1 text-meta text-ink-2">
-              Ready, {formatDateTime(state.generatedAt)}
-            </span>
-            <a href={state.url} download={state.filename} className={buttonClass('primary', 'sm')}>
-              <Download aria-hidden className="size-3.5" />
-              Download
-            </a>
-          </div>
-        )}
-        {state.status === 'error' && (
-          <p role="alert" className="flex items-center gap-2 text-meta text-danger">
-            <CircleAlert aria-hidden className="size-4 shrink-0" />
-            {state.message}
-          </p>
+        {files.map(({ state: f, label: what }) =>
+          f.status === 'ready' ? (
+            <div
+              key={what ?? 'file'}
+              role="status"
+              className="flex items-center gap-2 border-l-[3px] border-ok bg-surface px-3 py-2"
+            >
+              <CircleCheck aria-hidden className="size-4 shrink-0 text-ok" />
+              <span className="min-w-0 flex-1 text-meta text-ink-2">
+                {what ? `${what} ready` : 'Ready'}, {formatDateTime(f.generatedAt)}
+              </span>
+              <a href={f.url} download={f.filename} className={buttonClass('primary', 'sm')}>
+                <Download aria-hidden className="size-3.5" />
+                {what ? `Download ${what}` : 'Download'}
+              </a>
+            </div>
+          ) : f.status === 'error' ? (
+            <p
+              key={what ?? 'file'}
+              role="alert"
+              className="flex items-center gap-2 text-meta text-danger"
+            >
+              <CircleAlert aria-hidden className="size-4 shrink-0" />
+              {f.message}
+            </p>
+          ) : null,
         )}
       </div>
       {children && <div className="mt-6 border-t border-rule pt-5">{children}</div>}
@@ -140,8 +153,17 @@ export function ExportsScreen() {
         <ExportPanel
           title="Invoice"
           icon={<Receipt />}
-          summary="Your invoice template filled in: packages, add-ons and other devices priced, with the total and the deposit, 2nd or final payment due."
+          summary="Your invoice template filled in as Excel, and the same invoice as a premium PDF (the Quick quote style): packages, add-ons and devices priced, with the total and the deposit, 2nd or final payment due."
           {...panel('invoice')}
+          label="Excel"
+          also={{
+            state: exp.state['invoice-pdf'],
+            filename: panel('invoice-pdf').filename,
+            label: 'PDF',
+          }}
+          onGenerate={() => {
+            void exp.generate('invoice').then(() => exp.generate('invoice-pdf'));
+          }}
         >
           <InvoiceOptions project={project} settings={settings} />
         </ExportPanel>

@@ -758,6 +758,7 @@ export async function buildQuotationPdf({
   number,
   settings,
   payment,
+  label = 'Quotation',
 }: {
   client: { name: string; contact: string };
   invoice: Invoice;
@@ -766,6 +767,8 @@ export async function buildQuotationPdf({
   settings: Settings;
   /** For a 2nd or final payment: what's been paid and what's due now, shown under the total. */
   payment?: StageAmounts;
+  /** What the document is called on its cover and page headers. */
+  label?: 'Quotation' | 'Invoice';
 }): Promise<Blob> {
   const doc = await newPdf(PAPER.A4, false);
   const assets = await loadAssets(settings);
@@ -773,7 +776,7 @@ export async function buildQuotationPdf({
   await cover(
     doc,
     assets,
-    `Quotation ${number}`,
+    `${label} ${number}`,
     client.name ? `Smart Home for ${client.name}` : 'Smart Home',
     customer,
     settings,
@@ -806,7 +809,7 @@ export async function buildQuotationPdf({
       pageHeader(
         doc,
         assets,
-        `Quotation ${number}`,
+        `${label} ${number}`,
         continued ? `${section} (continued)` : section,
         M,
       ) + 4;

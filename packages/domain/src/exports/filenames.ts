@@ -1,6 +1,7 @@
 import type { InvoiceStage } from '../types.ts';
 
-export type ExportKind = 'floor-plan' | 'product-description' | 'quantity' | 'invoice';
+export type ExportKind =
+  'floor-plan' | 'product-description' | 'quantity' | 'invoice' | 'invoice-pdf';
 
 const MAX_LENGTH = 100;
 const FALLBACK = 'Project';
@@ -31,6 +32,7 @@ const SUFFIX: Record<ExportKind, string> = {
   'product-description': ' - Product Description.pdf',
   quantity: ' - Quantity List.xlsx',
   invoice: ' - Invoice.xlsx',
+  'invoice-pdf': ' - Invoice.pdf',
 };
 
 const STAGE_SUFFIX: Record<Exclude<InvoiceStage, 'deposit'>, string> = {
@@ -41,6 +43,8 @@ const STAGE_SUFFIX: Record<Exclude<InvoiceStage, 'deposit'>, string> = {
 /** Export filenames per product spec §11. */
 export function exportFilename(title: string, kind: ExportKind, stage?: InvoiceStage): string {
   const suffix =
-    kind === 'invoice' && stage && stage !== 'deposit' ? STAGE_SUFFIX[stage] : SUFFIX[kind];
+    (kind === 'invoice' || kind === 'invoice-pdf') && stage && stage !== 'deposit'
+      ? STAGE_SUFFIX[stage].replace('.xlsx', kind === 'invoice-pdf' ? '.pdf' : '.xlsx')
+      : SUFFIX[kind];
   return `${sanitiseFilename(title)}${suffix}`;
 }

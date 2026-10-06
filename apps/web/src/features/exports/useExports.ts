@@ -17,7 +17,7 @@ import {
   buildQuantityXlsx,
   type ExportContext,
 } from './build/generate';
-import { buildProjectInvoice, projectPayment } from './build/invoice';
+import { buildProjectInvoice, buildProjectInvoicePdf, projectPayment } from './build/invoice';
 
 export type ExportState =
   | { status: 'idle' }
@@ -30,6 +30,7 @@ const BUILDERS: Record<ExportKind, (ctx: ExportContext) => Promise<Blob>> = {
   'product-description': buildProductPdf,
   quantity: buildQuantityXlsx,
   invoice: buildProjectInvoice,
+  'invoice-pdf': buildProjectInvoicePdf,
 };
 
 export const EXPORT_KINDS: ExportKind[] = [
@@ -37,6 +38,7 @@ export const EXPORT_KINDS: ExportKind[] = [
   'product-description',
   'quantity',
   'invoice',
+  'invoice-pdf',
 ];
 
 /** Generates exports fresh from the current plans and review totals; files are not stored. */
@@ -54,10 +56,15 @@ export function useExports(project: Project) {
     'product-description': { status: 'idle' },
     quantity: { status: 'idle' },
     invoice: { status: 'idle' },
+    'invoice-pdf': { status: 'idle' },
   });
   // A file made for another payment stage isn't offered under this stage's name.
   const stage = project.exportSettings.billing?.stage ?? 'deposit';
-  useEffect(() => setState((s) => ({ ...s, invoice: { status: 'idle' } })), [stage]);
+  useEffect(
+    () =>
+      setState((s) => ({ ...s, invoice: { status: 'idle' }, 'invoice-pdf': { status: 'idle' } })),
+    [stage],
+  );
   const urls = useRef<string[]>([]);
   useEffect(() => () => urls.current.forEach((u) => URL.revokeObjectURL(u)), []);
 

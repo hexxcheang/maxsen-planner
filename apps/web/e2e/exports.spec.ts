@@ -13,7 +13,7 @@ test.describe('exports', () => {
     test.setTimeout(90_000);
     await page.goto('/projects/proj_sample_lim/exports');
     await page.getByRole('button', { name: 'Generate all exports' }).click();
-    await expect(page.getByRole('link', { name: 'Download' })).toHaveCount(4, { timeout: 60_000 });
+    await expect(page.getByRole('link', { name: 'Download' })).toHaveCount(5, { timeout: 60_000 });
 
     const files: Record<string, Buffer> = {};
     for (const link of await page.getByRole('link', { name: 'Download' }).all()) {
@@ -29,7 +29,14 @@ test.describe('exports', () => {
         `${title} - Product Description.pdf`,
         `${title} - Quantity List.xlsx`,
         `${title} - Invoice.xlsx`,
+        `${title} - Invoice.pdf`,
       ].sort(),
+    );
+    // The invoice also comes as the premium PDF: cover, items and terms pages.
+    const invoicePdf = files[`${title} - Invoice.pdf`]!;
+    expect(invoicePdf.subarray(0, 5).toString()).toBe('%PDF-');
+    expect(invoicePdf.toString('latin1').match(/\/Type \/Page\b/g)!.length).toBeGreaterThanOrEqual(
+      3,
     );
 
     const plan = files[`${title} - Marked Floor Plan.pdf`]!;
@@ -65,7 +72,7 @@ test.describe('exports', () => {
     await expect(panel.getByText(/Packages/)).toBeVisible();
     await page.screenshot({ path: 'test-results/screens/exports-invoice.png', fullPage: true });
     await panel.getByRole('button', { name: 'Generate' }).click();
-    const link = panel.getByRole('link', { name: 'Download' });
+    const link = panel.getByRole('link', { name: 'Download Excel' });
     const [download] = await Promise.all([page.waitForEvent('download'), link.click()]);
     const path = testInfo.outputPath(download.suggestedFilename());
     await download.saveAs(path);
@@ -109,7 +116,7 @@ test.describe('exports', () => {
 
     // The deposit invoice records what it asked for.
     await panel.getByRole('button', { name: 'Generate' }).click();
-    await expect(panel.getByRole('link', { name: 'Download' })).toBeVisible();
+    await expect(panel.getByRole('link', { name: 'Download Excel' })).toBeVisible();
     const deposit = await money();
 
     await panel.getByRole('radio', { name: '2nd payment' }).click();
@@ -127,7 +134,7 @@ test.describe('exports', () => {
     await expect(paid).toHaveValue(String(deposit));
 
     await panel.getByRole('button', { name: /Generate/ }).click();
-    const link = panel.getByRole('link', { name: 'Download' });
+    const link = panel.getByRole('link', { name: 'Download Excel' });
     const [download] = await Promise.all([page.waitForEvent('download'), link.click()]);
     expect(download.suggestedFilename()).toBe(
       'Lim Family Home - Serangoon Gardens - 2nd Payment Invoice.xlsx',
@@ -172,7 +179,7 @@ test.describe('exports', () => {
     await panel.getByRole('button', { name: 'Generate' }).click();
     const [download] = await Promise.all([
       page.waitForEvent('download'),
-      panel.getByRole('link', { name: 'Download' }).click(),
+      panel.getByRole('link', { name: 'Download Excel' }).click(),
     ]);
     const path = testInfo.outputPath('invoice.xlsx');
     await download.saveAs(path);

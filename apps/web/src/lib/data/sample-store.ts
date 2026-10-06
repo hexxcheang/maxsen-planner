@@ -58,7 +58,26 @@ export type SampleSeed = 'sample' | 'empty';
  * saved as icons become dotted curtain tracks.
  */
 export function addNewSampleCategories(saved: SampleState): SampleState {
-  return addNewCategories(curtainsAsTracks(saved));
+  return addNewCategories(curtainsAsTracks(realShowrooms(saved)));
+}
+
+/** Showrooms still at the placeholder addresses get Maxsen's real ones. */
+function realShowrooms(state: SampleState): SampleState {
+  const showrooms = state.settings.branding.showrooms;
+  if (!showrooms.some((r) => sample.PLACEHOLDER_SHOWROOMS[r.address])) return state;
+  return {
+    ...state,
+    settings: {
+      ...state.settings,
+      branding: {
+        ...state.settings.branding,
+        showrooms: showrooms.map((r) => ({
+          ...r,
+          address: sample.PLACEHOLDER_SHOWROOMS[r.address] ?? r.address,
+        })),
+      },
+    },
+  };
 }
 
 function addNewCategories(saved: SampleState): SampleState {
