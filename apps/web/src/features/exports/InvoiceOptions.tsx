@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { Percent, TriangleAlert } from 'lucide-react';
+import { Percent, TriangleAlert, Zap } from 'lucide-react';
 import {
   applyAdjustments,
+  mergeExtraLines,
   STAGE_LABEL,
   type InvoiceStage,
   type Project,
@@ -13,6 +14,7 @@ import { useActions, useCatalogue, useProjectTotals } from '@/lib/data/hooks';
 import { formatMoney } from '@/lib/format';
 import { projectPayment } from './build/invoice';
 import { InvoicePricesDialog } from './InvoicePricesDialog';
+import { ElectricalWorksDialog } from '@/features/electrical/ElectricalWorksDialog';
 
 /**
  * Which payment the invoice asks for, its number, who it's addressed to, and a preview of the
@@ -25,6 +27,9 @@ export function InvoiceOptions({ project, settings }: { project: Project; settin
   const { data: catalogue } = useCatalogue();
   const lines = applyAdjustments(totals, project.quantityAdjustments);
   const [editing, setEditing] = useState(false);
+  const [addingWorks, setAddingWorks] = useState(false);
+  const works = (project.exportSettings.extraLines ?? []).filter((l) => l.quantity > 0);
+  const worksTotal = works.reduce((t, l) => t + l.quantity * l.unitPrice, 0);
   const { pricing, base, invoice, amounts, number } = projectPayment({
     lines,
     settings,
@@ -163,6 +168,25 @@ export function InvoiceOptions({ project, settings }: { project: Project; settin
               }.`}
         </p>
       </div>
+      <div className="flex flex-col gap-1">
+        <Button icon={<Zap className="size-4" />} onClick={() => setAddingWorks(true)}>
+          Add electrical works
+        </Button>
+        <p className="text-meta text-ink-2" data-testid="electrical-works-summary">
+          {works.length
+            ? `Electrical works: ${works.length} ${works.length === 1 ? 'line' : 'lines'}, S$${formatMoney(worksTotal)}. Change or remove them in Prices and discounts.`
+            : 'Wiring, sockets, isolators, profiles and more, at your Electrical tab rates.'}
+        </p>
+      </div>
+      <ElectricalWorksDialog
+        open={addingWorks}
+        onOpenChange={setAddingWorks}
+        onAdd={(lines) =>
+          actions.updateExportSettings(project.id, (s) => {
+            s.extraLines = mergeExtraLines(s.extraLines, lines);
+          })
+        }
+      />
       <InvoicePricesDialog
         open={editing}
         onOpenChange={setEditing}

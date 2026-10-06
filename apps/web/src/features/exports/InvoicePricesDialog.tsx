@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Copy, Download } from 'lucide-react';
+import { Copy, Download, Zap } from 'lucide-react';
 import {
   STAGE_LABEL,
   type Invoice,
@@ -13,6 +13,8 @@ import { useActions } from '@/lib/data/hooks';
 import { QuotationTable } from '@/features/quote/QuotationTable';
 import { money, quotationText, withRowEdit } from '@/features/quote/quotation';
 import { buildQuotationPdf } from './build/generate';
+import { ElectricalWorksDialog } from '@/features/electrical/ElectricalWorksDialog';
+import { mergeExtraLines } from '@maxsen/domain';
 import { copyText } from '@/lib/clipboard';
 
 /**
@@ -44,6 +46,9 @@ export function InvoicePricesDialog({
   const actions = useActions();
   const { toast } = useToast();
   const [making, setMaking] = useState(false);
+  const [addingWorks, setAddingWorks] = useState(false);
+  const isExtra = (key: string) => key.startsWith('extra:');
+  const extraId = (key: string) => key.slice('extra:'.length);
   const edits = project.exportSettings.priceEdits ?? {};
   const client = { name: project.customerName, contact: project.customerContact };
 
@@ -99,6 +104,9 @@ export function InvoicePricesDialog({
               Reset to list prices
             </Button>
           )}
+          <Button icon={<Zap className="size-4" />} onClick={() => setAddingWorks(true)}>
+            Add electrical works
+          </Button>
           <Button icon={<Copy className="size-4" />} onClick={() => void copy()}>
             Copy as text
           </Button>
@@ -125,6 +133,18 @@ export function InvoicePricesDialog({
           })
         }
         depositPercent={pricing.depositPercent}
+        editable={isExtra}
+        onQuantity={(key, quantity) =>
+          actions.updateExportSettings(project.id, (s) => {
+            const l = s.extraLines?.find((x) => x.id === extraId(key));
+            if (l) l.quantity = quantity;
+          })
+        }
+        onRemove={(key) =>
+          actions.updateExportSettings(project.id, (s) => {
+            s.extraLines = s.extraLines?.filter((x) => x.id !== extraId(key));
+          })
+        }
         footer={
           amounts.stage !== 'deposit' && (
             <>
@@ -144,6 +164,15 @@ export function InvoicePricesDialog({
               </tr>
             </>
           )
+        }
+      />
+      <ElectricalWorksDialog
+        open={addingWorks}
+        onOpenChange={setAddingWorks}
+        onAdd={(lines) =>
+          actions.updateExportSettings(project.id, (s) => {
+            s.extraLines = mergeExtraLines(s.extraLines, lines);
+          })
         }
       />
     </Dialog>

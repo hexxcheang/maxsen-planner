@@ -17,6 +17,7 @@ export function QuotationTable({
   footer,
   onQuantity,
   onRemove,
+  editable = () => true,
   showDeposit = true,
 }: {
   base: Invoice;
@@ -30,6 +31,8 @@ export function QuotationTable({
   onQuantity?: (key: string, quantity: number) => void;
   /** Lets rows be taken off. */
   onRemove?: (key: string) => void;
+  /** Which rows' quantity can be changed and the row taken off (all, by default). */
+  editable?: (key: string) => boolean;
   showDeposit?: boolean;
 }) {
   const listPrice = new Map(
@@ -68,7 +71,7 @@ export function QuotationTable({
               <td className={row.highlight ? 'py-1.5 font-semibold text-ink' : 'py-1.5 text-ink'}>
                 <span className="flex items-start gap-1">
                   <span className="line-clamp-3 flex-1 whitespace-pre-line">{row.description}</span>
-                  {onRemove && (
+                  {onRemove && editable(row.key) && (
                     <IconButton
                       size="sm"
                       label={`Remove ${row.description.split('\n')[0]}`}
@@ -78,7 +81,7 @@ export function QuotationTable({
                   )}
                 </span>
               </td>
-              {onQuantity ? (
+              {onQuantity && editable(row.key) ? (
                 <td className="py-1 pl-3">
                   <NumberField
                     compact

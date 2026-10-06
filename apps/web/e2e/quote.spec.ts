@@ -61,6 +61,15 @@ test.describe('quick quote', () => {
       fullPage: true,
     });
 
+    // Electrical works from the Electrical rates join the quotation under their own heading.
+    const beforeWorks = await amount();
+    await page.getByRole('button', { name: 'Add electrical works' }).click();
+    const pick = page.getByRole('dialog', { name: 'Add electrical works' });
+    await pick.getByLabel('How many: 13A twin switched socket outlet (new point)').fill('2');
+    await pick.getByRole('button', { name: 'Add to invoice' }).click();
+    await expect(quote.getByText('Electrical works', { exact: true })).toBeVisible();
+    await expect.poll(amount).toBeCloseTo(beforeWorks + 170, 2);
+
     if (testInfo.project.name !== 'desktop') return;
     const [download] = await Promise.all([
       page.waitForEvent('download'),

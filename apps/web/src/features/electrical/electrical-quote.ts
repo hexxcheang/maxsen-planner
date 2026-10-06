@@ -165,3 +165,23 @@ export async function buildElectricalXlsx(
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   });
 }
+
+const KEY = 'maxsen.electrical.v1';
+
+/**
+ * The electrical rates as they stand in the Electrical tab (your own rates where changed, else the
+ * averages), by section, for adding electrical works to an invoice.
+ */
+export function currentElectricalRates() {
+  let rates: Record<string, number> = {};
+  try {
+    const raw = window.localStorage.getItem(KEY);
+    if (raw) rates = (JSON.parse(raw) as Partial<ElectricalDraft>).rates ?? {};
+  } catch {
+    // Not saved, or storage unavailable: the averages.
+  }
+  return ELECTRICAL_RATES.map((s) => ({
+    ...s,
+    items: s.items.map((i) => ({ ...i, rate: rates[i.id] ?? i.rate })),
+  }));
+}

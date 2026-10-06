@@ -279,6 +279,63 @@ export function applyPriceEdits(
   };
 }
 
+/** A line added to an invoice by hand, e.g. electrical works from the Electrical rates. */
+export interface ExtraLine {
+  id: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  /** Where it comes from, e.g. the electrical rate's id, so the same item adds up. */
+  sourceId?: string;
+}
+
+export const EXTRA_SECTION = 'Electrical works';
+
+/**
+ * The invoice with added lines under their own heading ("Electrical works"), before the warranty;
+ * the total and deposit include them. Their rows' keys are `extra:<id>`.
+ */
+export function withExtraLines(
+  invoice: Invoice,
+  extras: ExtraLine[] | undefined,
+  depositPercent: number,
+): Invoice {
+  const lines = (extras ?? []).filter((l) => l.quantity > 0);
+  if (!lines.length) return invoice;
+  const added: InvoiceRow[] = [
+    { kind: 'section', title: EXTRA_SECTION },
+    ...lines.map((l): InvoiceRow => ({
+      kind: 'item',
+      key: `extra:${l.id}`,
+      description: l.description,
+      quantity: l.quantity,
+      unitPrice: l.unitPrice,
+    })),
+  ];
+  const at = invoice.rows.findIndex((r) => r.kind === 'note');
+  const rows =
+    at < 0
+      ? [...invoice.rows, ...added]
+      : [...invoice.rows.slice(0, at), ...added, ...invoice.rows.slice(at)];
+  const total = round2(
+    rows.reduce((t, r) => (r.kind === 'item' ? t + r.quantity * (r.unitPrice ?? 0) : t), 0),
+  );
+  return { ...invoice, rows, total, deposit: round2((total * depositPercent) / 100) };
+}
+
+/** Adds lines to a list, adding to the quantity of a line from the same source. */
+export function mergeExtraLines(current: ExtraLine[] | undefined, more: ExtraLine[]): ExtraLine[] {
+  const out = [...(current ?? [])];
+  for (const m of more) {
+    const same = m.sourceId
+      ? out.findIndex((l) => l.sourceId === m.sourceId && l.unitPrice === m.unitPrice)
+      : -1;
+    if (same >= 0) out[same] = { ...out[same]!, quantity: out[same]!.quantity + m.quantity };
+    else out.push(m);
+  }
+  return out;
+}
+
 /** A row's edits as typed in the app: the discount kept as text ("50" or "10%"). */
 export interface RowEdit {
   unitPrice?: number;

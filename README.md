@@ -210,6 +210,10 @@ and waived. Every other device is charged at its catalogue price, and the invoic
   for already; the next payment is picked (2nd payment after a deposit invoice, final after a 2nd
   payment invoice) and the amount already paid suggested. Edit quantities and prices, give
   discounts, add or remove lines, then download the invoice as Excel or PDF, or copy it as text.
+- **Electrical works on invoices:** in **Exports › Invoice** (and in Quick quote), _Add electrical
+  works_ lists the Electrical tab's rates (yours where changed); set how many of each and they're
+  added under "Electrical works" on the invoice, Excel and PDF, where quantities, prices and
+  discounts can still be changed (in _Prices and discounts_) or a line removed.
 - **Electrical:** the **Electrical** tab lists average Singapore rates for electrical works (lighting
   and power points, dedicated circuits, DB and protection, data/TV, wiring, testing), supply and
   install, laid out as electricians quote. Enter quantities to price a job, change any rate to your

@@ -136,6 +136,17 @@ export const exportSettingsSchema = z.object({
         .optional(),
     })
     .optional(),
+  extraLines: z
+    .array(
+      z.object({
+        id: z.string(),
+        description: z.string().max(500),
+        quantity: z.number().finite().min(0),
+        unitPrice: z.number().finite(),
+        sourceId: z.string().optional(),
+      }),
+    )
+    .optional(),
   priceEdits: z
     .record(
       z.string(),

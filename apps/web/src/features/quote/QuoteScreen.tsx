@@ -1,7 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Copy, Download, MessageSquareText, Sparkles, Trash2, TriangleAlert } from 'lucide-react';
+import {
+  Copy,
+  Download,
+  MessageSquareText,
+  Sparkles,
+  Trash2,
+  TriangleAlert,
+  Zap,
+} from 'lucide-react';
 import {
   applyRowEdits,
+  mergeExtraLines,
+  withExtraLines,
+  type ExtraLine,
   buildInvoice,
   categoryById,
   CATEGORIES,
@@ -31,6 +42,7 @@ import { buildInvoiceXlsx } from '@/features/exports/build/invoice';
 import { buildQuotationPdf } from '@/features/exports/build/generate';
 import { QuotationTable } from './QuotationTable';
 import { OldInvoiceSection } from './OldInvoiceSection';
+import { ElectricalWorksDialog } from '@/features/electrical/ElectricalWorksDialog';
 import { money, quotationText, withRowEdit } from './quotation';
 import { copyText } from '@/lib/clipboard';
 
@@ -43,6 +55,8 @@ interface Draft {
   unread: string[];
   /** Hand-set prices and discounts per quotation row (by row key); discounts as typed. */
   edits: Record<string, RowEdit>;
+  /** Electrical works added from the Electrical rates. */
+  extraLines: ExtraLine[];
 }
 
 const KEY = 'maxsen.quote.draft.v1';
@@ -57,6 +71,7 @@ function loadDraft(prefix: string): Draft {
     lines: [],
     unread: [],
     edits: {},
+    extraLines: [],
   };
   try {
     const raw = window.localStorage.getItem(KEY);
@@ -165,7 +180,13 @@ export function QuoteScreen() {
       },
     ];
   });
-  const base = buildInvoice(inputs, (id) => variants.get(id)?.price ?? null, pricing);
+  const base = withExtraLines(
+    buildInvoice(inputs, (id) => variants.get(id)?.price ?? null, pricing),
+    draft.extraLines,
+    pricing.depositPercent,
+  );
+  const [addingWorks, setAddingWorks] = useState(false);
+  const extraId = (key: string) => key.slice('extra:'.length);
   const invoice = applyRowEdits(base, draft.edits, pricing.depositPercent);
 
   const updateLine = (i: number, patch: Partial<QuoteLine>) =>
@@ -235,6 +256,7 @@ export function QuoteScreen() {
                   lines: [],
                   unread: [],
                   edits: {},
+                  extraLines: [],
                 })
               }
             >
@@ -385,6 +407,21 @@ export function QuoteScreen() {
                   })
                 }
               />
+              <Button
+                size="sm"
+                icon={<Zap className="size-4" />}
+                className="self-start"
+                onClick={() => setAddingWorks(true)}
+              >
+                Add electrical works
+              </Button>
+              <ElectricalWorksDialog
+                open={addingWorks}
+                onOpenChange={setAddingWorks}
+                onAdd={(added) =>
+                  setDraft((d) => ({ ...d, extraLines: mergeExtraLines(d.extraLines, added) }))
+                }
+              />
             </section>
 
             {/* The quotation, priced as on the invoice. */}
@@ -402,6 +439,21 @@ export function QuoteScreen() {
                       setDraft((d) => ({ ...d, edits: withRowEdit(d.edits, key, patch) }))
                     }
                     depositPercent={pricing.depositPercent}
+                    editable={(key) => key.startsWith('extra:')}
+                    onQuantity={(key, quantity) =>
+                      setDraft((d) => ({
+                        ...d,
+                        extraLines: d.extraLines.map((l) =>
+                          l.id === extraId(key) ? { ...l, quantity } : l,
+                        ),
+                      }))
+                    }
+                    onRemove={(key) =>
+                      setDraft((d) => ({
+                        ...d,
+                        extraLines: d.extraLines.filter((l) => l.id !== extraId(key)),
+                      }))
+                    }
                   />
                   {invoice.unpriced.length > 0 && (
                     <p role="alert" className="text-meta text-warn">

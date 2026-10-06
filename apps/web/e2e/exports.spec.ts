@@ -191,4 +191,52 @@ test.describe('exports', () => {
     });
     expect(rows.find((r) => r.b === `Discount: ${item}`)?.e).toBe(-100);
   });
+
+  test('electrical works are added to the invoice from the Electrical rates', async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'File generation is viewport-independent');
+    await page.goto('/projects/proj_sample_lim/exports');
+    const panel = page.getByRole('region', { name: 'Invoice' });
+    await panel.getByRole('button', { name: 'Add electrical works' }).click();
+    const pick = page.getByRole('dialog', { name: 'Add electrical works' });
+    await pick.getByLabel('How many: Neutral wire to switch point (for smart switches)').fill('6');
+    await pick.getByRole('searchbox', { name: 'Search electrical works' }).fill('profile');
+    await pick
+      .getByLabel('How many: Supply and install aluminium LED profile c/w diffuser (cove)')
+      .fill('12');
+    await expect(pick.getByTestId('electrical-pick-total')).toHaveText('2 items, S$564.00');
+    await pick.getByRole('button', { name: 'Add to invoice' }).click();
+    await expect(panel.getByTestId('electrical-works-summary')).toContainText(
+      'Electrical works: 2 lines, S$564.00',
+    );
+
+    // They show under Electrical works, where the quantity can still change.
+    await panel.getByRole('button', { name: 'Prices and discounts' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Prices and discounts' });
+    await expect(dialog.getByText('Electrical works', { exact: true })).toBeVisible();
+    await dialog
+      .getByLabel('Quantity of Neutral wire to switch point (for smart switches)')
+      .fill('8');
+    await dialog.getByRole('button', { name: 'Done' }).click();
+    await expect(panel.getByTestId('electrical-works-summary')).toContainText('S$664.00');
+
+    await panel.getByRole('button', { name: 'Generate' }).click();
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      panel.getByRole('link', { name: 'Download Excel' }).click(),
+    ]);
+    const path = testInfo.outputPath('invoice-works.xlsx');
+    await download.saveAs(path);
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load((await readFile(path)) as unknown as Parameters<typeof wb.xlsx.load>[0]);
+    const rows: { b: string; d: unknown; e: unknown }[] = [];
+    wb.worksheets[0]!.eachRow((row, n) => {
+      if (n > 14)
+        rows.push({ b: row.getCell(2).text, d: row.getCell(4).value, e: row.getCell(5).value });
+    });
+    expect(rows.some((r) => r.b === 'Electrical works')).toBe(true);
+    const neutral = rows.find((r) => r.b === 'Neutral wire to switch point (for smart switches)')!;
+    expect([neutral.d, neutral.e]).toEqual([8, 50]);
+  });
 });

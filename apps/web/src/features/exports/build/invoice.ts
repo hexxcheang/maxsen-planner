@@ -5,6 +5,7 @@
  */
 import {
   applyRowEdits,
+  withExtraLines,
   buildInvoice,
   INVOICE_STAGES,
   invoiceNumber,
@@ -314,7 +315,11 @@ export function projectInvoice(
   const pricing = resolvePricing(ctx.settings);
   const prices = new Map(ctx.variants.map((v) => [v.id, v.price ?? null]));
   // Before and after the unit prices and discounts set for this project.
-  const base = buildInvoice(ctx.lines, (id) => prices.get(id) ?? null, pricing);
+  const base = withExtraLines(
+    buildInvoice(ctx.lines, (id) => prices.get(id) ?? null, pricing),
+    ctx.project.exportSettings.extraLines,
+    pricing.depositPercent,
+  );
   const invoice = applyRowEdits(
     base,
     ctx.project.exportSettings.priceEdits,
