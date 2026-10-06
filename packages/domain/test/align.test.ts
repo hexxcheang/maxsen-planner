@@ -57,4 +57,11 @@ describe('alignPoint', () => {
     const r = alignPoint({ x: 157, y: 101 }, [{ x: 100, y: 100 }], 6);
     assert.deepEqual(r.at, { x: 157, y: 100 });
   });
+
+  it('only lines up with lights within reach, not one far across the plan', () => {
+    const far = alignPoint({ x: 500, y: 103 }, [{ x: 100, y: 100 }], 6, 80);
+    assert.deepEqual(far.at, { x: 500, y: 103 });
+    const near = alignPoint({ x: 160, y: 103 }, [{ x: 100, y: 100 }], 6, 80);
+    assert.deepEqual(near.at, { x: 160, y: 100 });
+  });
 });

@@ -13,7 +13,7 @@ import {
 import Konva from 'konva';
 import { useCoarsePointer } from '@/lib/pointer';
 import { alignPoint, snapToAxes, type AlignGuide, type Pt, type Scene } from '@maxsen/domain';
-import { ALIGNED_LIGHTS, lightSpots, SNAP_PX } from './align';
+import { ALIGNED_LIGHTS, lightSpots, SNAP_PX, SNAP_REACH_PX } from './align';
 import type { Armed, PlannerTool } from '../store/plannerStore';
 import type { StageViewport } from './useStageViewport';
 import { SceneLayer } from './SceneLayer';
@@ -97,6 +97,12 @@ export function PlanStage({
   /** When the last pinch ended: the lift of its fingers isn't a tap. */
   const pinchEnded = useRef(0);
   const justPinched = () => Date.now() - pinchEnded.current < 350;
+  /**
+   * When the plan was last touched. A tap is followed by a mouse click the browser makes up for
+   * older pages; acting on both placed everything twice (two sensors, a curtain bent into an L).
+   */
+  const lastTouch = useRef(0);
+  const fromTouch = () => Date.now() - lastTouch.current < 800;
   /** Smart guides shown while a light is dragged or about to be placed. */
   const [guides, setGuides] = useState<AlignGuide[]>([]);
   /** Points of the run being reshaped, while a handle is dragged. */
@@ -161,14 +167,14 @@ export function PlanStage({
       return null;
     }
     const moving = new Set(selected.has(id) ? selection : [id]);
-    const r = alignPoint(at, lightSpots(scene, moving), SNAP_PX * px);
+    const r = alignPoint(at, lightSpots(scene, moving), SNAP_PX * px, SNAP_REACH_PX * px);
     setGuides(r.guides);
     return r.at;
   };
   /** Where an armed light would be placed at `p`. */
   const placeAt = (p: Pt, free: boolean): { at: Pt; guides: AlignGuide[] } =>
     armedAligns && snap && !free
-      ? alignPoint(p, lightSpots(scene), SNAP_PX * px)
+      ? alignPoint(p, lightSpots(scene), SNAP_PX * px, SNAP_REACH_PX * px)
       : { at: p, guides: [] };
   // One open LED strip or track selected: show its points as handles, plus a + to add a point.
   const editable =
@@ -182,15 +188,35 @@ export function PlanStage({
     editPoints
       ? [editPoints[i - 1], editPoints[i + 1]].filter((q): q is Pt => q !== undefined)
       : [];
+  /**
+   * A + just past each end of the run, to extend it from either end: the new point goes on along
+   * the run's direction there (then drag it anywhere).
+   */
   const plusAt = (() => {
-    if (!editPoints || editPoints.length >= MAX_PATH_POINTS) return null;
-    const last = editPoints.at(-1)!;
-    const prev = editPoints.at(-2) ?? { x: last.x - 1, y: last.y };
-    const d = Math.hypot(last.x - prev.x, last.y - prev.y) || 1;
-    const dir = { x: (last.x - prev.x) / d, y: (last.y - prev.y) / d };
-    const gap = 22 * hs * px;
-    return { at: { x: last.x + dir.x * gap, y: last.y + dir.y * gap }, dir, last };
+    if (!editPoints || editPoints.length >= MAX_PATH_POINTS) return [];
+    const ends = [
+      { end: 'end' as const, tip: editPoints.at(-1)!, before: editPoints.at(-2) },
+      { end: 'start' as const, tip: editPoints[0]!, before: editPoints[1] },
+    ];
+    return ends.map(({ end, tip, before }) => {
+      const from = before ?? { x: tip.x + (end === 'end' ? -1 : 1), y: tip.y };
+      const d = Math.hypot(tip.x - from.x, tip.y - from.y) || 1;
+      const dir = { x: (tip.x - from.x) / d, y: (tip.y - from.y) / d };
+      const gap = 22 * hs * px;
+      return { end, at: { x: tip.x + dir.x * gap, y: tip.y + dir.y * gap }, dir, tip };
+    });
   })();
+  const extend = (plus: (typeof plusAt)[number]) => {
+    if (!editPath || !editPoints) return;
+    const added = {
+      x: Math.round((plus.tip.x + plus.dir.x * NEW_POINT_STEP) * 10) / 10,
+      y: Math.round((plus.tip.y + plus.dir.y * NEW_POINT_STEP) * 10) / 10,
+    };
+    onEditPoints!(
+      editPath.elementId,
+      plus.end === 'end' ? [...editPoints, added] : [added, ...editPoints],
+    );
+  };
 
   return (
     <Stage
@@ -204,6 +230,9 @@ export function PlanStage({
       style={{ cursor: panning ? 'grab' : armed ? 'crosshair' : 'default' }}
       onDragEnd={(e) => {
         if (e.target === e.target.getStage()) view.panTo(e.target.x(), e.target.y());
+      }}
+      onTouchStart={() => {
+        lastTouch.current = Date.now();
       }}
       onTouchMove={(e) => {
         const t = e.evt.touches;
@@ -230,6 +259,7 @@ export function PlanStage({
         pinch.current = { dist, center };
       }}
       onTouchEnd={(e) => {
+        lastTouch.current = Date.now();
         if (e.evt.touches.length < 2 && pinch.current) {
           pinch.current = null;
           pinchEnded.current = Date.now();
@@ -257,7 +287,7 @@ export function PlanStage({
         if (armedAligns) setGuides([]);
       }}
       onClick={(e) => {
-        if (panning) return;
+        if (panning || fromTouch()) return;
         if (armed) {
           const p = e.target.getStage()?.getRelativePointerPosition();
           if (p) onPlace(placeAt(p, e.evt.altKey).at, e.evt.shiftKey);
@@ -282,7 +312,9 @@ export function PlanStage({
         }
         if (e.target === e.target.getStage()) onSelect([], 'replace');
       }}
-      onDblClick={(e) => finishIfOnLastPoint(e.target.getStage()?.getRelativePointerPosition())}
+      onDblClick={(e) => {
+        if (!fromTouch()) finishIfOnLastPoint(e.target.getStage()?.getRelativePointerPosition());
+      }}
       onDblTap={(e) => finishIfOnLastPoint(e.target.getStage()?.getRelativePointerPosition())}
     >
       <Layer listening={false}>
@@ -414,11 +446,12 @@ export function PlanStage({
               }}
             />
           ))}
-          {plusAt && (
+          {plusAt.map((plus) => (
             <Group
-              name="add-point"
-              x={plusAt.at.x}
-              y={plusAt.at.y}
+              key={plus.end}
+              name={plus.end === 'end' ? 'add-point' : 'add-point-start'}
+              x={plus.at.x}
+              y={plus.at.y}
               onMouseEnter={(e) => {
                 const c = e.target.getStage()?.container();
                 if (c) c.style.cursor = 'pointer';
@@ -429,20 +462,11 @@ export function PlanStage({
               }}
               onClick={(e) => {
                 e.cancelBubble = true;
-                const { last, dir } = plusAt;
-                const added = {
-                  x: Math.round((last.x + dir.x * NEW_POINT_STEP) * 10) / 10,
-                  y: Math.round((last.y + dir.y * NEW_POINT_STEP) * 10) / 10,
-                };
-                onEditPoints!(editPath.elementId, [...editPoints, added]);
+                if (!fromTouch()) extend(plus);
               }}
               onTap={(e) => {
                 e.cancelBubble = true;
-                const { last, dir } = plusAt;
-                onEditPoints!(editPath.elementId, [
-                  ...editPoints,
-                  { x: last.x + dir.x * NEW_POINT_STEP, y: last.y + dir.y * NEW_POINT_STEP },
-                ]);
+                extend(plus);
               }}
             >
               <Circle radius={9 * hs * px} fill={BRASS} stroke="#FFFFFF" strokeWidth={1.5 * px} />
@@ -459,7 +483,7 @@ export function PlanStage({
                 verticalAlign="middle"
               />
             </Group>
-          )}
+          ))}
         </Layer>
       )}
       {armed?.kind === 'path' && draft.length > 0 && (

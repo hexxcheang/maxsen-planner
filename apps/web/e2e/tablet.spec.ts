@@ -73,6 +73,15 @@ test.describe('on a touch tablet', () => {
     await page.getByRole('button', { name: 'Finish', exact: true }).tap();
     await expect(page.getByText(/Tap Finish when done/)).toBeHidden();
 
+    // A + at each end extends the strip from either end.
+    const details = page.getByRole('complementary', { name: 'Details' });
+    await expect(details.getByText('2 points', { exact: true })).toBeVisible();
+    // The start + sits twice 22 px (finger-sized) before the first point, away from the strip.
+    await page.touchscreen.tap(b.x + b.width * 0.45 - 44, b.y + b.height * 0.45);
+    await expect(details.getByText('3 points', { exact: true })).toBeVisible();
+    await page.touchscreen.tap(b.x + b.width * 0.6 + 44, b.y + b.height * 0.45);
+    await expect(details.getByText('4 points', { exact: true })).toBeVisible();
+
     // The new strip is selected: copy and paste it from the toolbar.
     const copy = page.getByRole('button', { name: 'Copy (Ctrl+C)' });
     await expect(copy).toBeEnabled();
@@ -96,5 +105,51 @@ test.describe('on a touch tablet', () => {
     };
     expect(manifest.display).toBe('standalone');
     for (const icon of manifest.icons) expect((await page.request.get(icon.src)).ok()).toBe(true);
+  });
+
+  test('one tap places one device, and a curtain drawn with taps is straight', async ({ page }) => {
+    await page.goto('/projects/proj_sample_tan/plan?level=lvl_tan_1&type=smart-home');
+    const canvas = page.getByTestId('plan-canvas');
+    await expect(canvas.locator('canvas').first()).toBeVisible();
+    const elements = (kind: string) =>
+      page.evaluate((k) => {
+        const st = JSON.parse(localStorage.getItem('maxsen.mvp.state.v1') ?? '{"plans":[]}') as {
+          plans: { document: { elements: { id: string; kind: string; points?: unknown }[] } }[];
+        };
+        return st.plans.flatMap((p) => p.document.elements).filter((e) => e.kind === k);
+      }, kind);
+    const b = (await canvas.boundingBox())!;
+
+    // A tap is followed by the browser's made-up click; only one sensor is placed.
+    await page.getByRole('searchbox', { name: 'Search devices' }).fill('Motion');
+    await page.getByRole('list', { name: 'Search results' }).getByRole('button').first().tap();
+    const sensors = async () =>
+      Number(
+        /Sensors\s+(\d+)/.exec(
+          await page.getByRole('complementary', { name: 'Details' }).innerText(),
+        )?.[1],
+      );
+    const before = await sensors();
+    await page.touchscreen.tap(b.x + b.width * 0.5, b.y + b.height * 0.5);
+    await expect.poll(sensors).toBe(before + 1);
+    await page.waitForTimeout(600);
+    expect(await sensors()).toBe(before + 1);
+    await page.getByRole('button', { name: 'Stop' }).tap();
+
+    // A curtain from one end of the window to the other: two points, in a straight line.
+    await page.waitForTimeout(1200);
+    const existing = new Set((await elements('curtain')).map((e) => e.id));
+    await page.getByRole('searchbox', { name: 'Search devices' }).fill('Curtain Track');
+    await page.getByRole('list', { name: 'Search results' }).getByRole('button').first().tap();
+    await page.touchscreen.tap(b.x + b.width * 0.3, b.y + b.height * 0.3);
+    await page.touchscreen.tap(b.x + b.width * 0.55, b.y + b.height * 0.31);
+    await page.getByRole('button', { name: 'Finish', exact: true }).tap();
+    await expect
+      .poll(async () => (await elements('curtain')).filter((e) => !existing.has(e.id)).length)
+      .toBe(1);
+    const curtain = (await elements('curtain')).find((e) => !existing.has(e.id))!;
+    const points = curtain.points as { x: number; y: number }[];
+    expect(points).toHaveLength(2);
+    expect(points[0]!.y).toBe(points[1]!.y);
   });
 });

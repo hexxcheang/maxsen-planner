@@ -27,7 +27,7 @@ import {
 import { TopBarSlot } from '@/app/shell/TopBarSlot';
 import { useCurrentProject } from '@/features/project/useProjectContext';
 import { PLAN_LABELS } from '@/features/setup/labels';
-import { ALIGNED_LIGHTS, lightSpots, SNAP_PX } from './canvas/align';
+import { ALIGNED_LIGHTS, lightSpots, SNAP_PX, SNAP_REACH_PX } from './canvas/align';
 import { PlanStage } from './canvas/PlanStage';
 import { LegendOverlay } from './canvas/LegendOverlay';
 import { useStageViewport } from './canvas/useStageViewport';
@@ -439,7 +439,7 @@ export function PlannerScreen() {
               // A light dropped near others lines up with them (Alt/Option places it freely).
               const snapped =
                 alignsAsLight(variantId) && snap && !e.altKey
-                  ? alignPoint(at, lightSpots(scene), SNAP_PX / v.scale).at
+                  ? alignPoint(at, lightSpots(scene), SNAP_PX / v.scale, SNAP_REACH_PX / v.scale).at
                   : at;
               store.getState().addMarker(variantId, snapped);
             }}

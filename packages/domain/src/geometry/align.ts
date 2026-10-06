@@ -35,9 +35,11 @@ function evenSpots(line: number[]): number[] {
 
 /**
  * Where `p` should land among `others`, snapping each axis independently: `tol` is how close (in
- * the same units) the pointer must be before it pulls.
+ * the same units) the pointer must be before it pulls. Only lights within `reach` of the pointer
+ * count, so a light lines up with its neighbours, not with one far across the plan.
  */
-export function alignPoint(p: Pt, others: Pt[], tol: number): AlignResult {
+export function alignPoint(p: Pt, all: Pt[], tol: number, reach: number = Infinity): AlignResult {
+  const others = all.filter((o) => Math.hypot(o.x - p.x, o.y - p.y) <= reach);
   const at = { ...p };
   const snapped: Record<Axis, { value: number; how: 'line' | 'even' } | null> = {
     x: null,
