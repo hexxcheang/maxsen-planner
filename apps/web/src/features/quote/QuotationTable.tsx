@@ -15,6 +15,7 @@ export function QuotationTable({
   onEdit,
   depositPercent,
   footer,
+  aboveTotal,
   onQuantity,
   onRemove,
   editable = () => true,
@@ -29,6 +30,8 @@ export function QuotationTable({
   depositPercent: number;
   /** Extra rows under the deposit (e.g. what's been paid). */
   footer?: ReactNode;
+  /** Shown across the table just above the total (e.g. the deposit's settings). */
+  aboveTotal?: ReactNode;
   /** Makes quantities editable (an old invoice's lines; a quote's come from its items). */
   onQuantity?: (key: string, quantity: number) => void;
   /** Lets rows be taken off. */
@@ -168,6 +171,13 @@ export function QuotationTable({
         )}
       </tbody>
       <tfoot>
+        {aboveTotal && (
+          <tr>
+            <td colSpan={5} className="pt-3">
+              {aboveTotal}
+            </td>
+          </tr>
+        )}
         <tr>
           <td colSpan={4} className="pt-3 text-right font-semibold text-ink">
             Total

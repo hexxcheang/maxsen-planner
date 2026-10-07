@@ -9,6 +9,7 @@ import {
   parseOldInvoice,
   pdfInvoiceGrid,
   resolvePricing,
+  withDeposit,
   stageAmounts,
   STAGE_LABEL,
   type Cell,
@@ -116,8 +117,16 @@ const pastedGrid = (text: string): Cell[][] =>
 export function OldInvoiceSection() {
   const { data: settings } = useSettings();
   const { toast } = useToast();
-  const pricing = resolvePricing(settings);
   const [draft, setDraft] = useState<OldDraft | null>(load);
+  // The deposit the old invoice asked for, as a percentage, so the 2nd and final payments follow
+  // its terms rather than today's usual deposit.
+  const asked = draft?.issued?.deposit;
+  const pricing = withDeposit(
+    resolvePricing(settings),
+    asked && asked.total > 0
+      ? Math.round((asked.due / asked.total) * 100)
+      : resolvePricing(settings).depositPercent,
+  );
   const [pasted, setPasted] = useState('');
   /** What's happening while a scanned PDF is read, which takes a few seconds a page. */
   const [reading, setReading] = useState<string | null>(null);

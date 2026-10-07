@@ -201,3 +201,40 @@ function switchPackages(saved: unknown): SwitchPackage[] {
     );
   return DEFAULT_PRICING.switches;
 }
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/**
+ * The payment plan with a different deposit for one quotation. The last payment (before
+ * integration, 10% by default) stays as it is where it can; the 2nd payment, at installation,
+ * takes the rest. The payment terms' percentages are rewritten to match.
+ */
+export function withDeposit(pricing: PricingSettings, depositPercent: number): PricingSettings {
+  const dep = round2(Math.min(100, Math.max(0, depositPercent)));
+  if (dep === pricing.depositPercent) return pricing;
+  const usualLast = Math.max(0, 100 - pricing.depositPercent - pricing.secondPercent);
+  const last = round2(Math.min(usualLast, 100 - dep));
+  const second = round2(Math.max(0, 100 - dep - last));
+  return {
+    ...pricing,
+    depositPercent: dep,
+    secondPercent: second,
+    terms: paymentTerms(pricing.terms, dep, second, last),
+  };
+}
+
+/**
+ * Terms text with its deposit, next and last percentages set ("…after receiving 60% deposit.",
+ * "Next, 30% to be paid…", "Last, 10% to be paid…"). A payment that comes to nothing is left out.
+ * Wording it doesn't recognise is kept as written.
+ */
+export function paymentTerms(terms: string, deposit: number, second: number, last: number) {
+  let out = terms
+    .replace(/\d+(\.\d+)?\s*%(\s*deposit)/i, `${deposit}%$2`)
+    .replace(/(Next,\s*)\d+(\.\d+)?\s*%/i, `$1${second}%`)
+    .replace(/(Last,\s*)\d+(\.\d+)?\s*%/i, `$1${last}%`);
+  if (second === 0)
+    out = out.replace(/Next,\s*0%[^.]*\.\s*(Last,\s*)?/i, (_m, l) => (l ? 'Then, ' : ''));
+  if (last === 0) out = out.replace(/(Last|Then),\s*0%[^.]*\.\s*/i, '');
+  return out;
+}

@@ -19,6 +19,9 @@ import {
   invoiceNumber,
   parseQuoteMessage,
   resolvePricing,
+  stageAmounts,
+  STAGE_LABEL,
+  withDeposit,
   withLedDrivers,
   type InvoiceInputLine,
   type RowEdit,
@@ -33,6 +36,7 @@ import {
   PageHeader,
   SegmentedControl,
   Select,
+  Switch,
   Textarea,
   useToast,
 } from '@/components/ui';
@@ -58,6 +62,10 @@ interface Draft {
   edits: Record<string, RowEdit>;
   /** Electrical works added from the Electrical rates, and items typed in by hand. */
   extraLines: ExtraLine[];
+  /** This quote's deposit, in percent; Admin › Pricing's when absent. */
+  depositPercent?: number;
+  /** What the client has paid as deposit, once they have; absent until then. */
+  depositPaid?: number;
 }
 
 const KEY = 'maxsen.quote.draft.v1';
@@ -109,8 +117,10 @@ export function QuoteScreen() {
   const { data: catalogue } = useCatalogue();
   const { data: settings } = useSettings();
   const { toast } = useToast();
-  const pricing = resolvePricing(settings);
-  const [draft, setDraft] = useState<Draft>(() => loadDraft(pricing.invoicePrefix));
+  const listPricing = resolvePricing(settings);
+  const [draft, setDraft] = useState<Draft>(() => loadDraft(listPricing.invoicePrefix));
+  // This quote's own deposit, with the payment terms worded to match.
+  const pricing = withDeposit(listPricing, draft.depositPercent ?? listPricing.depositPercent);
   const set = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }));
   useEffect(() => {
     try {
@@ -189,12 +199,26 @@ export function QuoteScreen() {
   const [addingWorks, setAddingWorks] = useState(false);
   const extraId = (key: string) => key.slice('extra:'.length);
   const invoice = applyRowEdits(base, draft.edits, pricing.depositPercent);
+  // Once the deposit is paid, the document asks for the 2nd payment instead.
+  const payment =
+    draft.depositPaid !== undefined
+      ? stageAmounts(invoice.total, pricing, {
+          stage: 'second',
+          paid: { second: draft.depositPaid },
+        })
+      : undefined;
 
   const updateLine = (i: number, patch: Partial<QuoteLine>) =>
     set({ lines: draft.lines.map((l, j) => (j === i ? { ...l, ...patch } : l)) });
 
   const asText = () =>
-    quotationText({ invoice, pricing, number: draft.number, clientName: draft.clientName });
+    quotationText({
+      invoice,
+      pricing,
+      number: draft.number,
+      clientName: draft.clientName,
+      payment,
+    });
 
   const copy = async () => {
     try {
@@ -217,12 +241,20 @@ export function QuoteScreen() {
       const client = { name: draft.clientName, contact: draft.clientContact };
       const blob =
         kind === 'pdf'
-          ? await buildQuotationPdf({ client, invoice, pricing, number: draft.number, settings })
-          : await buildInvoiceXlsx({ client, invoice, pricing, number: draft.number });
+          ? await buildQuotationPdf({
+              client,
+              invoice,
+              pricing,
+              number: draft.number,
+              settings,
+              payment,
+              label: payment ? 'Invoice' : 'Quotation',
+            })
+          : await buildInvoiceXlsx({ client, invoice, pricing, number: draft.number, payment });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Quotation ${draft.number}${draft.clientName ? ` - ${draft.clientName}` : ''}.${kind}`;
+      a.download = `${payment ? 'Invoice' : 'Quotation'} ${draft.number}${payment ? ' - 2nd payment' : ''}${draft.clientName ? ` - ${draft.clientName}` : ''}.${kind}`;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 10_000);
     } catch (e) {
@@ -443,6 +475,42 @@ export function QuoteScreen() {
                       setDraft((d) => ({ ...d, edits: withRowEdit(d.edits, key, patch) }))
                     }
                     depositPercent={pricing.depositPercent}
+                    showDeposit={!payment}
+                    aboveTotal={
+                      <DepositControls
+                        percent={pricing.depositPercent}
+                        usual={listPricing.depositPercent}
+                        deposit={invoice.deposit}
+                        paid={draft.depositPaid}
+                        onPercent={(depositPercent) => setDraft((d) => ({ ...d, depositPercent }))}
+                        onPaid={(depositPaid) => setDraft((d) => ({ ...d, depositPaid }))}
+                      />
+                    }
+                    footer={
+                      payment && (
+                        <>
+                          <tr>
+                            <td colSpan={4} className="py-1 text-right text-ink-2">
+                              Deposit paid
+                            </td>
+                            <td className="tnum py-1 text-right text-ink-2">
+                              {money(-payment.paid)}
+                            </td>
+                          </tr>
+                          <tr>
+                            <td colSpan={4} className="py-1 text-right font-semibold text-ink">
+                              {STAGE_LABEL.second} due ({payment.percent}% less paid)
+                            </td>
+                            <td
+                              data-testid="quote-due"
+                              className="tnum py-1 text-right font-semibold text-ink"
+                            >
+                              {money(payment.due)}
+                            </td>
+                          </tr>
+                        </>
+                      )
+                    }
                     editable={(key) => key.startsWith('extra:')}
                     renamable={(key) =>
                       draft.extraLines.some((l) => l.custom && l.id === extraId(key))
@@ -503,5 +571,70 @@ export function QuoteScreen() {
         </div>
       )}
     </Page>
+  );
+}
+
+/**
+ * Just above the total: this quote's deposit (any percentage; the payment terms follow it), and
+ * whether the client has paid it, and how much.
+ */
+function DepositControls({
+  percent,
+  usual,
+  deposit,
+  paid,
+  onPercent,
+  onPaid,
+}: {
+  percent: number;
+  usual: number;
+  deposit: number;
+  paid: number | undefined;
+  onPercent: (percent: number | undefined) => void;
+  onPaid: (paid: number | undefined) => void;
+}) {
+  return (
+    <div
+      role="group"
+      aria-label="Deposit"
+      className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2 rounded-md bg-paper px-3 py-2"
+    >
+      <label className="flex items-center gap-2 text-control text-ink-2">
+        Deposit
+        <NumberField
+          compact
+          live
+          min={0}
+          max={100}
+          precision={2}
+          className="w-20"
+          aria-label="Deposit (%)"
+          value={percent}
+          onChange={(v) => onPercent(v === null || v === usual ? undefined : v)}
+        />
+        %
+      </label>
+      <Switch
+        checked={paid !== undefined}
+        onCheckedChange={(on) => onPaid(on ? deposit : undefined)}
+        label="Deposit paid"
+      />
+      {paid !== undefined && (
+        <label className="flex items-center gap-2 text-control text-ink-2">
+          Amount paid (S$)
+          <NumberField
+            compact
+            live
+            min={0}
+            max={10_000_000}
+            precision={2}
+            className="w-28"
+            aria-label="Deposit paid (S$)"
+            value={paid}
+            onChange={(v) => onPaid(v ?? 0)}
+          />
+        </label>
+      )}
+    </div>
   );
 }

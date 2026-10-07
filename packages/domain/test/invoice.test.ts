@@ -7,7 +7,7 @@ import {
   invoiceNumber,
   type InvoiceInputLine,
 } from '../src/pricing/invoice.ts';
-import { DEFAULT_PRICING, resolvePricing } from '../src/pricing/pricing.ts';
+import { DEFAULT_PRICING, resolvePricing, withDeposit } from '../src/pricing/pricing.ts';
 import { SYSTEM_VARIANT_IDS } from '../src/categories.ts';
 import { SAMPLE_VARIANTS } from '../src/sample/catalogue.ts';
 
@@ -286,5 +286,28 @@ describe('hand-set prices and discounts', () => {
   it('never discounts more than the row is worth', () => {
     const edited = applyPriceEdits(inv, { 'switch-addon': { discount: 999 } }, 60);
     assert.equal(edited.total, 1390 + 150);
+  });
+});
+
+describe('withDeposit', () => {
+  it('sets the deposit, gives the rest to the 2nd payment and rewrites the terms', () => {
+    const p = withDeposit(DEFAULT_PRICING, 50);
+    assert.equal(p.depositPercent, 50);
+    assert.equal(p.secondPercent, 40);
+    assert.match(p.terms, /after receiving 50% deposit/);
+    assert.match(p.terms, /Next, 40% to be paid/);
+    assert.match(p.terms, /Last, 10% to be paid/);
+  });
+
+  it('leaves out a payment that comes to nothing', () => {
+    const p = withDeposit(DEFAULT_PRICING, 95);
+    assert.equal(p.secondPercent, 0);
+    assert.doesNotMatch(p.terms, /Next,/);
+    assert.match(p.terms, /Then, 5% to be paid before the integration/);
+    assert.doesNotMatch(withDeposit(DEFAULT_PRICING, 100).terms, /\d+% to be paid/);
+  });
+
+  it('changes nothing at the usual deposit', () => {
+    assert.equal(withDeposit(DEFAULT_PRICING, 60), DEFAULT_PRICING);
   });
 });

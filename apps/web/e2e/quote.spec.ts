@@ -115,4 +115,64 @@ test.describe('quick quote', () => {
     // A cover and at least one page of items.
     expect(pdf.toString('latin1').match(/\/Type \/Page\b/g)!.length).toBeGreaterThanOrEqual(2);
   });
+  test('takes any deposit, words the terms to match, and records a paid deposit', async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Downloads are viewport-independent');
+    await page.goto('/quote');
+    await page.getByLabel('Client’s message').fill('- 12 switches\n- 15 downlights warm white');
+    await page.getByLabel('Client’s name').fill('Mr Lee');
+    await page.getByRole('button', { name: 'Read message' }).click();
+    const quote = page.getByRole('region', { name: 'Quotation' });
+    const total = Number(
+      (
+        await quote
+          .getByRole('row')
+          .filter({ hasText: /^Total/ })
+          .innerText()
+      ).replace(/[^\d.]/g, ''),
+    );
+
+    // A 50% deposit for this client.
+    await quote.getByLabel('Deposit (%)').fill('50');
+    await expect(quote.getByRole('row').filter({ hasText: 'Deposit (50%)' })).toContainText(
+      (total / 2).toLocaleString('en-SG', { minimumFractionDigits: 2 }),
+    );
+    const [xlsx] = await Promise.all([
+      page.waitForEvent('download'),
+      page.getByRole('button', { name: 'Download quotation (Excel)' }).click(),
+    ]);
+    const path = testInfo.outputPath('deposit.xlsx');
+    await xlsx.saveAs(path);
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load((await readFile(path)) as unknown as Parameters<typeof wb.xlsx.load>[0]);
+    const text: string[] = [];
+    wb.worksheets[0]!.eachRow((row) =>
+      row.eachCell((c) => {
+        if (typeof c.value === 'string') text.push(c.value);
+      }),
+    );
+    const all = text.join('\n');
+    expect(all).toContain('after receiving 50% deposit');
+    expect(all).toContain('Next, 40% to be paid');
+    expect(all).toContain('Last, 10% to be paid');
+
+    // The client has paid S$1,000 of it: the next invoice asks for the 2nd payment, to 90%.
+    await quote.getByRole('switch', { name: 'Deposit paid' }).click();
+    await expect(quote.getByLabel('Deposit paid (S$)')).toHaveValue(String(total / 2));
+    await quote.getByLabel('Deposit paid (S$)').fill('1000');
+    await expect(quote.getByRole('row').filter({ hasText: /^Deposit paid/ })).toContainText(
+      '1,000.00',
+    );
+    const due = Math.round((total * 0.9 - 1000) * 100) / 100;
+    await expect(page.getByTestId('quote-due')).toContainText(
+      due.toLocaleString('en-SG', { minimumFractionDigits: 2 }),
+    );
+    await page.screenshot({ path: 'test-results/screens/quote-deposit-paid.png', fullPage: true });
+    const [pdf] = await Promise.all([
+      page.waitForEvent('download'),
+      page.getByRole('button', { name: 'Download quotation (PDF)' }).click(),
+    ]);
+    expect(pdf.suggestedFilename()).toMatch(/^Invoice .* - 2nd payment - Mr Lee\.pdf$/);
+  });
 });
