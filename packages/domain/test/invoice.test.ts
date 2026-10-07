@@ -125,6 +125,24 @@ describe('buildInvoice', () => {
     assert.equal(find(/Per 1 Meter/)!.quantity, 4.5);
   });
 
+  it('upgrades RGBCCT strip from the CCT package per metre', () => {
+    const rgb = buildInvoice(
+      [
+        line('var_lumi_cove_3000', 'led-strips', 20, 'm'),
+        { ...line('var_lumi_cove_rgbcct', 'led-strips', 12.5, 'm'), variantName: 'RGBCCT' },
+        line(SYSTEM_VARIANT_IDS.smartLedDriver, 'misc-lighting', 6),
+      ],
+      priceOf,
+      DEFAULT_PRICING,
+    );
+    // Both strips share the 30 m package; only the RGBCCT metres are upgraded.
+    assert.equal(rgb.packages.led, 1);
+    const upgrade = items(rgb).find((r) => /CCT to RGBCCT/.test(r.description))!;
+    assert.equal(upgrade.quantity, 12.5);
+    assert.equal(upgrade.unitPrice, 6);
+    assert.equal(rgb.total, 988 + 2.5 * 18 + 12.5 * 6);
+  });
+
   it('prices pieces individually below a package, and lists anything without a price', () => {
     const few = buildInvoice(
       [

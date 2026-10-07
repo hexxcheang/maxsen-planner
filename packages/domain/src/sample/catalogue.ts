@@ -480,6 +480,12 @@ const SPECS: ProductSpec[] = [
         'Dimmable cove LED strip in neutral white (4000K) for ceiling and cabinet coves.',
         IMG('strip'),
       ],
+      [
+        'var_lumi_cove_rgbcct',
+        'RGBCCT',
+        'Cove LED strip in any colour plus tunable white (2700–6500K), upgraded from the CCT strip in the package.',
+        IMG('strip'),
+      ],
     ],
   },
   {
@@ -651,6 +657,7 @@ const PRICES: Record<string, number> = {
   var_luna_track_white: 78,
   var_lumi_cove_3000: 18,
   var_lumi_cove_4000: 18,
+  var_lumi_cove_rgbcct: 18,
   var_lumi_cob_3000: 18,
   [SYSTEM_VARIANT_IDS.smartLedDriver]: 78,
 };

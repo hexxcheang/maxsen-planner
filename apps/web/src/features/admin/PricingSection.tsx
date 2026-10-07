@@ -314,6 +314,20 @@ export function PricingSection() {
             onChange={(v) => setIn('led', { metreAddOnPrice: num(v) })}
           />
         </Field>
+        <Field label="RGBCCT upgrade line">
+          <Input
+            value={draft.led.rgbUpgradeName}
+            onChange={(e) => setIn('led', { rgbUpgradeName: e.target.value })}
+          />
+        </Field>
+        <Field label="RGBCCT upgrade per metre (S$)">
+          <NumberField
+            value={draft.led.rgbUpgradePrice}
+            min={0}
+            precision={2}
+            onChange={(v) => setIn('led', { rgbUpgradePrice: num(v) })}
+          />
+        </Field>
         <Switch
           checked={draft.led.integrationWaived}
           onCheckedChange={(v) => setIn('led', { integrationWaived: v })}

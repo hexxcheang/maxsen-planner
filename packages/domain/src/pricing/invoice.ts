@@ -146,6 +146,9 @@ export function buildInvoice(
   const isLight = (l: InvoiceInputLine) => LIGHT_CATEGORIES.includes(l.categoryId);
   const isStrip = (l: InvoiceInputLine) => l.categoryId === 'led-strips';
   const isDriver = (l: InvoiceInputLine) => l.variantId === SYSTEM_VARIANT_IDS.smartLedDriver;
+  /** Packages are CCT (white + warm) strip; RGBCCT strip is upgraded per metre. */
+  const isRgbStrip = (l: InvoiceInputLine) =>
+    isStrip(l) && /rgb/i.test(`${l.productName} ${l.variantName}`);
   const lights = qty(isLight);
   const metres = round(qty(isStrip));
   const drivers = qty(isDriver);
@@ -196,6 +199,7 @@ export function buildInvoice(
     round(Math.max(0, metres - ledPackages * led.packageMetres)),
     led.metreAddOnPrice,
   );
+  item('led-rgb-upgrade', led.rgbUpgradeName, round(qty(isRgbStrip)), led.rgbUpgradePrice);
   if (drivers > 0 && led.integrationPrice > 0) {
     item('led-integration', led.integrationName, drivers, led.integrationPrice);
     if (led.integrationWaived)

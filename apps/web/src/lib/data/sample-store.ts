@@ -58,7 +58,32 @@ export type SampleSeed = 'sample' | 'empty';
  * saved as icons become dotted curtain tracks.
  */
 export function addNewSampleCategories(saved: SampleState): SampleState {
-  return addNewCategories(curtainsAsTracks(realShowrooms(saved)));
+  return addNewVariants(addNewCategories(curtainsAsTracks(realShowrooms(saved))));
+}
+
+/** Sample variants added after launch, offered once to catalogues that have their product. */
+const NEW_SAMPLE_VARIANTS = ['var_lumi_cove_rgbcct'];
+
+function addNewVariants(state: SampleState): SampleState {
+  const offered = new Set(state.settings.offeredVariantIds ?? []);
+  const have = new Set(state.variants.map((v) => v.id));
+  const products = new Set(state.products.map((p) => p.id));
+  const fresh = sample.SAMPLE_VARIANTS.filter(
+    (v) =>
+      NEW_SAMPLE_VARIANTS.includes(v.id) &&
+      !offered.has(v.id) &&
+      !have.has(v.id) &&
+      products.has(v.productId),
+  );
+  if (!fresh.length) return state;
+  return {
+    ...state,
+    variants: [...state.variants, ...structuredClone(fresh)],
+    settings: {
+      ...state.settings,
+      offeredVariantIds: [...offered, ...fresh.map((v) => v.id)],
+    },
+  };
 }
 
 /** Showrooms still at the placeholder addresses get Maxsen's real ones. */

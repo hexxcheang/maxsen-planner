@@ -67,6 +67,9 @@ export interface PricingSettings {
     driverAddOnPrice: number;
     metreAddOnName: string;
     metreAddOnPrice: number;
+    /** Per metre of RGBCCT strip, on top of the CCT strip the packages price. */
+    rgbUpgradeName: string;
+    rgbUpgradePrice: number;
     integrationName: string;
     integrationPrice: number;
     integrationWaived: boolean;
@@ -158,6 +161,8 @@ export const DEFAULT_PRICING: PricingSettings = {
     driverAddOnPrice: 78,
     metreAddOnName: 'Add-On Per 1 Meter of Smart Lumi LED COB Strip',
     metreAddOnPrice: 18,
+    rgbUpgradeName: 'Upgrade Per 1 Meter of LED Strip from CCT to RGBCCT',
+    rgbUpgradePrice: 6,
     integrationName: 'Integration of Per Smart Lighting',
     integrationPrice: 15,
     integrationWaived: true,

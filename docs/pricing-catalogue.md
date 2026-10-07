@@ -43,6 +43,9 @@ Premium Core package.
 | Add-on                            | per smart control + driver set                                                      | **78**  | 98    | 128  |
 | Add-on                            | per metre of Lumi LED COB strip                                                     | **18**  | 22    | 28   |
 
+Packages are CCT strip (white + warm). RGBCCT strip is charged an upgrade per metre on top: the
+app uses **S$6** (the usual price), as the owner asked, rather than the S$5 promotional price.
+
 Integration is S$15 per item, waived. Free gift with any lighting package: a Nova+ Smart Portable Dimmer
 (worth 328) or 3 more years of warranty on all lights (5 years in total).
 

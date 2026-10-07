@@ -369,6 +369,8 @@ export interface Settings {
   favouriteVariantIds: string[];
   /** Categories whose every product was deleted on purpose, so sample products aren't re-added. */
   emptiedCategories?: CategoryId[];
+  /** Sample variants added to an existing catalogue once, so deleting one keeps it gone. */
+  offeredVariantIds?: string[];
   /** Packages, add-on rates and invoice details; defaults apply where absent. */
   pricing?: PricingSettings;
 }
