@@ -242,3 +242,104 @@ test.describe('electrical', () => {
     expect(all).toContain('Access charge');
   });
 });
+
+test.describe('electrical plan', () => {
+  test.beforeEach(async ({ page }) => {
+    await signIn(page);
+  });
+
+  test('plots points on the floor plan, counted in the quotation, with a deposit', async ({
+    page,
+  }, testInfo) => {
+    await page.goto('/electrical');
+    await page.getByRole('radio', { name: 'Electrical plan' }).click();
+    const png = await page.evaluate(() => {
+      const c = document.createElement('canvas');
+      c.width = 1600;
+      c.height = 1000;
+      const ctx = c.getContext('2d')!;
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, 1600, 1000);
+      ctx.lineWidth = 8;
+      ctx.strokeRect(80, 80, 1440, 840);
+      ctx.strokeRect(80, 80, 700, 840);
+      return c.toDataURL('image/png').split(',')[1]!;
+    });
+    await page.getByLabel('Floor plan drawing').setInputFiles({
+      name: 'unit.png',
+      mimeType: 'image/png',
+      buffer: Buffer.from(png, 'base64'),
+    });
+    const canvas = page.getByTestId('electrical-canvas');
+    await expect(canvas.getByRole('img', { name: 'Floor plan: unit.png' })).toBeVisible();
+    // Measured at each tap: picking a symbol lower in the list can scroll the page.
+    const tap = async (fx: number, fy: number) => {
+      const box = (await canvas.boundingBox())!;
+      const x = box.x + box.width * fx;
+      const y = box.y + box.height * fy;
+      if (testInfo.project.name === 'desktop') await page.mouse.click(x, y);
+      else await page.touchscreen.tap(x, y);
+    };
+
+    // Lighting point is ready to place: three of them.
+    const symbols = page.getByRole('complementary', { name: 'Symbols' });
+    await expect(symbols.getByRole('button', { name: /^Lighting point$/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    await tap(0.3, 0.3);
+    await tap(0.4, 0.5);
+    await tap(0.3, 0.7);
+    await symbols.getByRole('button', { name: /13A twin switched socket outlet/ }).click();
+    await tap(0.65, 0.4);
+    await tap(0.7, 0.6);
+    await symbols.getByRole('button', { name: /^1-gang switch/ }).click();
+    await tap(0.5, 0.3);
+    await expect(canvas.getByRole('img', { name: 'Lighting point' })).toHaveCount(3);
+    const legend = page.getByTestId('electrical-legend');
+    await expect(legend.getByRole('listitem').filter({ hasText: 'Lighting point' })).toContainText(
+      '3',
+    );
+    await expect(legend.getByRole('listitem').filter({ hasText: '1-gang switch' })).toContainText(
+      'Drawing only',
+    );
+    // Undo takes the last one off again.
+    await page.getByRole('button', { name: 'Undo' }).click();
+    await expect(canvas.getByRole('img', { name: '1-gang switch' })).toHaveCount(0);
+    await page.screenshot({
+      path: `test-results/screens/electrical-plan-${testInfo.project.name}.png`,
+    });
+
+    if (testInfo.project.name === 'desktop') {
+      const [pdf] = await Promise.all([
+        page.waitForEvent('download'),
+        page.getByRole('button', { name: 'Download plan (PDF)' }).click(),
+      ]);
+      expect(pdf.suggestedFilename()).toMatch(/^Electrical Layout .*\.pdf$/);
+      const path = testInfo.outputPath('layout.pdf');
+      await pdf.saveAs(path);
+      expect((await readFile(path)).subarray(0, 5).toString()).toBe('%PDF-');
+    }
+
+    // The quotation counts what's on the plan.
+    await page.getByRole('radio', { name: /Quotation/ }).click();
+    const qty = page.getByLabel('Quantity of Lighting point c/w 1-gang switch and wiring');
+    await expect(qty).toHaveValue('3');
+    await expect(page.getByText('3 on plan')).toBeVisible();
+    await expect(
+      page.getByLabel('Quantity of 13A twin switched socket outlet (new point)'),
+    ).toHaveValue('2');
+    // One more typed in, on top of the plan.
+    await qty.fill('4');
+    const total = page.getByTestId('electrical-total');
+    await expect(total).toHaveText('S$390.00');
+
+    // A 50% deposit, then paid.
+    await page.getByLabel('Deposit (%)').fill('50');
+    await expect(page.getByTestId('electrical-due')).toHaveText('S$195.00');
+    await page.getByRole('switch', { name: 'Deposit paid' }).click();
+    await page.getByLabel('Deposit paid (S$)').fill('150');
+    await expect(page.getByTestId('electrical-due')).toHaveText('S$240.00');
+    await expect(page.getByText(/50% deposit upon confirmation/)).toBeVisible();
+  });
+});

@@ -2,6 +2,8 @@ import {
   ELECTRICAL_NOTES,
   ELECTRICAL_RATES,
   GST_PERCENT,
+  plottedRates,
+  type ElectricalPlan,
   type PricingSettings,
 } from '@maxsen/domain';
 
@@ -11,7 +13,14 @@ export interface ElectricalDraft {
   number: string;
   /** Rates changed from the average, by item id. */
   rates: Record<string, number>;
+  /** Quantities typed in, on top of the points plotted on the electrical plan. */
   quantities: Record<string, number>;
+  /** The electrical layout: the drawing and the points plotted on it. */
+  plan?: ElectricalPlan;
+  /** The deposit asked for, in percent (Admin › Pricing's when absent). */
+  depositPercent?: number;
+  /** What the client has paid as deposit, once they have. */
+  depositPaid?: number;
   gst: boolean;
   /** Discounts and extra charges, in S$ or as a % of the works. */
   adjustments?: ElectricalAdjustment[];
@@ -28,15 +37,19 @@ export interface ElectricalAdjustment {
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-/** The priced lines, by section (A, B, …; items numbered A1, A2, …), and the totals. */
-export function electricalTotals(d: ElectricalDraft) {
+/**
+ * The priced lines, by section (A, B, …; items numbered A1, A2, …), and the totals. Each item's
+ * quantity is what's plotted on the plan plus what's typed in.
+ */
+export function electricalTotals(d: ElectricalDraft, usualDeposit = 60) {
+  const plotted = d.plan ? plottedRates(d.plan.points) : {};
   const sections = ELECTRICAL_RATES.map((s, si) => {
     const letter = String.fromCharCode(65 + si);
     return {
       letter,
       title: s.title,
       lines: s.items.flatMap((item, i) => {
-        const quantity = d.quantities[item.id] ?? 0;
+        const quantity = (plotted[item.id] ?? 0) + (d.quantities[item.id] ?? 0);
         if (!quantity) return [];
         const rate = d.rates[item.id] ?? item.rate;
         return [
@@ -67,14 +80,23 @@ export function electricalTotals(d: ElectricalDraft) {
   // Discounts never take the quotation below zero.
   const subtotal = Math.max(0, round2(works + adjustments.reduce((t, a) => t + a.amount, 0)));
   const gst = d.gst ? round2((subtotal * GST_PERCENT) / 100) : 0;
+  const total = round2(subtotal + gst);
+  const depositPercent = d.depositPercent ?? usualDeposit;
+  const paid = d.depositPaid;
   return {
     sections,
+    plotted,
     count: sections.reduce((n, s) => n + s.lines.length, 0),
     works,
     adjustments,
     subtotal,
     gst,
-    total: round2(subtotal + gst),
+    total,
+    depositPercent,
+    deposit: round2((total * depositPercent) / 100),
+    /** Once the deposit is paid: what was paid, and the balance left to collect. */
+    paid,
+    balance: paid === undefined ? undefined : Math.max(0, round2(total - paid)),
   };
 }
 
@@ -82,6 +104,7 @@ export function electricalTotals(d: ElectricalDraft) {
 export async function buildElectricalXlsx(
   d: ElectricalDraft,
   company: PricingSettings['company'],
+  usualDeposit = 60,
 ): Promise<Blob> {
   const { default: ExcelJS } = await import('exceljs');
   const wb = new ExcelJS.Workbook();
@@ -141,7 +164,7 @@ export async function buildElectricalXlsx(
     c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFE1CB' } };
     c.alignment = { vertical: 'middle', horizontal: 'center' };
   });
-  const t = electricalTotals(d);
+  const t = electricalTotals(d, usualDeposit);
   const first = ws.rowCount + 1;
   for (const s of t.sections) {
     if (!s.lines.length) continue;
@@ -197,11 +220,30 @@ export async function buildElectricalXlsx(
   const gst = d.gst
     ? total(`GST ${GST_PERCENT}%`, { formula: `F${sub}*${GST_PERCENT}/100`, result: t.gst })
     : null;
-  total('Total', { formula: gst ? `F${sub}+F${gst}` : `F${sub}`, result: t.total }, true);
+  const totalRow = total(
+    'Total',
+    { formula: gst ? `F${sub}+F${gst}` : `F${sub}`, result: t.total },
+    true,
+  );
+  if (t.paid !== undefined) {
+    const paidRow = total('Less deposit paid', { formula: `-${t.paid}`, result: -t.paid });
+    ws.getCell(`F${paidRow}`).font = { ...font, color: { argb: 'FFFF0000' } };
+    total(
+      'Balance due',
+      { formula: `MAX(0,F${totalRow}+F${paidRow})`, result: t.balance ?? 0 },
+      true,
+    );
+  } else {
+    total(
+      `Deposit (${t.depositPercent}%)`,
+      { formula: `F${totalRow}*${t.depositPercent}/100`, result: t.deposit },
+      true,
+    );
+  }
 
   ws.addRow([]);
   ws.addRow(['Notes:']).font = bold;
-  ELECTRICAL_NOTES.forEach((n, i) => {
+  [...ELECTRICAL_NOTES, paymentNote(t.depositPercent)].forEach((n, i) => {
     const row = ws.addRow([`${i + 1}.`, n]);
     row.font = font;
     row.getCell(2).alignment = { wrapText: true };
@@ -215,6 +257,15 @@ export async function buildElectricalXlsx(
 }
 
 const KEY = 'maxsen.electrical.v1';
+
+/** The payment terms line, following the deposit asked for. */
+export function paymentNote(depositPercent: number) {
+  return depositPercent >= 100
+    ? 'Full payment upon confirmation of this quotation.'
+    : depositPercent <= 0
+      ? 'Full payment upon completion of works.'
+      : `${depositPercent}% deposit upon confirmation; the balance of ${round2(100 - depositPercent)}% upon completion of works.`;
+}
 
 /**
  * The electrical rates as they stand in the Electrical tab (your own rates where changed, else the
