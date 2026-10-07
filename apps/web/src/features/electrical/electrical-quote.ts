@@ -13,6 +13,17 @@ export interface ElectricalDraft {
   rates: Record<string, number>;
   quantities: Record<string, number>;
   gst: boolean;
+  /** Discounts and extra charges, in S$ or as a % of the works. */
+  adjustments?: ElectricalAdjustment[];
+}
+
+export interface ElectricalAdjustment {
+  id: string;
+  kind: 'discount' | 'charge';
+  label: string;
+  /** S$, or % of the works' subtotal. */
+  value: number;
+  unit: 'amount' | 'percent';
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -41,11 +52,26 @@ export function electricalTotals(d: ElectricalDraft) {
       }),
     };
   });
-  const subtotal = round2(sections.flatMap((s) => s.lines).reduce((t, l) => t + l.amount, 0));
+  const works = round2(sections.flatMap((s) => s.lines).reduce((t, l) => t + l.amount, 0));
+  const adjustments = (d.adjustments ?? [])
+    .filter((a) => a.value > 0)
+    .map((a) => {
+      const signed = a.kind === 'discount' ? -a.value : a.value;
+      return {
+        ...a,
+        signed,
+        label: a.label.trim() || (a.kind === 'discount' ? 'Discount' : 'Additional charge'),
+        amount: round2(a.unit === 'percent' ? (works * signed) / 100 : signed),
+      };
+    });
+  // Discounts never take the quotation below zero.
+  const subtotal = Math.max(0, round2(works + adjustments.reduce((t, a) => t + a.amount, 0)));
   const gst = d.gst ? round2((subtotal * GST_PERCENT) / 100) : 0;
   return {
     sections,
     count: sections.reduce((n, s) => n + s.lines.length, 0),
+    works,
+    adjustments,
     subtotal,
     gst,
     total: round2(subtotal + gst),
@@ -140,12 +166,28 @@ export async function buildElectricalXlsx(
     const row = ws.addRow([null, null, null, null, label, value]);
     row.getCell(5).font = strong ? bold : font;
     row.getCell(6).font = strong ? { ...bold, size: 12 } : font;
-    row.getCell(6).numFmt = money;
+    row.getCell(6).numFmt = '#,##0.00;(#,##0.00)';
     row.getCell(5).border = box;
     row.getCell(6).border = box;
     return row.number;
   };
-  const sub = total('Subtotal', { formula: `SUM(F${first}:F${last})`, result: t.subtotal });
+  let sub = total('Subtotal', { formula: `SUM(F${first}:F${last})`, result: t.works });
+  if (t.adjustments.length) {
+    const works = sub;
+    const rows = t.adjustments.map((a) => {
+      const label = a.unit === 'percent' ? `${a.label} (${Math.abs(a.value)}%)` : a.label;
+      const row = total(label, {
+        formula: a.unit === 'percent' ? `F${works}*${a.signed}/100` : `${a.signed}`,
+        result: a.amount,
+      });
+      if (a.amount < 0) ws.getCell(`F${row}`).font = { ...font, color: { argb: 'FFFF0000' } };
+      return row;
+    });
+    sub = total('Subtotal after adjustments', {
+      formula: `MAX(0,F${works}+${rows.map((r) => `F${r}`).join('+')})`,
+      result: t.subtotal,
+    });
+  }
   const gst = d.gst
     ? total(`GST ${GST_PERCENT}%`, { formula: `F${sub}*${GST_PERCENT}/100`, result: t.gst })
     : null;

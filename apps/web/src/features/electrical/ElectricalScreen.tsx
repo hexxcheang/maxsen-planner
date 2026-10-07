@@ -1,17 +1,33 @@
 import { useEffect, useState } from 'react';
-import { Copy, Download, RotateCcw } from 'lucide-react';
+import { Copy, Download, Minus, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import {
   ELECTRICAL_NOTES,
   ELECTRICAL_RATES,
   GST_PERCENT,
   invoiceNumber,
+  newId,
   resolvePricing,
 } from '@maxsen/domain';
-import { Button, Field, Input, NumberField, PageHeader, Switch, useToast } from '@/components/ui';
+import {
+  Button,
+  Field,
+  IconButton,
+  Input,
+  NumberField,
+  PageHeader,
+  SegmentedControl,
+  Switch,
+  useToast,
+} from '@/components/ui';
 import { Page } from '@/components/Page';
 import { useSettings } from '@/lib/data/hooks';
 import { formatMoney } from '@/lib/format';
-import { buildElectricalXlsx, electricalTotals, type ElectricalDraft } from './electrical-quote';
+import {
+  buildElectricalXlsx,
+  electricalTotals,
+  type ElectricalAdjustment,
+  type ElectricalDraft,
+} from './electrical-quote';
 import { copyText } from '@/lib/clipboard';
 
 const KEY = 'maxsen.electrical.v1';
@@ -55,6 +71,24 @@ export function ElectricalScreen() {
   const set = (patch: Partial<ElectricalDraft>) => setDraft((d) => ({ ...d, ...patch }));
   const totals = electricalTotals(draft);
   const edited = Object.keys(draft.rates).length;
+  const adjustments = draft.adjustments ?? [];
+  const adjust = (id: string, patch: Partial<ElectricalAdjustment>) =>
+    set({ adjustments: adjustments.map((a) => (a.id === id ? { ...a, ...patch } : a)) });
+  const addAdjustment = (kind: ElectricalAdjustment['kind']) =>
+    set({
+      adjustments: [
+        ...adjustments,
+        {
+          id: newId('el'),
+          kind,
+          label: kind === 'discount' ? 'Discount' : 'Additional charge',
+          value: 0,
+          unit: kind === 'discount' ? 'percent' : 'amount',
+        },
+      ],
+    });
+  const adjustmentText = (a: (typeof totals.adjustments)[number]) =>
+    a.unit === 'percent' ? `${a.label} (${a.value}%)` : a.label;
 
   const text = () => {
     const out = [
@@ -71,7 +105,11 @@ export function ElectricalScreen() {
         );
       out.push('');
     }
-    out.push(`Subtotal: ${money(totals.subtotal)}`);
+    out.push(`Subtotal: ${money(totals.works)}`);
+    if (totals.adjustments.length) {
+      for (const a of totals.adjustments) out.push(`${adjustmentText(a)}: ${money(a.amount)}`);
+      out.push(`Subtotal after adjustments: ${money(totals.subtotal)}`);
+    }
     if (draft.gst) out.push(`GST ${GST_PERCENT}%: ${money(totals.gst)}`);
     out.push(`Total: ${money(totals.total)}`);
     return out.filter((l, i, a) => l || a[i - 1]).join('\n');
@@ -194,11 +232,101 @@ export function ElectricalScreen() {
             onCheckedChange={(gst) => set({ gst })}
             label={`Add GST (${GST_PERCENT}%)`}
           />
+          <section aria-label="Price adjustments" className="flex flex-col gap-2">
+            <p className="text-meta font-semibold text-ink-2">Price adjustments</p>
+            {adjustments.map((a) => (
+              <div
+                key={a.id}
+                className="flex flex-col gap-1.5 rounded-md border border-rule p-2"
+                data-testid="electrical-adjustment"
+              >
+                <div className="flex items-center gap-1.5">
+                  <Input
+                    aria-label="Adjustment name"
+                    className="min-w-0 flex-1"
+                    value={a.label}
+                    onChange={(e) => adjust(a.id, { label: e.target.value })}
+                  />
+                  <IconButton
+                    size="sm"
+                    label={`Remove ${a.label || 'adjustment'}`}
+                    icon={<Trash2 className="size-4" />}
+                    onClick={() =>
+                      set({ adjustments: adjustments.filter((x) => x.id !== a.id) })
+                    }
+                  />
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <SegmentedControl
+                    size="sm"
+                    label="Discount or charge"
+                    value={a.kind}
+                    options={[
+                      { value: 'discount', label: 'Less' },
+                      { value: 'charge', label: 'Add' },
+                    ]}
+                    onChange={(kind) => adjust(a.id, { kind })}
+                  />
+                  <NumberField
+                    compact
+                    live
+                    min={0}
+                    max={a.unit === 'percent' ? 100 : 1000000}
+                    precision={2}
+                    className="w-24"
+                    aria-label={`${a.label || 'Adjustment'} ${a.unit === 'percent' ? '%' : 'S$'}`}
+                    value={a.value}
+                    onChange={(v) => adjust(a.id, { value: v ?? 0 })}
+                  />
+                  <SegmentedControl
+                    size="sm"
+                    label="S$ or percent"
+                    value={a.unit}
+                    options={[
+                      { value: 'amount', label: 'S$' },
+                      { value: 'percent', label: '%' },
+                    ]}
+                    onChange={(unit) => adjust(a.id, { unit })}
+                  />
+                </div>
+              </div>
+            ))}
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                icon={<Minus className="size-4" />}
+                onClick={() => addAdjustment('discount')}
+              >
+                Discount
+              </Button>
+              <Button
+                size="sm"
+                icon={<Plus className="size-4" />}
+                onClick={() => addAdjustment('charge')}
+              >
+                Extra charge
+              </Button>
+            </div>
+          </section>
           <dl className="grid grid-cols-[1fr_auto] gap-y-1 text-control">
             <dt className="text-ink-2">Items</dt>
             <dd className="tnum text-right">{totals.count}</dd>
             <dt className="text-ink-2">Subtotal</dt>
-            <dd className="tnum text-right">{money(totals.subtotal)}</dd>
+            <dd className="tnum text-right">{money(totals.works)}</dd>
+            {totals.adjustments.map((a) => (
+              <div key={a.id} className="contents">
+                <dt className="text-ink-2">{adjustmentText(a)}</dt>
+                <dd className={`tnum text-right ${a.amount < 0 ? 'text-danger' : ''}`}>
+                  {a.amount < 0 ? `−${money(-a.amount)}` : money(a.amount)}
+                </dd>
+              </div>
+            ))}
+            {totals.adjustments.length > 0 && (
+              <>
+                <dt className="text-ink-2">After adjustments</dt>
+                <dd className="tnum text-right">{money(totals.subtotal)}</dd>
+              </>
+            )}
             {draft.gst && (
               <>
                 <dt className="text-ink-2">GST {GST_PERCENT}%</dt>

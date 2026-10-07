@@ -109,6 +109,15 @@ test.describe('electrical', () => {
     await expect(page.getByRole('button', { name: 'Reset 1 rate to average' })).toBeVisible();
     await page.getByRole('switch', { name: 'Add GST (9%)' }).click();
     await expect(total).toHaveText('S$463.25');
+    // A 10% discount and a S$50 access charge, before GST.
+    await page.getByRole('button', { name: 'Discount', exact: true }).click();
+    await page.getByLabel('Discount %').fill('10');
+    await expect(total).toHaveText('S$416.92');
+    await page.getByRole('button', { name: 'Extra charge' }).click();
+    const charge = page.getByTestId('electrical-adjustment').nth(1);
+    await charge.getByLabel('Adjustment name').fill('Access charge');
+    await charge.getByLabel('Access charge S$').fill('50');
+    await expect(total).toHaveText('S$471.42');
     await page.screenshot({ path: `test-results/screens/electrical-${testInfo.project.name}.png` });
 
     if (testInfo.project.name !== 'desktop') return;
@@ -128,5 +137,7 @@ test.describe('electrical', () => {
     expect(all).toContain('QUOTATION FOR ELECTRICAL WORKS');
     expect(all).toContain('13A single switched socket outlet (new point)');
     expect(all).toContain('GST 9%');
+    expect(all).toContain('Discount (10%)');
+    expect(all).toContain('Access charge');
   });
 });
