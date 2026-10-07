@@ -7,6 +7,7 @@ import {
   issuedFromOld,
   newId,
   parseOldInvoice,
+  pdfInvoiceGrid,
   resolvePricing,
   stageAmounts,
   STAGE_LABEL,
@@ -32,6 +33,7 @@ import { buildQuotationPdf } from '@/features/exports/build/generate';
 import { QuotationTable } from './QuotationTable';
 import { money, quotationText, withRowEdit } from './quotation';
 import { copyText } from '@/lib/clipboard';
+import { readPdfText } from '@/lib/images';
 
 type Line =
   | { id: string; kind: 'item'; description: string; quantity: number; unitPrice: number }
@@ -167,12 +169,23 @@ export function OldInvoiceSection() {
   const onFile = async (file: File | undefined) => {
     if (!file) return;
     try {
-      open(await readSheet(file), file.name);
+      if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) {
+        const text = await readPdfText(file);
+        if (!text.length) {
+          toast({
+            title: 'That PDF is a scan',
+            body: 'It has pictures of the pages but no text to read. Use the Excel file, or paste its lines.',
+            tone: 'danger',
+          });
+          return;
+        }
+        open(pdfInvoiceGrid(text), file.name);
+      } else open(await readSheet(file), file.name);
     } catch (e) {
       console.error(e);
       toast({
         title: 'That file couldn’t be read',
-        body: 'Use the invoice’s Excel file (.xlsx), or paste its rows instead.',
+        body: 'Use the invoice’s PDF or Excel file (.xlsx), or paste its rows instead.',
         tone: 'danger',
       });
     }
@@ -184,13 +197,14 @@ export function OldInvoiceSection() {
         <section aria-label="Open an old invoice" className="flex flex-col gap-3">
           <h2 className="border-b border-rule pb-1.5 text-section text-ink">Open an old invoice</h2>
           <p className="text-control text-ink-2">
-            Choose the invoice’s Excel file. Every line is read as it was invoiced, with its
-            quantity and unit price, along with the deposit or payment it asked for.
+            Choose the invoice’s PDF or Excel file. Every line is read as it was invoiced, with its
+            quantity and unit price, along with the deposit or payment it asked for. Check the lines
+            after reading a PDF.
           </p>
           <input
             ref={fileInput}
             type="file"
-            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            accept=".pdf,application/pdf,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             aria-label="Old invoice file"
             className="sr-only"
             onChange={(e) => void onFile(e.target.files?.[0])}
@@ -200,7 +214,7 @@ export function OldInvoiceSection() {
             icon={<FileUp className="size-4" />}
             onClick={() => fileInput.current?.click()}
           >
-            Choose invoice (.xlsx)
+            Choose invoice (PDF or Excel)
           </Button>
         </section>
         <section aria-label="Paste invoice lines" className="flex flex-col gap-3">

@@ -88,6 +88,57 @@ test.describe('old invoices', () => {
     await pdf.saveAs(pdfPath);
     expect((await readFile(pdfPath)).subarray(0, 5).toString()).toBe('%PDF-');
   });
+  test('reads an old invoice PDF, then the 2nd payment PDF made from it', async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'File handling is viewport-independent');
+    await page.goto('/quote');
+    await page.getByLabel('Client’s message').fill('- 12 switches\n- 15 downlights warm white');
+    await page.getByLabel('Client’s name').fill('Mr Tan');
+    await page.getByRole('button', { name: 'Read message' }).click();
+    const total = page
+      .getByRole('region', { name: 'Quotation' })
+      .getByRole('row')
+      .filter({
+        hasText: /^Total/,
+      });
+    const quoted = Number((await total.innerText()).replace(/[^\d.]/g, ''));
+    const [first] = await Promise.all([
+      page.waitForEvent('download'),
+      page.getByRole('button', { name: 'Download quotation (PDF)' }).click(),
+    ]);
+    const oldPath = testInfo.outputPath('old.pdf');
+    await first.saveAs(oldPath);
+
+    await page.getByRole('radio', { name: 'Old invoice: next payment' }).click();
+    await page.getByLabel('Old invoice file').setInputFiles(oldPath);
+    await expect(page.getByText(/this one is for the 2nd payment/)).toBeVisible();
+    await expect(page.getByLabel('Client’s name')).toHaveValue('Mr Tan');
+    // The deposit it asked for: 60% of the total.
+    await expect(page.getByLabel('Already paid (S$)')).toHaveValue(
+      String(Math.round(quoted * 0.6 * 100) / 100),
+    );
+    const lines = page.getByRole('region', { name: 'Invoice lines' });
+    await expect(lines.getByText('Nova Package').first()).toBeVisible();
+    await expect(lines.getByLabel(/^Quantity of Add-On Per Nova\+ Pro/)).toHaveValue('2');
+
+    // Its 2nd payment invoice, read back in, is for the final payment.
+    const due = Number(
+      (await page.getByTestId('old-invoice-due').innerText()).replace(/[^\d.]/g, ''),
+    );
+    const [second] = await Promise.all([
+      page.waitForEvent('download'),
+      page.getByRole('button', { name: 'Download invoice (PDF)' }).click(),
+    ]);
+    const secondPath = testInfo.outputPath('second.pdf');
+    await second.saveAs(secondPath);
+    await page.getByRole('button', { name: /Open another/ }).click();
+    await page.getByLabel('Old invoice file').setInputFiles(secondPath);
+    await expect(page.getByText(/this one is for the final payment/)).toBeVisible();
+    await expect(page.getByLabel('Already paid (S$)')).toHaveValue(
+      String(Math.round((quoted * 0.6 + due) * 100) / 100),
+    );
+  });
 });
 
 test.describe('electrical', () => {

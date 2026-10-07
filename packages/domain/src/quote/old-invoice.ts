@@ -121,19 +121,31 @@ export function parseOldInvoice(grid: Cell[][]): OldInvoice {
   );
 
   const date = after(grid, /^date\b/i);
+  const paid = amountBeside(grid, /less\s*paid|already\s*paid|deposit\b.*\bpaid\b/i);
   return {
-    number: text(after(grid, /invoice\s*(#|no\.?|number)|quotation\s*(#|no\.?)/i)),
+    number: text(
+      after(grid, /invoice\s*(#|no\.?|number)|quotation\s*(#|no\.?)/i) ??
+        // The app's own PDF: "QUOTATION MX-…" or "INVOICE MX-…".
+        after(grid, /^(invoice|quotation)\b\s*:?/i),
+    ),
     date: text(date),
     client: {
-      name: text(after(grid, /^name\s*:?/i)) || text(after(grid, /^(to|attn)\s*:?/i)),
+      name:
+        text(after(grid, /^name\s*:?/i)) ||
+        text(after(grid, /^prepared\s*for\s*:?/i)) ||
+        text(after(grid, /^(to|attn)\b\s*:?/i)),
       contact: text(after(grid, /^(phone|contact|tel)\s*:?/i)),
     },
     rows: kept,
-    total: amountBeside(grid, /gran[dt]\s*total/i) ?? amountBeside(grid, /total\s*price/i),
-    deposit: amountBeside(grid, /deposit\s*request/i),
-    lessPaid: amountBeside(grid, /less\s*paid|already\s*paid/i),
-    secondPayment: amountBeside(grid, /2nd\s*payment|second\s*payment/i),
-    finalPayment: amountBeside(grid, /final\s*payment/i),
+    total:
+      amountBeside(grid, /gran[dt]\s*total/i) ??
+      amountBeside(grid, /total\s*price/i) ??
+      amountBeside(grid, /^total$/i),
+    deposit: amountBeside(grid, /deposit\s*request/i) ?? amountBeside(grid, /^deposit\s*\(\d+%\)/i),
+    // Printed as "-S$2,353.20" on the PDF.
+    lessPaid: paid === null ? null : Math.abs(paid),
+    secondPayment: amountBeside(grid, /(2nd|second)\s*payment(?!\s*paid)/i),
+    finalPayment: amountBeside(grid, /final\s*payment(?!\s*paid)/i),
   };
 }
 

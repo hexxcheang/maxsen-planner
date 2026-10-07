@@ -2,7 +2,7 @@
  * Browser-side image work: turning uploads (PDF pages, JPG, PNG) into page images and thumbnails,
  * and rotating a page into a plan background. Long edges are capped to keep iPad memory in check.
  */
-import { suggestCrop, toGray, type CropRect, type Rotation } from '@maxsen/domain';
+import { suggestCrop, toGray, type CropRect, type PdfText, type Rotation } from '@maxsen/domain';
 
 const PAGE_LONG_EDGE = 3000;
 const THUMB_LONG_EDGE = 360;
@@ -72,6 +72,35 @@ export async function rasterizeImage(file: File): Promise<RasterPage> {
   } finally {
     URL.revokeObjectURL(url);
   }
+}
+
+/**
+ * The text of every page of a PDF with its position, for reading an invoice back in. Empty for a
+ * scanned PDF, which is only pictures of pages.
+ */
+export async function readPdfText(file: File): Promise<PdfText[]> {
+  const pdfjs = await import('pdfjs-dist');
+  const worker = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
+  pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
+  const doc = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  const out: PdfText[] = [];
+  for (let p = 1; p <= doc.numPages; p++) {
+    const page = await doc.getPage(p);
+    const pageHeight = page.getViewport({ scale: 1 }).height;
+    for (const item of (await page.getTextContent()).items) {
+      if (!('str' in item) || !item.str.trim()) continue;
+      out.push({
+        page: p,
+        x: item.transform[4] as number,
+        y: item.transform[5] as number,
+        width: item.width,
+        height: item.height,
+        str: item.str,
+        pageHeight,
+      });
+    }
+  }
+  return out;
 }
 
 /** Renders each PDF page to an image, one page at a time. */

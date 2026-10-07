@@ -28,5 +28,6 @@ export * from './pricing/invoice.ts';
 export * from './pricing/billing.ts';
 export * from './quote/parse-message.ts';
 export * from './quote/old-invoice.ts';
+export * from './quote/pdf-invoice.ts';
 export * from './electrical/rates.ts';
 export * from './sample-shot/prompt.ts';
