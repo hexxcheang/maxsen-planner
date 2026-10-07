@@ -251,9 +251,7 @@ export function ElectricalScreen() {
                     size="sm"
                     label={`Remove ${a.label || 'adjustment'}`}
                     icon={<Trash2 className="size-4" />}
-                    onClick={() =>
-                      set({ adjustments: adjustments.filter((x) => x.id !== a.id) })
-                    }
+                    onClick={() => set({ adjustments: adjustments.filter((x) => x.id !== a.id) })}
                   />
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5">

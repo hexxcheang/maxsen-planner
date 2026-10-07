@@ -56,6 +56,31 @@ export async function putFile(blob: Blob): Promise<string> {
   return id;
 }
 
+/** Stores a file under an id it already has (a drawing saved by someone else on the team). */
+export async function putFileWithId(id: string, blob: Blob): Promise<void> {
+  const old = urls.get(id);
+  if (old) URL.revokeObjectURL(old);
+  urls.set(id, URL.createObjectURL(blob));
+  if (typeof indexedDB !== 'undefined') {
+    try {
+      await tx('readwrite', (s) => s.put(blob, id));
+    } catch (e) {
+      console.warn('Could not store file', e);
+    }
+  }
+}
+
+/** A stored file's contents, or undefined if this device doesn't have it. */
+export async function storedFileBlob(id: string): Promise<Blob | undefined> {
+  const url = urls.get(id);
+  if (!url) return undefined;
+  try {
+    return await (await fetch(url)).blob();
+  } catch {
+    return undefined;
+  }
+}
+
 export function storedFileUrl(fileId: string): string | undefined {
   return urls.get(fileId);
 }

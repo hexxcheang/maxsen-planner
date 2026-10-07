@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { AnalysisError, type Analyser } from './magic/analyse.ts';
 import { RenderError, type Renderer } from './sample/render.ts';
 import { createAuth, type Auth } from './auth.ts';
+import { ID, type SharedStore } from './shared/store.ts';
 
 const analyseBody = z.object({
   image: z.string().min(100).max(15_000_000),
@@ -17,6 +18,28 @@ const renderBody = z.object({
   prompt: z.string().min(10).max(4000),
 });
 
+const saveBody = z.object({
+  baseVersion: z.number().int().min(0),
+  savedBy: z.string().trim().min(1).max(80),
+  force: z.boolean().optional(),
+  bundle: z
+    .object({
+      project: z
+        .object({
+          id: z.string(),
+          title: z.string(),
+          customerName: z.string().default(''),
+          propertyAddress: z.string().default(''),
+          status: z.string().default('draft'),
+        })
+        .passthrough(),
+    })
+    .passthrough(),
+});
+
+/** Drawings are rasterised pages and PDFs; anything bigger is refused. */
+const MAX_FILE_BYTES = 60 * 1024 * 1024;
+
 const RENDER_STATUS = { auth: 502, busy: 429, refused: 422, upstream: 502 } as const;
 
 /**
@@ -27,7 +50,8 @@ export function buildApp({
   analyse,
   render,
   auth = createAuth({}),
-}: { analyse?: Analyser; render?: Renderer; auth?: Auth } = {}) {
+  shared,
+}: { analyse?: Analyser; render?: Renderer; auth?: Auth; shared?: SharedStore } = {}) {
   const app = new Hono();
 
   app.use('/api/*', auth.guard());
@@ -74,6 +98,71 @@ export function buildApp({
         502,
       );
     }
+  });
+
+  // --- projects saved for the team -----------------------------------------------------------
+  app.get('/api/shared/status', (c) => c.json({ enabled: Boolean(shared) }));
+
+  app.use('/api/shared/*', async (c, next) => {
+    if (c.req.path === '/api/shared/status') return next();
+    if (!shared)
+      return c.json(
+        { error: 'not-configured', message: 'Team saving is off on this server.' },
+        503,
+      );
+    return next();
+  });
+
+  app.get('/api/shared/projects', async (c) => c.json({ projects: await shared!.list() }));
+
+  app.get('/api/shared/projects/:id', async (c) => {
+    const id = c.req.param('id');
+    const found = ID.test(id) ? await shared!.get(id) : null;
+    return found ? c.json(found) : c.json({ error: 'not-found' }, 404);
+  });
+
+  app.put('/api/shared/projects/:id', async (c) => {
+    const id = c.req.param('id');
+    const body = saveBody.safeParse(await c.req.json().catch(() => null));
+    if (!ID.test(id) || !body.success || body.data.bundle.project.id !== id)
+      return c.json({ error: 'bad-request', message: 'That project couldn’t be read.' }, 400);
+    const { title, customerName, propertyAddress, status } = body.data.bundle.project;
+    const result = await shared!.save(id, body.data, {
+      title,
+      customerName,
+      propertyAddress,
+      status,
+    });
+    return result.ok
+      ? c.json({ meta: result.meta })
+      : c.json({ error: 'conflict', meta: result.conflict }, 409);
+  });
+
+  app.post('/api/shared/files/missing', async (c) => {
+    const body = z
+      .object({ ids: z.array(z.string()).max(5000) })
+      .safeParse(await c.req.json().catch(() => null));
+    if (!body.success) return c.json({ error: 'bad-request' }, 400);
+    return c.json({ missing: await shared!.missingFiles(body.data.ids) });
+  });
+
+  app.put('/api/shared/files/:id', async (c) => {
+    const id = c.req.param('id');
+    if (!ID.test(id)) return c.json({ error: 'bad-request' }, 400);
+    const data = new Uint8Array(await c.req.arrayBuffer());
+    if (data.byteLength > MAX_FILE_BYTES) return c.json({ error: 'too-large' }, 413);
+    await shared!.putFile(id, data, c.req.header('content-type') ?? '');
+    return c.json({ ok: true });
+  });
+
+  app.get('/api/shared/files/:id', async (c) => {
+    const id = c.req.param('id');
+    const file = ID.test(id) ? await shared!.getFile(id) : null;
+    if (!file) return c.json({ error: 'not-found' }, 404);
+    return c.body(new Uint8Array(file.data), 200, {
+      'content-type': file.type,
+      'cache-control': 'private, max-age=31536000, immutable',
+    });
   });
 
   app.get('/api/health', (c) => c.json({ ok: true }));

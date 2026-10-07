@@ -6,6 +6,7 @@ import { useProject } from '@/lib/data/hooks';
 import { TopBarSlot } from '@/app/shell/TopBarSlot';
 import { NotFoundScreen } from '@/features/NotFoundScreen';
 import { ProjectDetailsDialog } from './ProjectDetailsDialog';
+import { TeamSave } from './TeamSave';
 import type { Project } from '@maxsen/domain';
 
 const TABS = [
@@ -60,6 +61,9 @@ export function ProjectLayout() {
             </NavLink>
           ))}
         </nav>
+      </TopBarSlot>
+      <TopBarSlot slot="right">
+        <TeamSave key={project.id} project={project} />
       </TopBarSlot>
       <Outlet context={{ project } satisfies ProjectOutletContext} />
       <ProjectDetailsDialog project={project} open={detailsOpen} onOpenChange={setDetailsOpen} />

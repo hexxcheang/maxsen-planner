@@ -12,6 +12,12 @@ services:
     startCommand: pnpm start
     healthCheckPath: /api/health
     autoDeploy: true
+    # Projects saved for the team live here. Without a disk they are wiped on every deploy.
+    # 1 GB is about US$0.25 a month and holds hundreds of projects with their drawings.
+    disk:
+      name: maxsen-data
+      mountPath: /var/data
+      sizeGB: 1
     envVars:
       - key: NODE_VERSION
         value: '22'
@@ -20,6 +26,8 @@ services:
         sync: false
       - key: SESSION_SECRET
         generateValue: true
+      - key: DATA_DIR
+        value: /var/data
       # Optional: Claude for "Suggest rooms", Gemini for product sample pictures.
       - key: ANTHROPIC_API_KEY
         sync: false

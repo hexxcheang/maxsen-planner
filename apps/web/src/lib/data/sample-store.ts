@@ -29,6 +29,7 @@ import {
   type Project,
   type ProjectDetails,
   type ProjectSchedule,
+  type SharedState,
   type Settings,
   type SourceFile,
   type SourcePage,
@@ -50,6 +51,17 @@ export interface SampleState {
 }
 
 export type SampleSeed = 'sample' | 'empty';
+
+/** A project as saved for the team (see `lib/shared/bundle.ts`). */
+export interface SharedBundle {
+  project: Project;
+  levels: Level[];
+  plans: Plan[];
+  sourceFiles: SourceFile[];
+  sourcePages: SourcePage[];
+  products: Product[];
+  variants: Variant[];
+}
 
 /**
  * Brings a saved workspace up to date: variants saved before prices existed take the catalogue
@@ -391,6 +403,41 @@ export function createSampleStore(
         d.plans = d.plans.filter((p) => p.projectId !== projectId);
         d.sourceFiles = d.sourceFiles.filter((f) => f.projectId !== projectId);
         d.sourcePages = d.sourcePages.filter((p) => p.projectId !== projectId);
+      });
+    },
+
+    /** Records the team copy this device just saved or loaded. */
+    markShared(projectId: string, shared: SharedState) {
+      update((d) => {
+        const p = d.projects.find((x) => x.id === projectId);
+        if (p) p.shared = shared;
+      });
+    },
+
+    /**
+     * Puts a project saved by the team in place of this device's copy (or adds it), with any
+     * products it uses that this catalogue lacks.
+     */
+    importSharedProject(bundle: SharedBundle, shared: SharedState) {
+      const id = bundle.project.id;
+      update((d) => {
+        const mine = d.projects.find((p) => p.id === id);
+        const project = {
+          ...structuredClone(bundle.project),
+          lastOpened: mine?.lastOpened ?? bundle.project.lastOpened,
+          shared,
+        } as Project;
+        d.projects = [...d.projects.filter((p) => p.id !== id), project];
+        const others = <T extends { projectId: string }>(rows: T[]) =>
+          rows.filter((r) => r.projectId !== id);
+        d.levels = [...others(d.levels), ...structuredClone(bundle.levels)];
+        d.plans = [...others(d.plans), ...structuredClone(bundle.plans)];
+        d.sourceFiles = [...others(d.sourceFiles), ...structuredClone(bundle.sourceFiles)];
+        d.sourcePages = [...others(d.sourcePages), ...structuredClone(bundle.sourcePages)];
+        const products = new Set(d.products.map((p) => p.id));
+        for (const p of bundle.products) if (!products.has(p.id)) d.products.push(structuredClone(p));
+        const variants = new Set(d.variants.map((v) => v.id));
+        for (const v of bundle.variants) if (!variants.has(v.id)) d.variants.push(structuredClone(v));
       });
     },
 

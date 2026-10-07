@@ -8,6 +8,7 @@ import { useProjects } from '@/lib/data/hooks';
 import { STATUS_LABELS } from '@/lib/format';
 import { cn } from '@/lib/cn';
 import { ProjectRow } from './ProjectRow';
+import { TeamProjects } from './TeamProjects';
 
 function NewProjectLink() {
   return (
@@ -25,6 +26,7 @@ export function DashboardScreen() {
   const [status, setStatus] = useState<ProjectStatus | 'all'>('all');
   const projects = status === 'all' ? found : found.filter((p) => p.status === status);
   const count = (s: ProjectStatus) => all.filter((p) => p.status === s).length;
+  const localIds = new Set(all.map((p) => p.id));
 
   return (
     <Page>
@@ -48,7 +50,8 @@ export function DashboardScreen() {
           body="Create your first project to start planning."
           action={<NewProjectLink />}
         />
-      ) : (
+      ) : null}
+      {!isLoading && all.length > 0 && (
         <>
           <div role="group" aria-label="Filter by status" className="mb-3 flex flex-wrap gap-1.5">
             {(['all', ...PROJECT_STATUSES] as const).map((s) => {
@@ -98,6 +101,7 @@ export function DashboardScreen() {
           )}
         </>
       )}
+      {!isLoading && <TeamProjects localIds={localIds} />}
     </Page>
   );
 }

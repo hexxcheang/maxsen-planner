@@ -223,6 +223,16 @@ export interface Project extends ProjectDetails {
   recentVariantIds: string[];
   /** Key dates on site, as YYYY-MM-DD. */
   schedule?: ProjectSchedule;
+  /** The team copy on the server this device last saved or loaded. */
+  shared?: SharedState;
+}
+
+export interface SharedState {
+  version: number;
+  savedAt: string;
+  savedBy: string;
+  /** Fingerprint of the project as saved or loaded, to tell whether it has changed here since. */
+  fingerprint: string;
 }
 
 /** The on-site milestones, in the order they happen. */
