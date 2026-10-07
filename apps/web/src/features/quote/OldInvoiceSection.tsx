@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { Copy, Download, FileUp, Plus, TriangleAlert } from 'lucide-react';
+import { Copy, Download, FileUp, Sparkles, TriangleAlert, Zap } from 'lucide-react';
 import {
   applyRowEdits,
+  buildInvoice,
   INVOICE_STAGES,
   invoiceNumber,
   issuedFromOld,
@@ -13,6 +14,8 @@ import {
   stageAmounts,
   STAGE_LABEL,
   type Cell,
+  type ExtraLine,
+  type QuoteLine,
   type Invoice,
   type InvoiceRow,
   type InvoiceStage,
@@ -25,6 +28,7 @@ import {
   Input,
   NumberField,
   SegmentedControl,
+  Select,
   Textarea,
   useToast,
 } from '@/components/ui';
@@ -32,6 +36,9 @@ import { useSettings } from '@/lib/data/hooks';
 import { buildInvoiceXlsx } from '@/features/exports/build/invoice';
 import { buildQuotationPdf } from '@/features/exports/build/generate';
 import { QuotationTable } from './QuotationTable';
+import { CustomItemForm } from './CustomItemForm';
+import { useQuoteCatalogue } from './useQuoteCatalogue';
+import { ElectricalWorksDialog } from '@/features/electrical/ElectricalWorksDialog';
 import { money, quotationText, withRowEdit } from './quotation';
 import { copyText } from '@/lib/clipboard';
 import { readPdfText } from '@/lib/images';
@@ -56,9 +63,28 @@ interface OldDraft {
   /** This invoice's number. */
   number: string;
   edits: Record<string, RowEdit>;
+  /** The deposit in percent, where changed from what the old invoice asked for. */
+  depositPercent?: number;
+  /** A client's message with items to add, and what in it wasn't recognised. */
+  message?: string;
+  unread?: string[];
 }
 
 const KEY = 'maxsen.quote.old-invoice.v1';
+
+/** Where items added since the old invoice go. */
+const ADDED = 'Additional items';
+
+/** Lines added at the end of a section (made at the end of the invoice if it isn't there). */
+function addToSection(lines: Line[], title: string, items: Line[]): Line[] {
+  const at = lines.findIndex(
+    (l) => l.kind === 'section' && l.title.toLowerCase() === title.toLowerCase(),
+  );
+  if (at < 0) return [...lines, { id: newId('room'), kind: 'section', title }, ...items];
+  let end = at + 1;
+  while (end < lines.length && lines[end]!.kind !== 'section') end++;
+  return [...lines.slice(0, end), ...items, ...lines.slice(end)];
+}
 
 function load(): OldDraft | null {
   try {
@@ -121,17 +147,17 @@ export function OldInvoiceSection() {
   // The deposit the old invoice asked for, as a percentage, so the 2nd and final payments follow
   // its terms rather than today's usual deposit.
   const asked = draft?.issued?.deposit;
-  const pricing = withDeposit(
-    resolvePricing(settings),
+  const askedPercent =
     asked && asked.total > 0
       ? Math.round((asked.due / asked.total) * 100)
-      : resolvePricing(settings).depositPercent,
-  );
+      : resolvePricing(settings).depositPercent;
+  const pricing = withDeposit(resolvePricing(settings), draft?.depositPercent ?? askedPercent);
+  const quoteCatalogue = useQuoteCatalogue();
+  const [addingWorks, setAddingWorks] = useState(false);
   const [pasted, setPasted] = useState('');
   /** What's happening while a scanned PDF is read, which takes a few seconds a page. */
   const [reading, setReading] = useState<string | null>(null);
   const [making, setMaking] = useState<'pdf' | 'xlsx' | null>(null);
-  const [adding, setAdding] = useState({ description: '', quantity: 1, unitPrice: 0 });
   const fileInput = useRef<HTMLInputElement>(null);
   useEffect(() => {
     try {
@@ -301,6 +327,64 @@ export function OldInvoiceSection() {
     set({
       lines: draft.lines.map((l) => (l.id === id && l.kind === 'item' ? { ...l, ...patch } : l)),
     });
+  /** Items picked from the catalogue (or read from a message), priced as on a new quote. */
+  const addItems = (picked: QuoteLine[]) => {
+    const priced = buildInvoice(
+      quoteCatalogue.invoiceInputs(picked),
+      quoteCatalogue.priceOf,
+      pricing,
+    );
+    const added = priced.rows.flatMap((r): Line[] =>
+      r.kind === 'item'
+        ? [
+            {
+              id: newId('room'),
+              kind: 'item',
+              description: r.description,
+              quantity: r.quantity,
+              unitPrice: r.unitPrice ?? 0,
+            },
+          ]
+        : [],
+    );
+    if (!added.length) return 0;
+    setDraft((d) => (d ? { ...d, lines: addToSection(d.lines, ADDED, added) } : d));
+    if (priced.unpriced.length)
+      toast({
+        title: `No price yet for ${priced.unpriced.join(', ')}`,
+        body: 'Type its unit price in the invoice lines, or set it in Catalogue.',
+        tone: 'danger',
+      });
+    return added.length;
+  };
+  const addExtras = (extras: ExtraLine[], title: string) =>
+    setDraft((d) =>
+      d
+        ? {
+            ...d,
+            lines: addToSection(
+              d.lines,
+              title,
+              extras.map((l) => ({
+                id: newId('room'),
+                kind: 'item' as const,
+                description: l.description,
+                quantity: l.quantity,
+                unitPrice: l.unitPrice,
+              })),
+            ),
+          }
+        : d,
+    );
+  const readMessage = () => {
+    const { lines, unread } = quoteCatalogue.readMessage(draft.message ?? '', pricing);
+    const n = addItems(lines);
+    set({ unread, ...(n ? { message: '' } : {}) });
+    toast({
+      title: n ? `Added ${n} ${n === 1 ? 'line' : 'lines'}` : 'No products found in the message',
+      body: n ? `Under “${ADDED}”, priced as on a new quote.` : undefined,
+    });
+  };
 
   const download = async (kind: 'pdf' | 'xlsx') => {
     setMaking(kind);
@@ -375,6 +459,40 @@ export function OldInvoiceSection() {
               ? ` It asked for a deposit of ${money(draft.issued.deposit.due)}.`
               : ''}
         </p>
+        <Field
+          label="Items to add (client’s message)"
+          hint="Anything added since, as the client wrote it. It’s priced as on a new quote."
+        >
+          <Textarea
+            rows={3}
+            value={draft.message ?? ''}
+            placeholder={'e.g. add 2 more switches\n10m LED strip for the living room'}
+            onChange={(e) => set({ message: e.target.value })}
+          />
+        </Field>
+        <Button
+          icon={<Sparkles className="size-4" />}
+          disabled={!draft.message?.trim()}
+          onClick={readMessage}
+        >
+          Add from message
+        </Button>
+        {(draft.unread?.length ?? 0) > 0 && (
+          <div
+            role="alert"
+            className="flex gap-2 border-l-[3px] border-warn bg-warn-tint px-3 py-2 text-control text-ink"
+          >
+            <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-warn" />
+            <div>
+              <p className="font-semibold">Not recognised, add these by hand if needed:</p>
+              <ul className="mt-1 list-disc pl-4">
+                {draft.unread!.map((u) => (
+                  <li key={u}>{u}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-3">
           <Field label="Client’s name">
             <Input value={draft.clientName} onChange={(e) => set({ clientName: e.target.value })} />
@@ -385,6 +503,9 @@ export function OldInvoiceSection() {
               value={draft.clientContact}
               onChange={(e) => set({ clientContact: e.target.value })}
             />
+          </Field>
+          <Field label="Invoice number" className="col-span-2">
+            <Input value={draft.number} onChange={(e) => set({ number: e.target.value })} />
           </Field>
         </div>
         <Field label="This invoice is for">
@@ -410,15 +531,30 @@ export function OldInvoiceSection() {
             ]}
           />
         </Field>
-        <Field label="Invoice number">
-          <Input value={draft.number} onChange={(e) => set({ number: e.target.value })} />
-        </Field>
-        {draft.stage !== 'deposit' && (
+        <div className="grid grid-cols-2 gap-3">
           <Field
-            label="Already paid (S$)"
-            hint={`Suggested ${money(amounts.suggestedPaid)} (${amounts.suggestedFrom}); change it to what was collected.`}
+            label="Deposit (%)"
+            hint={
+              draft.depositPercent === undefined
+                ? 'As the old invoice asked; the terms follow it.'
+                : 'Changed; the terms follow it.'
+            }
           >
-            <div className="flex items-center gap-2">
+            <NumberField
+              compact
+              live
+              min={0}
+              max={100}
+              precision={2}
+              value={pricing.depositPercent}
+              aria-label="Deposit (%)"
+              onChange={(v) =>
+                set({ depositPercent: v === null || v === askedPercent ? undefined : v })
+              }
+            />
+          </Field>
+          {draft.stage !== 'deposit' && (
+            <Field label="Already paid (S$)">
               <NumberField
                 compact
                 live
@@ -428,13 +564,22 @@ export function OldInvoiceSection() {
                 aria-label="Already paid (S$)"
                 onChange={(v) => set({ paid: v ?? 0 })}
               />
-              {draft.paid !== undefined && (
-                <Button size="sm" variant="ghost" onClick={() => set({ paid: undefined })}>
-                  Use suggested
-                </Button>
-              )}
-            </div>
-          </Field>
+            </Field>
+          )}
+        </div>
+        {draft.stage !== 'deposit' && (
+          <p className="-mt-2 text-meta text-ink-2">
+            Suggested {money(amounts.suggestedPaid)} ({amounts.suggestedFrom}).{' '}
+            {draft.paid !== undefined && (
+              <button
+                type="button"
+                className="font-medium text-ink underline"
+                onClick={() => set({ paid: undefined })}
+              >
+                Use suggested
+              </button>
+            )}
+          </p>
         )}
         <div className="border-l-[3px] border-brass bg-brass-tint px-3 py-2.5">
           <p className="text-meta text-ink-2">{STAGE_LABEL[draft.stage]} due</p>
@@ -449,119 +594,105 @@ export function OldInvoiceSection() {
                 : `Balance of ${money(invoice.total)}, less ${money(amounts.paid)} paid`}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button icon={<Copy className="size-4" />} onClick={() => void copy()}>
-            Copy as text
-          </Button>
-          <Button
-            icon={<Download className="size-4" />}
-            loading={making === 'xlsx'}
-            onClick={() => void download('xlsx')}
-          >
-            Download invoice (Excel)
-          </Button>
-          <Button
-            variant="primary"
-            icon={<Download className="size-4" />}
-            loading={making === 'pdf'}
-            onClick={() => void download('pdf')}
-          >
-            Download invoice (PDF)
-          </Button>
-        </div>
       </section>
 
-      <section aria-label="Invoice lines" className="flex min-w-0 flex-col gap-3">
-        <h2 className="border-b border-rule pb-1.5 text-section text-ink">Invoice lines</h2>
-        <p className="text-meta text-ink-2">
-          As invoiced. Change a quantity or unit price, or give a discount (S$ or %), for items
-          added or changed since; the total and the payment due follow.
-        </p>
-        <QuotationTable
-          base={base}
-          invoice={invoice}
-          edits={draft.edits}
-          onEdit={(key, patch) => set({ edits: withRowEdit(draft.edits, key, patch) })}
-          onQuantity={(key, quantity) => updateLine(key, { quantity })}
-          onRemove={(key) => set({ lines: draft.lines.filter((l) => l.id !== key) })}
-          depositPercent={pricing.depositPercent}
-          showDeposit={draft.stage === 'deposit'}
-          footer={
-            draft.stage !== 'deposit' && (
-              <>
-                <tr>
-                  <td colSpan={4} className="py-1 text-right text-ink-2">
-                    Already paid
-                  </td>
-                  <td className="tnum py-1 text-right text-ink-2">{money(-amounts.paid)}</td>
-                </tr>
-                <tr>
-                  <td colSpan={4} className="py-1 text-right font-semibold text-ink">
-                    {STAGE_LABEL[draft.stage]} due
-                  </td>
-                  <td className="tnum py-1 text-right text-body font-semibold text-ink">
-                    {money(amounts.due)}
-                  </td>
-                </tr>
-              </>
-            )
-          }
-        />
-        {/* Items added since the old invoice. */}
-        <div className="grid grid-cols-[minmax(0,1fr)_90px_120px_auto] items-end gap-2">
-          <Field label="Add a line">
-            <Input
-              compact
-              placeholder="Description"
-              value={adding.description}
-              onChange={(e) => setAdding({ ...adding, description: e.target.value })}
-            />
-          </Field>
-          <NumberField
+      <div className="flex min-w-0 flex-col gap-6">
+        <section aria-label="Add items" className="flex flex-col gap-2">
+          <h2 className="border-b border-rule pb-1.5 text-section text-ink">Add items</h2>
+          <Select
             compact
-            aria-label="New line quantity"
-            min={0}
-            precision={1}
-            value={adding.quantity}
-            onChange={(v) => setAdding({ ...adding, quantity: v ?? 0 })}
-          />
-          <NumberField
-            compact
-            aria-label="New line unit price (S$)"
-            min={-100000}
-            precision={2}
-            unit="S$"
-            value={adding.unitPrice}
-            onChange={(v) => setAdding({ ...adding, unitPrice: v ?? 0 })}
+            aria-label="Add an item"
+            value=""
+            placeholder="+ Add an item…"
+            options={quoteCatalogue.options}
+            onChange={(variantId) =>
+              addItems([
+                { variantId, quantity: 1, unit: quoteCatalogue.unitOf(variantId), source: '' },
+              ])
+            }
           />
           <Button
-            icon={<Plus className="size-4" />}
-            disabled={!adding.description.trim()}
-            onClick={() => {
-              set({
-                lines: [
-                  ...draft.lines,
-                  {
-                    id: newId('room'),
-                    kind: 'item',
-                    ...adding,
-                    description: adding.description.trim(),
-                  },
-                ],
-              });
-              setAdding({ description: '', quantity: 1, unitPrice: 0 });
-            }}
+            size="sm"
+            icon={<Zap className="size-4" />}
+            className="self-start"
+            onClick={() => setAddingWorks(true)}
           >
-            Add
+            Add electrical works
           </Button>
-        </div>
-        {draft.lines.length === 0 && (
-          <p className="flex items-center gap-2 text-meta text-warn">
-            <TriangleAlert aria-hidden className="size-4" />
-            No lines left on this invoice.
+          <ElectricalWorksDialog
+            open={addingWorks}
+            onOpenChange={setAddingWorks}
+            onAdd={(added) => addExtras(added, 'Electrical works')}
+          />
+          <CustomItemForm onAdd={(line) => addExtras([line], ADDED)} />
+        </section>
+
+        <section aria-label="Invoice lines" className="flex min-w-0 flex-col gap-3">
+          <h2 className="border-b border-rule pb-1.5 text-section text-ink">Invoice lines</h2>
+          <p className="text-meta text-ink-2">
+            As invoiced, with anything added since. Change any line’s wording, quantity or unit
+            price, give a discount (S$ or %), or take it off; the total and the payment due follow.
           </p>
-        )}
-      </section>
+          <QuotationTable
+            base={base}
+            invoice={invoice}
+            edits={draft.edits}
+            onEdit={(key, patch) => set({ edits: withRowEdit(draft.edits, key, patch) })}
+            onQuantity={(key, quantity) => updateLine(key, { quantity })}
+            onRemove={(key) => set({ lines: draft.lines.filter((l) => l.id !== key) })}
+            renamable={() => true}
+            onDescription={(key, description) => updateLine(key, { description })}
+            depositPercent={pricing.depositPercent}
+            showDeposit={draft.stage === 'deposit'}
+            footer={
+              draft.stage !== 'deposit' && (
+                <>
+                  <tr>
+                    <td colSpan={4} className="py-1 text-right text-ink-2">
+                      Already paid
+                    </td>
+                    <td className="tnum py-1 text-right text-ink-2">{money(-amounts.paid)}</td>
+                  </tr>
+                  <tr>
+                    <td colSpan={4} className="py-1 text-right font-semibold text-ink">
+                      {STAGE_LABEL[draft.stage]} due
+                    </td>
+                    <td className="tnum py-1 text-right text-body font-semibold text-ink">
+                      {money(amounts.due)}
+                    </td>
+                  </tr>
+                </>
+              )
+            }
+          />
+          {draft.lines.length === 0 && (
+            <p className="flex items-center gap-2 text-meta text-warn">
+              <TriangleAlert aria-hidden className="size-4" />
+              No lines left on this invoice.
+            </p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <Button icon={<Copy className="size-4" />} onClick={() => void copy()}>
+              Copy as text
+            </Button>
+            <Button
+              icon={<Download className="size-4" />}
+              loading={making === 'xlsx'}
+              onClick={() => void download('xlsx')}
+            >
+              Download invoice (Excel)
+            </Button>
+            <Button
+              variant="primary"
+              icon={<Download className="size-4" />}
+              loading={making === 'pdf'}
+              onClick={() => void download('pdf')}
+            >
+              Download invoice (PDF)
+            </Button>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

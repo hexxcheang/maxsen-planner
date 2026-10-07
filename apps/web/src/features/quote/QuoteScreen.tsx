@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Copy,
   Download,
@@ -14,16 +14,11 @@ import {
   withExtraLines,
   type ExtraLine,
   buildInvoice,
-  categoryById,
-  CATEGORIES,
   invoiceNumber,
-  parseQuoteMessage,
   resolvePricing,
   stageAmounts,
   STAGE_LABEL,
   withDeposit,
-  withLedDrivers,
-  type InvoiceInputLine,
   type RowEdit,
   type QuoteLine,
 } from '@maxsen/domain';
@@ -41,13 +36,14 @@ import {
   useToast,
 } from '@/components/ui';
 import { Page } from '@/components/Page';
-import { useCatalogue, useSettings } from '@/lib/data/hooks';
+import { useSettings } from '@/lib/data/hooks';
 import { buildInvoiceXlsx } from '@/features/exports/build/invoice';
 import { buildQuotationPdf } from '@/features/exports/build/generate';
 import { QuotationTable } from './QuotationTable';
 import { OldInvoiceSection } from './OldInvoiceSection';
 import { ElectricalWorksDialog } from '@/features/electrical/ElectricalWorksDialog';
 import { CustomItemForm } from './CustomItemForm';
+import { useQuoteCatalogue } from './useQuoteCatalogue';
 import { money, quotationText, withRowEdit } from './quotation';
 import { copyText } from '@/lib/clipboard';
 
@@ -114,7 +110,6 @@ export function QuoteScreen() {
       // Not kept across reloads.
     }
   };
-  const { data: catalogue } = useCatalogue();
   const { data: settings } = useSettings();
   const { toast } = useToast();
   const listPricing = resolvePricing(settings);
@@ -130,44 +125,11 @@ export function QuoteScreen() {
     }
   }, [draft]);
 
-  const products = useMemo(
-    () => new Map(catalogue.products.map((p) => [p.id, p])),
-    [catalogue.products],
-  );
-  const variants = useMemo(
-    () => new Map(catalogue.variants.map((v) => [v.id, v])),
-    [catalogue.variants],
-  );
-  const order = (categoryId: string) => CATEGORIES.findIndex((c) => c.id === categoryId);
-  // Everything that can be quoted: visible products, plus the drivers.
-  const options = catalogue.variants
-    .flatMap((v) => {
-      const p = products.get(v.productId);
-      if (!p || v.hidden || (p.hidden && !p.system)) return [];
-      return [{ v, p }];
-    })
-    .sort(
-      (a, b) =>
-        order(a.p.categoryId) - order(b.p.categoryId) ||
-        a.p.sortOrder - b.p.sortOrder ||
-        a.v.sortOrder - b.v.sortOrder,
-    )
-    .map(({ v, p }) => ({
-      value: v.id,
-      label: `${categoryById(p.categoryId).name} · ${p.name}, ${v.name}`,
-    }));
-  const unitOf = (variantId: string): 'pcs' | 'm' => {
-    const p = products.get(variants.get(variantId)?.productId ?? '');
-    return p?.categoryId === 'led-strips' ? 'm' : 'pcs';
-  };
+  const { options, variants, unitOf, readMessage, invoiceInputs, priceOf } = useQuoteCatalogue();
 
   const read = () => {
-    const parsed = parseQuoteMessage(draft.message, catalogue, {
-      preferred: settings.favouriteVariantIds,
-    });
-    const metresPerDriver = pricing.led.packageMetres / Math.max(1, pricing.led.packageDrivers);
-    const lines = withLedDrivers(parsed.lines, metresPerDriver);
-    set({ lines, unread: parsed.unread });
+    const { lines, unread } = readMessage(draft.message, pricing);
+    set({ lines, unread });
     toast({
       title: lines.length
         ? `Read ${lines.length} ${lines.length === 1 ? 'item' : 'items'}`
@@ -176,23 +138,8 @@ export function QuoteScreen() {
     });
   };
 
-  const inputs: InvoiceInputLine[] = draft.lines.flatMap((l) => {
-    const v = variants.get(l.variantId);
-    const p = v && products.get(v.productId);
-    if (!v || !p || l.quantity <= 0) return [];
-    return [
-      {
-        variantId: v.id,
-        categoryId: p.categoryId,
-        productName: p.name,
-        variantName: v.name,
-        unit: unitOf(v.id),
-        exportQuantity: l.quantity,
-      },
-    ];
-  });
   const base = withExtraLines(
-    buildInvoice(inputs, (id) => variants.get(id)?.price ?? null, pricing),
+    buildInvoice(invoiceInputs(draft.lines), priceOf, pricing),
     draft.extraLines,
     pricing.depositPercent,
   );

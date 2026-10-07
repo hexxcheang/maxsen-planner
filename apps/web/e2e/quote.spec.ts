@@ -78,10 +78,11 @@ test.describe('quick quote', () => {
     await own.getByRole('button', { name: 'Add' }).click();
     await expect(quote.getByText('Additional items', { exact: true })).toBeVisible();
     await expect.poll(amount).toBeCloseTo(beforeWorks + 170 + 90, 2);
-    const wording = quote.getByLabel('Description of Site visit and transprt');
+    await quote.getByRole('button', { name: 'Change wording of Site visit and transprt' }).click();
+    const wording = quote.getByLabel('Wording of Site visit and transprt');
     await wording.fill('Site visit and transport');
     await wording.press('Enter');
-    await expect(quote.getByLabel('Description of Site visit and transport')).toBeVisible();
+    await expect(quote.getByText('Site visit and transport')).toBeVisible();
 
     if (testInfo.project.name !== 'desktop') return;
     const [download] = await Promise.all([

@@ -5,6 +5,7 @@
  */
 import {
   applyRowEdits,
+  isRgbStripName,
   withExtraLines,
   buildInvoice,
   INVOICE_STAGES,
@@ -353,6 +354,27 @@ function bakePrintScale(ws: Worksheet, lastRow: number) {
 }
 
 /**
+ * A strip drawn on the plan as RGBCCT is still strip: its metres count as CCT strip (towards the
+ * package and add-on metres) as well as the RGBCCT upgrade. In a quick quote, by contrast, RGBCCT
+ * is just the add-on.
+ */
+function withDrawnRgbStrip(lines: ExportContext['lines']): ExportContext['lines'] {
+  return lines.flatMap((l) =>
+    l.categoryId === 'led-strips' && isRgbStripName(l.productName, l.variantName)
+      ? [
+          l,
+          {
+            ...l,
+            variantId: `${l.variantId}:cct`,
+            productName: l.productName.replace(/rgb\w*/gi, '').trim() || 'LED strip',
+            variantName: 'CCT',
+          },
+        ]
+      : [l],
+  );
+}
+
+/**
  * The invoice for a project: lines priced from the live catalogue and Admin › Pricing, with the
  * project's own unit prices and discounts.
  */
@@ -363,7 +385,7 @@ export function projectInvoice(
   const prices = new Map(ctx.variants.map((v) => [v.id, v.price ?? null]));
   // Before and after the unit prices and discounts set for this project.
   const base = withExtraLines(
-    buildInvoice(ctx.lines, (id) => prices.get(id) ?? null, pricing),
+    buildInvoice(withDrawnRgbStrip(ctx.lines), (id) => prices.get(id) ?? null, pricing),
     ctx.project.exportSettings.extraLines,
     pricing.depositPercent,
   );

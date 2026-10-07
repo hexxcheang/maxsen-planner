@@ -58,10 +58,32 @@ test.describe('old invoices', () => {
     const before = await amount();
     await lines.getByLabel(/^Quantity of Luna/).fill('16');
     await expect.poll(amount).toBeGreaterThan(before);
-    await lines.getByPlaceholder('Description').fill('Smart Doorbell');
-    await lines.getByLabel('New line unit price (S$)').fill('250');
-    await lines.getByRole('button', { name: 'Add', exact: true }).click();
+    const own = page.getByRole('form', { name: 'Add your own item' });
+    await own.getByLabel('Item description').fill('Smart Doorbell');
+    await own.getByLabel('Item unit price (S$)').fill('250');
+    await own.getByRole('button', { name: 'Add' }).click();
     await expect(lines.getByText('Smart Doorbell')).toBeVisible();
+
+    // Like a new quote: items from a client's message, and from the catalogue, priced the same.
+    await page.getByLabel('Items to add (client’s message)').fill('2 more switches');
+    await page.getByRole('button', { name: 'Add from message' }).click();
+    // Fewer than a package's worth: at the add-on rate per switch.
+    await expect(lines.getByText('Nova+ Pro, 2-gang, Black')).toBeVisible();
+    await expect(lines.getByLabel('Unit price of Nova+ Pro, 2-gang, Black')).toHaveValue('180');
+    // RGBCCT is only its add-on, S$6 a metre, with no strip of its own.
+    await page
+      .getByLabel('Add an item')
+      .selectOption({ label: 'LED Strips · Lumi Cove Strip, RGBCCT' });
+    const upgrade = 'Upgrade Per 1 Meter of LED Strip from CCT to RGBCCT';
+    await expect(lines.getByText(upgrade)).toBeVisible();
+    await expect(lines.getByLabel(`Unit price of ${upgrade}`)).toHaveValue('6');
+    await expect(lines.getByText(/Add-On Per 1 Meter of Smart Lumi/)).toHaveCount(0);
+    // Any line's wording can be changed.
+    await lines.getByRole('button', { name: `Change wording of ${upgrade}` }).click();
+    const wording = lines.getByLabel(`Wording of ${upgrade}`);
+    await wording.fill('RGBCCT upgrade for the living room cove');
+    await wording.press('Enter');
+    await expect(lines.getByText('RGBCCT upgrade for the living room cove')).toBeVisible();
     await page.screenshot({
       path: `test-results/screens/old-invoice-${testInfo.project.name}.png`,
       fullPage: true,

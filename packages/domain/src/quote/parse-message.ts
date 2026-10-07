@@ -267,8 +267,15 @@ export function parseQuoteMessage(
  * LED strips need drivers: one per `metresPerDriver` of strip (the LED package's ratio), unless the
  * message already asked for them.
  */
-export function withLedDrivers(lines: QuoteLine[], metresPerDriver: number): QuoteLine[] {
-  const metres = lines.filter((l) => l.unit === 'm').reduce((s, l) => s + l.quantity, 0);
+export function withLedDrivers(
+  lines: QuoteLine[],
+  metresPerDriver: number,
+  /** Strip lines that need no drivers of their own (the RGBCCT add-on). */
+  addOnOnly: (variantId: string) => boolean = () => false,
+): QuoteLine[] {
+  const metres = lines
+    .filter((l) => l.unit === 'm' && !addOnOnly(l.variantId))
+    .reduce((s, l) => s + l.quantity, 0);
   if (metres <= 0 || lines.some((l) => l.variantId === SYSTEM_VARIANT_IDS.smartLedDriver))
     return lines;
   return [

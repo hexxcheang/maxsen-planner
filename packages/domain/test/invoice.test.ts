@@ -142,23 +142,36 @@ describe('buildInvoice', () => {
     assert.equal(more.total, inv.total + 120 + 120);
   });
 
-  it('upgrades RGBCCT strip from the CCT package per metre', () => {
+  it('charges RGBCCT only as the upgrade per metre, adding no strip of its own', () => {
     const rgb = buildInvoice(
       [
-        line('var_lumi_cove_3000', 'led-strips', 20, 'm'),
-        { ...line('var_lumi_cove_rgbcct', 'led-strips', 12.5, 'm'), variantName: 'RGBCCT' },
+        line('var_lumi_cove_3000', 'led-strips', 30, 'm'),
+        { ...line('var_lumi_cove_rgbcct', 'led-strips', 30, 'm'), variantName: 'RGBCCT' },
         line(SYSTEM_VARIANT_IDS.smartLedDriver, 'misc-lighting', 6),
       ],
       priceOf,
       DEFAULT_PRICING,
     );
-    // Both strips share the 30 m package; only the RGBCCT metres are upgraded.
+    // The 30 m of CCT strip is the package; the RGBCCT adds only its upgrade.
     assert.equal(rgb.packages.led, 1);
+    assert.ok(!items(rgb).some((r) => /Per 1 Meter of Smart Lumi/.test(r.description)));
     const upgrade = items(rgb).find((r) => /CCT to RGBCCT/.test(r.description))!;
-    assert.equal(upgrade.quantity, 12.5);
+    assert.equal(upgrade.quantity, 30);
     assert.equal(upgrade.unitPrice, 6);
-    assert.equal(rgb.total, 988 + 2.5 * 18 + 12.5 * 6);
+    assert.equal(rgb.total, 988 + 30 * 6);
+
+    // On its own: just the add-on.
+    const alone = buildInvoice(
+      [{ ...line('var_lumi_cove_rgbcct', 'led-strips', 12, 'm'), variantName: 'RGBCCT' }],
+      priceOf,
+      DEFAULT_PRICING,
+    );
+    assert.deepEqual(
+      items(alone).map((r) => [r.quantity, r.unitPrice]),
+      [[12, 6]],
+    );
   });
+
 
   it('prices pieces individually below a package, and lists anything without a price', () => {
     const few = buildInvoice(

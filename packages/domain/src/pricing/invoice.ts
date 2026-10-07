@@ -8,6 +8,11 @@ import { SYSTEM_VARIANT_IDS, type CategoryId } from '../categories.ts';
 import type { PricingSettings, SwitchPackage } from './pricing.ts';
 
 /** The parts of a Review totals line the invoice needs. */
+/** An RGBCCT strip (the add-on upgrade from CCT), by its product and variant names. */
+export function isRgbStripName(productName: string, variantName: string): boolean {
+  return /rgb/i.test(`${productName} ${variantName}`);
+}
+
 export interface InvoiceInputLine {
   variantId: string;
   categoryId: CategoryId;
@@ -144,15 +149,18 @@ export function buildInvoice(
   // --- lighting --------------------------------------------------------------------------------
   const lt = pricing.lights;
   const isLight = (l: InvoiceInputLine) => LIGHT_CATEGORIES.includes(l.categoryId);
-  const isStrip = (l: InvoiceInputLine) => l.categoryId === 'led-strips';
   const isDriver = (l: InvoiceInputLine) => l.variantId === SYSTEM_VARIANT_IDS.smartLedDriver;
-  /** Packages are CCT (white + warm) strip; RGBCCT strip is upgraded per metre. */
+  /**
+   * Packages are CCT (white + warm) strip. RGBCCT is an add-on per metre on top of strip already
+   * counted, so it adds no strip metres (or drivers) of its own.
+   */
   const isRgbStrip = (l: InvoiceInputLine) =>
-    isStrip(l) && /rgb/i.test(`${l.productName} ${l.variantName}`);
+    l.categoryId === 'led-strips' && isRgbStripName(l.productName, l.variantName);
+  const isStrip = (l: InvoiceInputLine) => l.categoryId === 'led-strips' && !isRgbStrip(l);
   const lights = qty(isLight);
   const metres = round(qty(isStrip));
   const drivers = qty(isDriver);
-  if (lights + metres + drivers > 0) rows.push({ kind: 'section', title: 'Lighting' });
+  if (lights + metres + drivers + qty(isRgbStrip) > 0) rows.push({ kind: 'section', title: 'Lighting' });
 
   const ltPackages = packagesFor(lights, lt.packageSize);
   if (ltPackages > 0) {
@@ -186,7 +194,8 @@ export function buildInvoice(
       true,
     );
   }
-  for (const l of lines.filter((x) => isStrip(x) || isDriver(x))) used.add(l.variantId);
+  for (const l of lines.filter((x) => isStrip(x) || isRgbStrip(x) || isDriver(x)))
+    used.add(l.variantId);
   item(
     'led-driver-addon',
     led.driverAddOnName,

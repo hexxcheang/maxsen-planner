@@ -1,7 +1,7 @@
-import type { ReactNode } from 'react';
-import { Trash2 } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
+import { PencilLine, Trash2 } from 'lucide-react';
 import { parseDiscount, type Invoice, type RowEdit } from '@maxsen/domain';
-import { IconButton, Input, NumberField } from '@/components/ui';
+import { IconButton, Input, NumberField, Textarea } from '@/components/ui';
 import { money } from './quotation';
 
 /**
@@ -44,6 +44,13 @@ export function QuotationTable({
   renamable?: (key: string) => boolean;
   showDeposit?: boolean;
 }) {
+  /** The row whose wording is being changed. */
+  const [editing, setEditing] = useState<string | null>(null);
+  const commit = (key: string, before: string, typed: string) => {
+    const text = typed.trim();
+    if (text && text !== before) onDescription?.(key, text);
+    setEditing(null);
+  };
   const listPrice = new Map(
     base.rows.flatMap((r) => (r.kind === 'item' ? [[r.key, r.unitPrice] as const] : [])),
   );
@@ -79,24 +86,43 @@ export function QuotationTable({
             <tr key={i} className="border-b border-rule align-top">
               <td className={row.highlight ? 'py-1.5 font-semibold text-ink' : 'py-1.5 text-ink'}>
                 <span className="flex items-start gap-1">
-                  {onDescription && renamable(row.key) ? (
-                    <Input
-                      compact
-                      aria-label={`Description of ${row.description}`}
-                      className="min-w-0 flex-1"
-                      defaultValue={row.description}
-                      onBlur={(e) => {
-                        const text = e.target.value.trim();
-                        if (text && text !== row.description) onDescription(row.key, text);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') e.currentTarget.blur();
-                      }}
-                    />
+                  {onDescription && editing === row.key ? (
+                    row.description.includes('\n') ? (
+                      // A package's lines stay lines.
+                      <Textarea
+                        autoFocus
+                        aria-label={`Wording of ${row.description.split('\n')[0]}`}
+                        className="min-w-0 flex-1 text-control"
+                        rows={Math.min(8, row.description.split('\n').length)}
+                        defaultValue={row.description}
+                        onBlur={(e) => commit(row.key, row.description, e.target.value)}
+                      />
+                    ) : (
+                      <Input
+                        autoFocus
+                        compact
+                        aria-label={`Wording of ${row.description}`}
+                        className="min-w-0 flex-1"
+                        defaultValue={row.description}
+                        onBlur={(e) => commit(row.key, row.description, e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') e.currentTarget.blur();
+                          if (e.key === 'Escape') setEditing(null);
+                        }}
+                      />
+                    )
                   ) : (
                     <span className="line-clamp-3 flex-1 whitespace-pre-line">
                       {row.description}
                     </span>
+                  )}
+                  {onDescription && renamable(row.key) && editing !== row.key && (
+                    <IconButton
+                      size="sm"
+                      label={`Change wording of ${row.description.split('\n')[0]}`}
+                      icon={<PencilLine className="size-4" />}
+                      onClick={() => setEditing(row.key)}
+                    />
                   )}
                   {onRemove && editable(row.key) && (
                     <IconButton

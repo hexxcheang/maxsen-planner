@@ -75,6 +75,18 @@ Thanks!`);
     assert.equal(asked.find((l) => l.variantId === SYSTEM_VARIANT_IDS.smartLedDriver)!.quantity, 2);
   });
 
+  it('adds no drivers for an add-on-only strip line (RGBCCT)', () => {
+    const lines = withLedDrivers(
+      [
+        { variantId: 'var_lumi_cove_3000', quantity: 10, unit: 'm', source: '' },
+        { variantId: 'var_lumi_cove_rgbcct', quantity: 30, unit: 'm', source: '' },
+      ],
+      5,
+      (id) => id === 'var_lumi_cove_rgbcct',
+    );
+    assert.equal(lines.find((l) => l.variantId === SYSTEM_VARIANT_IDS.smartLedDriver)!.quantity, 2);
+  });
+
   it('splits on lines, commas and joining words, without the list bullets', () => {
     assert.deepEqual(splitPhrases('1. 2 fans\n• 3 locks, 4 plugs and 5 cams'), [
       '2 fans',
