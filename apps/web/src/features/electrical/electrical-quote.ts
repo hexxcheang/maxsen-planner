@@ -60,7 +60,7 @@ export async function buildElectricalXlsx(
   const { default: ExcelJS } = await import('exceljs');
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('Electrical Quotation', {
-    pageSetup: { paperSize: 9, orientation: 'portrait', fitToPage: true, fitToWidth: 1 },
+    pageSetup: { paperSize: 9, orientation: 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0 },
   });
   ws.columns = [
     { width: 7 },

@@ -17,7 +17,7 @@ import {
   type Project,
   type StageAmounts,
 } from '@maxsen/domain';
-import type { Style as ExcelStyle } from 'exceljs';
+import type { Cell, Font, Style as ExcelStyle, Worksheet } from 'exceljs';
 import { buildQuotationPdf, type ExportContext } from './generate';
 
 const TEMPLATE_URL = '/templates/invoice-template.xlsx';
@@ -152,6 +152,8 @@ export async function buildInvoiceXlsx({
     COLS.forEach((col, i) => {
       const cell = ws.getCell(`${col}${r}`);
       cell.style = structuredClone(styles[kind].cells[i]!);
+      // Amounts sit level with the middle of tall description rows.
+      if (i >= 3) cell.alignment = { ...cell.alignment, vertical: 'middle' };
       const v = values[i];
       if (v !== undefined) cell.value = v as never;
     });
@@ -238,7 +240,7 @@ export async function buildInvoiceXlsx({
   const emphasise = (row: number) => {
     ws.getRow(row).height = 26;
     for (const [col, size] of [
-      ['E', 12],
+      ['E', 11],
       ['F', 14],
     ] as const) {
       const cell = ws.getCell(`${col}${row}`);
@@ -298,11 +300,56 @@ export async function buildInvoiceXlsx({
   );
   merge(bank, 'A', 'F');
 
+  bakePrintScale(ws, bank);
   ws.pageSetup.printArea = `A1:F${bank}`;
   const buf = await wb.xlsx.writeBuffer();
   return new Blob([buf], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   });
+}
+
+/** The template prints at 69%, which only Excel and LibreOffice honour. */
+const PRINT_SCALE = 0.69;
+
+/**
+ * Shrink the sheet itself to its printed size, so it fits one A4 page across at 100% — in apps
+ * that ignore the print scale and fit-to-width (Google Sheets, Numbers, tablet viewers), the
+ * columns otherwise spill onto extra pages.
+ */
+function bakePrintScale(ws: Worksheet, lastRow: number) {
+  const k = PRINT_SCALE;
+  const shrink = (font: Partial<Font> | undefined) =>
+    font ? { ...font, size: Math.round((font.size ?? 11) * k * 2) / 2 } : font;
+  for (let c = 1; c <= 9; c++) {
+    const col = ws.getColumn(c);
+    if (col.width) col.width = col.width * k;
+  }
+  // Cells can share one style object, so read every font before writing any back.
+  const cells: { cell: Cell; font: Partial<Font> | undefined }[] = [];
+  for (let r = 1; r <= lastRow; r++) {
+    const row = ws.getRow(r);
+    row.height = (row.height || 15) * k;
+    row.eachCell({ includeEmpty: true }, (cell) => {
+      if (cell.isMerged && cell.master !== cell) return;
+      cells.push({ cell, font: cell.font ? { ...cell.font } : undefined });
+    });
+  }
+  for (const { cell, font } of cells) {
+    cell.style = { ...cell.style, font: shrink(font ?? { size: 11 }) };
+    const v = cell.value;
+    if (v && typeof v === 'object' && 'richText' in v) {
+      cell.value = { richText: v.richText.map((run) => ({ ...run, font: shrink(run.font) })) };
+    }
+  }
+  ws.pageSetup = {
+    ...ws.pageSetup,
+    scale: 100,
+    fitToPage: true,
+    fitToWidth: 1,
+    fitToHeight: 0,
+    margins: { left: 0.4, right: 0.4, top: 0.5, bottom: 0.5, header: 0.3, footer: 0.3 },
+  };
+  ws.views = ws.views.map((v) => ({ ...v, zoomScale: 100, zoomScaleNormal: 100 }));
 }
 
 /**
