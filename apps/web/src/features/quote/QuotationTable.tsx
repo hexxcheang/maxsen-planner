@@ -18,6 +18,8 @@ export function QuotationTable({
   onQuantity,
   onRemove,
   editable = () => true,
+  onDescription,
+  renamable = () => false,
   showDeposit = true,
 }: {
   base: Invoice;
@@ -33,6 +35,10 @@ export function QuotationTable({
   onRemove?: (key: string) => void;
   /** Which rows' quantity can be changed and the row taken off (all, by default). */
   editable?: (key: string) => boolean;
+  /** Changes a row's wording (items typed in by hand). */
+  onDescription?: (key: string, text: string) => void;
+  /** Which rows' wording can be changed (none, by default). */
+  renamable?: (key: string) => boolean;
   showDeposit?: boolean;
 }) {
   const listPrice = new Map(
@@ -70,7 +76,25 @@ export function QuotationTable({
             <tr key={i} className="border-b border-rule align-top">
               <td className={row.highlight ? 'py-1.5 font-semibold text-ink' : 'py-1.5 text-ink'}>
                 <span className="flex items-start gap-1">
-                  <span className="line-clamp-3 flex-1 whitespace-pre-line">{row.description}</span>
+                  {onDescription && renamable(row.key) ? (
+                    <Input
+                      compact
+                      aria-label={`Description of ${row.description}`}
+                      className="min-w-0 flex-1"
+                      defaultValue={row.description}
+                      onBlur={(e) => {
+                        const text = e.target.value.trim();
+                        if (text && text !== row.description) onDescription(row.key, text);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') e.currentTarget.blur();
+                      }}
+                    />
+                  ) : (
+                    <span className="line-clamp-3 flex-1 whitespace-pre-line">
+                      {row.description}
+                    </span>
+                  )}
                   {onRemove && editable(row.key) && (
                     <IconButton
                       size="sm"

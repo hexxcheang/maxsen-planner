@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   applyPriceEdits,
   buildInvoice,
+  withExtraLines,
   invoiceNumber,
   type InvoiceInputLine,
 } from '../src/pricing/invoice.ts';
@@ -123,6 +124,22 @@ describe('buildInvoice', () => {
     assert.equal(find(/Add On Per Luna/)!.quantity, 2);
     assert.equal(find(/Per Smart Control \+ Driver/)!.quantity, 1);
     assert.equal(find(/Per 1 Meter/)!.quantity, 4.5);
+  });
+
+  it('adds electrical works and your own items under their own headings', () => {
+    const inv = buildInvoice([line('var_luna_dl_3000', 'downlights', 2)], priceOf, DEFAULT_PRICING);
+    const more = withExtraLines(
+      inv,
+      [
+        { id: 'a', description: 'Feature wall shelf', quantity: 1, unitPrice: 120, custom: true },
+        { id: 'b', description: 'Isolator', quantity: 2, unitPrice: 60 },
+      ],
+      60,
+    );
+    const titles = more.rows.flatMap((r) => (r.kind === 'section' ? [r.title] : []));
+    assert.deepEqual(titles.slice(-2), ['Electrical works', 'Additional items']);
+    assert.equal(more.rows.at(-1)!.kind, 'note');
+    assert.equal(more.total, inv.total + 120 + 120);
   });
 
   it('upgrades RGBCCT strip from the CCT package per metre', () => {

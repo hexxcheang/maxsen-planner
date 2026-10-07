@@ -283,7 +283,10 @@ export function applyPriceEdits(
   };
 }
 
-/** A line added to an invoice by hand, e.g. electrical works from the Electrical rates. */
+/**
+ * A line added to an invoice by hand: electrical works from the Electrical rates, or an item of
+ * your own that isn't in the catalogue.
+ */
 export interface ExtraLine {
   id: string;
   description: string;
@@ -291,13 +294,17 @@ export interface ExtraLine {
   unitPrice: number;
   /** Where it comes from, e.g. the electrical rate's id, so the same item adds up. */
   sourceId?: string;
+  /** Typed in by hand ("Additional items"), rather than electrical works. */
+  custom?: boolean;
 }
 
 export const EXTRA_SECTION = 'Electrical works';
+export const CUSTOM_SECTION = 'Additional items';
 
 /**
- * The invoice with added lines under their own heading ("Electrical works"), before the warranty;
- * the total and deposit include them. Their rows' keys are `extra:<id>`.
+ * The invoice with added lines under their own headings ("Electrical works", then "Additional
+ * items"), before the warranty; the total and deposit include them. Their rows' keys are
+ * `extra:<id>`.
  */
 export function withExtraLines(
   invoice: Invoice,
@@ -306,16 +313,25 @@ export function withExtraLines(
 ): Invoice {
   const lines = (extras ?? []).filter((l) => l.quantity > 0);
   if (!lines.length) return invoice;
-  const added: InvoiceRow[] = [
-    { kind: 'section', title: EXTRA_SECTION },
-    ...lines.map((l): InvoiceRow => ({
-      kind: 'item',
-      key: `extra:${l.id}`,
-      description: l.description,
-      quantity: l.quantity,
-      unitPrice: l.unitPrice,
-    })),
-  ];
+  const added = (
+    [
+      [EXTRA_SECTION, lines.filter((l) => !l.custom)],
+      [CUSTOM_SECTION, lines.filter((l) => l.custom)],
+    ] as const
+  ).flatMap(([title, group]): InvoiceRow[] =>
+    group.length
+      ? [
+          { kind: 'section', title },
+          ...group.map((l): InvoiceRow => ({
+            kind: 'item',
+            key: `extra:${l.id}`,
+            description: l.description,
+            quantity: l.quantity,
+            unitPrice: l.unitPrice,
+          })),
+        ]
+      : [],
+  );
   const at = invoice.rows.findIndex((r) => r.kind === 'note');
   const rows =
     at < 0

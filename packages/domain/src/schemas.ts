@@ -144,6 +144,7 @@ export const exportSettingsSchema = z.object({
         quantity: z.number().finite().min(0),
         unitPrice: z.number().finite(),
         sourceId: z.string().optional(),
+        custom: z.boolean().optional(),
       }),
     )
     .optional(),

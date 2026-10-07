@@ -28,7 +28,9 @@ export function InvoiceOptions({ project, settings }: { project: Project; settin
   const lines = applyAdjustments(totals, project.quantityAdjustments);
   const [editing, setEditing] = useState(false);
   const [addingWorks, setAddingWorks] = useState(false);
-  const works = (project.exportSettings.extraLines ?? []).filter((l) => l.quantity > 0);
+  const works = (project.exportSettings.extraLines ?? []).filter(
+    (l) => l.quantity > 0 && !l.custom,
+  );
   const worksTotal = works.reduce((t, l) => t + l.quantity * l.unitPrice, 0);
   const { pricing, base, invoice, amounts, number } = projectPayment({
     lines,
@@ -162,7 +164,7 @@ export function InvoiceOptions({ project, settings }: { project: Project; settin
         </Button>
         <p className="text-meta text-ink-2">
           {edits === 0
-            ? 'At list prices. Change unit prices or give discounts, as in Quick quote.'
+            ? 'At list prices. Change unit prices, give discounts or add your own items, as in Quick quote.'
             : `${edits} ${edits === 1 ? 'row' : 'rows'} with your own price or discount${
                 discounts > 0 ? `, S$${formatMoney(discounts)} off in all` : ''
               }.`}

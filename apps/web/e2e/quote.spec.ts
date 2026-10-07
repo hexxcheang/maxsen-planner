@@ -70,6 +70,19 @@ test.describe('quick quote', () => {
     await expect(quote.getByText('Electrical works', { exact: true })).toBeVisible();
     await expect.poll(amount).toBeCloseTo(beforeWorks + 170, 2);
 
+    // An item of your own, typed in, under "Additional items"; its wording can be fixed after.
+    const own = page.getByRole('form', { name: 'Add your own item' });
+    await own.getByLabel('Item description').fill('Site visit and transprt');
+    await own.getByLabel('Item quantity').fill('2');
+    await own.getByLabel('Item unit price (S$)').fill('45');
+    await own.getByRole('button', { name: 'Add' }).click();
+    await expect(quote.getByText('Additional items', { exact: true })).toBeVisible();
+    await expect.poll(amount).toBeCloseTo(beforeWorks + 170 + 90, 2);
+    const wording = quote.getByLabel('Description of Site visit and transprt');
+    await wording.fill('Site visit and transport');
+    await wording.press('Enter');
+    await expect(quote.getByLabel('Description of Site visit and transport')).toBeVisible();
+
     if (testInfo.project.name !== 'desktop') return;
     const [download] = await Promise.all([
       page.waitForEvent('download'),
@@ -87,6 +100,7 @@ test.describe('quick quote', () => {
     });
     expect(sheet.find((r) => r.b.startsWith('Add-On Per Nova+ Pro'))?.e).toBe(150);
     expect(sheet.find((r) => r.b.startsWith('Discount 10%: Nova Package'))?.e).toBe(-199);
+    expect(sheet.find((r) => r.b === 'Site visit and transport')?.e).toBe(45);
 
     // And as a proposal-style PDF.
     const [pdfDownload] = await Promise.all([

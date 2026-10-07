@@ -43,6 +43,7 @@ import { buildQuotationPdf } from '@/features/exports/build/generate';
 import { QuotationTable } from './QuotationTable';
 import { OldInvoiceSection } from './OldInvoiceSection';
 import { ElectricalWorksDialog } from '@/features/electrical/ElectricalWorksDialog';
+import { CustomItemForm } from './CustomItemForm';
 import { money, quotationText, withRowEdit } from './quotation';
 import { copyText } from '@/lib/clipboard';
 
@@ -55,7 +56,7 @@ interface Draft {
   unread: string[];
   /** Hand-set prices and discounts per quotation row (by row key); discounts as typed. */
   edits: Record<string, RowEdit>;
-  /** Electrical works added from the Electrical rates. */
+  /** Electrical works added from the Electrical rates, and items typed in by hand. */
   extraLines: ExtraLine[];
 }
 
@@ -422,6 +423,9 @@ export function QuoteScreen() {
                   setDraft((d) => ({ ...d, extraLines: mergeExtraLines(d.extraLines, added) }))
                 }
               />
+              <CustomItemForm
+                onAdd={(line) => setDraft((d) => ({ ...d, extraLines: [...d.extraLines, line] }))}
+              />
             </section>
 
             {/* The quotation, priced as on the invoice. */}
@@ -440,6 +444,17 @@ export function QuoteScreen() {
                     }
                     depositPercent={pricing.depositPercent}
                     editable={(key) => key.startsWith('extra:')}
+                    renamable={(key) =>
+                      draft.extraLines.some((l) => l.custom && l.id === extraId(key))
+                    }
+                    onDescription={(key, description) =>
+                      setDraft((d) => ({
+                        ...d,
+                        extraLines: d.extraLines.map((l) =>
+                          l.id === extraId(key) ? { ...l, description } : l,
+                        ),
+                      }))
+                    }
                     onQuantity={(key, quantity) =>
                       setDraft((d) => ({
                         ...d,

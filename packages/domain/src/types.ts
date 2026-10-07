@@ -170,13 +170,14 @@ export interface ExportSettings {
   billing?: ProjectBilling;
   /** Hand-set unit prices and discounts on the invoice, by invoice row key. */
   priceEdits?: Record<string, { unitPrice?: number; discount?: string }>;
-  /** Lines added to the invoice by hand (electrical works). */
+  /** Lines added to the invoice by hand (electrical works, and items of your own). */
   extraLines?: {
     id: string;
     description: string;
     quantity: number;
     unitPrice: number;
     sourceId?: string;
+    custom?: boolean;
   }[];
 }
 

@@ -14,6 +14,7 @@ import { QuotationTable } from '@/features/quote/QuotationTable';
 import { money, quotationText, withRowEdit } from '@/features/quote/quotation';
 import { buildQuotationPdf } from './build/generate';
 import { ElectricalWorksDialog } from '@/features/electrical/ElectricalWorksDialog';
+import { CustomItemForm } from '@/features/quote/CustomItemForm';
 import { mergeExtraLines } from '@maxsen/domain';
 import { copyText } from '@/lib/clipboard';
 
@@ -88,7 +89,7 @@ export function InvoicePricesDialog({
       onOpenChange={onOpenChange}
       width="xl"
       title="Prices and discounts"
-      description="Quantities follow Review totals. Change a unit price, or type a discount as S$ (50) or a percentage (10%); it’s saved with the project and used on every invoice."
+      description="Quantities follow Review totals. Add your own items not in the catalogue, change a unit price, or type a discount as S$ (50) or a percentage (10%); it’s saved with the project and used on every invoice."
       footer={
         <>
           {Object.keys(edits).length > 0 && (
@@ -123,6 +124,15 @@ export function InvoicePricesDialog({
         </>
       }
     >
+      <div className="mb-4">
+        <CustomItemForm
+          onAdd={(line) =>
+            actions.updateExportSettings(project.id, (s) => {
+              s.extraLines = [...(s.extraLines ?? []), line];
+            })
+          }
+        />
+      </div>
       <QuotationTable
         base={base}
         invoice={invoice}
@@ -134,6 +144,15 @@ export function InvoicePricesDialog({
         }
         depositPercent={pricing.depositPercent}
         editable={isExtra}
+        renamable={(key) =>
+          (project.exportSettings.extraLines ?? []).some((l) => l.custom && l.id === extraId(key))
+        }
+        onDescription={(key, description) =>
+          actions.updateExportSettings(project.id, (s) => {
+            const l = s.extraLines?.find((x) => x.id === extraId(key));
+            if (l) l.description = description;
+          })
+        }
         onQuantity={(key, quantity) =>
           actions.updateExportSettings(project.id, (s) => {
             const l = s.extraLines?.find((x) => x.id === extraId(key));
