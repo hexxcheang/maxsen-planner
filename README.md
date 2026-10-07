@@ -55,8 +55,8 @@ states; `/dev/styleguide` (dev server only) shows every UI primitive and categor
    Downlights and surface lights snap into line with nearby lights as you place or drag them, and to
    even spacing once two or more share a line (magenta guides show it; hold Alt/Option to place freely).
    Undo/redo, Ctrl/Cmd+A, Delete, Esc. Live totals update as you go.
-   **Save for team** (top right of a project) puts it on the server for everyone; others find it
-   under **Saved by the team** on Projects and get later saves automatically (see `docs/hosting.md`).
+   Online, projects, the catalogue, prices and settings are shared with the whole team and saved
+   automatically; others find new projects under **Saved by the team** (see `docs/hosting.md`).
 5. **Review totals:** adjust export quantities; warnings if plans change afterwards.
 6. **Exports:** generate the marked floor plan PDF, the product description PDF and the quantity Excel
    file, one at a time or all together, then download them. The PDFs are laid out as a proposal: a

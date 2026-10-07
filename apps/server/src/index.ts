@@ -1,6 +1,6 @@
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildApp } from './app.ts';
@@ -28,15 +28,31 @@ const auth = createAuth({
 });
 
 // Projects saved for the team. On Render this is the persistent disk (DATA_DIR=/var/data).
-const shared = createSharedStore(
-  path.resolve(process.env.DATA_DIR ?? path.resolve(here, '../data')),
-);
+const dataDir = path.resolve(process.env.DATA_DIR ?? path.resolve(here, '../data'));
+const shared = createSharedStore(dataDir);
+
+/**
+ * On Render the app's own folder is replaced on every deploy; only a disk mounted into the
+ * service keeps files. Saves are safe there when the data folder is on such a disk (another
+ * device from the app's folder); elsewhere (your own computer) the folder simply stays.
+ */
+function onPersistentDisk(dir: string): boolean {
+  if (!process.env.RENDER) return true;
+  try {
+    mkdirSync(dir, { recursive: true });
+    return statSync(dir).dev !== statSync(here).dev;
+  } catch {
+    return false;
+  }
+}
+const persistent = onPersistentDisk(dataDir);
 
 export const app = buildApp({
   analyse: configured ? createAnalyser() : undefined,
   render,
   auth,
   shared,
+  persistent,
 });
 
 if (existsSync(webDist)) {
@@ -52,6 +68,10 @@ if (process.env.NODE_ENV !== 'test') {
       configured ? 'Magic Plan: ready' : 'Magic Plan: add ANTHROPIC_API_KEY to .env to enable it',
     );
     console.log(`Team saving: projects kept in ${shared.dir}`);
+    if (!persistent)
+      console.warn(
+        'WARNING: team saves are not on a persistent disk and will be lost on the next deploy. Add a Render disk at /var/data and set DATA_DIR=/var/data.',
+      );
     if (auth.required) console.log('Sign-in: checked on the server (PLANNER_PASSCODE)');
     console.log(
       render

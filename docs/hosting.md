@@ -27,31 +27,45 @@ Every push to `main` then updates the online app automatically.
 2. Chrome menu (⋮) › **Install app** (or **Add to home screen**). The Maxsen icon opens it full
    screen, and it keeps working with a weak or no connection.
 
-## Saving projects for the team
+## Shared with the whole team
 
-Each device keeps its work as it's made. To share a project, press **Save for team** at the top
-right of the project. Everyone else then sees it:
+Everyone signed in to the online app shares one set of projects, catalogue, prices, settings and
+templates. There's no Save button to remember:
 
-- A project they don't have yet is listed on **Projects** under **Saved by the team**; **Open**
-  brings it to their device with its drawings.
-- A project they have opens at the latest save automatically, if they haven't changed it since.
-  If they have, **Newer from …** offers to load the other version instead of theirs.
-- Saving over someone's newer save asks first, so work isn't lost by accident.
+- **Projects save by themselves** about 15 seconds after you stop editing, and at once when you
+  leave the app. The top bar of a project says **Saved for team** (or **Save now** while a save is
+  waiting; tap it to save at once). Drawings upload once; later saves send only the project.
+- **Projects someone else saved** are listed on **Projects** under **Saved by the team**; **Open**
+  brings one to your device with its drawings. Projects you already have update by themselves when
+  you haven't changed them.
+- **Two people changing the same project** at once doesn't overwrite anyone: the project shows
+  **"… also changed this"**, and you choose whose version to keep.
+- **The catalogue, prices (Admin › Pricing), settings and templates** are shared the same way. The
+  first time a device connects with a catalogue different from the team's, it asks which to use;
+  normally choose **Use the team's**.
+- **Deleting a shared project** deletes it for everyone. The server keeps a copy in its `trash`
+  folder, so it can be recovered.
+- Each device asks once for a name, shown with each save. Sample projects stay on each device.
 
-The first save on each device asks for a name, shown with each save. The catalogue, prices and
-settings stay per device (Admin on each one).
+Cost: saving adds next to nothing on Render. The plan is a flat monthly price; a project is a few
+hundred KB at most, and drawings upload only once.
 
-The saved projects are kept on the service's **disk** (`/var/data`). Without one they are wiped on
-every deploy, so check it is there once:
+### Keeping the team's work through updates (important)
+
+Everything shared is kept on the service's **disk** at `/var/data`. Without a disk, Render starts
+each update on an empty folder and **every shared project and the shared catalogue are lost**. If
+the disk is missing, the app shows a yellow warning at the top of every page. To add it (once):
 
 - Created from the Blueprint: Render adds it when it syncs `render.yaml` (check **Disks**).
 - Created earlier, or by hand: Render › your service › **Disks** › **Add disk**, name
-  `maxsen-data`, mount path `/var/data`, size 1 GB. Then **Environment** › add `DATA_DIR` =
-  `/var/data`, and save (it redeploys). A disk needs a paid instance (Starter); with a disk,
-  each deploy has a few seconds of downtime.
+  `maxsen-data`, mount path `/var/data`, size 1 GB (about US$0.25 a month). Then **Environment** ›
+  add `DATA_DIR` = `/var/data`, and save (it redeploys). A disk needs a paid instance (Starter);
+  with a disk, each deploy has a few seconds of downtime.
+
+After that, updates (every push to `main`) keep all projects, the catalogue and settings. Each
+device also keeps its own copy in its browser.
 
 ## Good to know
 
-- Projects not saved for the team stay on the device they were made on.
 - Optional: your own address, e.g. `planner.maxsen.sg` (Render › Settings › Custom Domains).
 - Change the passcode in Render › Environment; everyone signs in again.

@@ -119,7 +119,11 @@ export function ProjectRow({ project }: { project: Project }) {
       <ConfirmDialog
         open={confirming}
         title="Delete project"
-        body={`Delete ${project.title}? This permanently removes the project and its plans.`}
+        body={
+          project.shared
+            ? `Delete ${project.title}? It’s shared, so it goes for everyone on the team, with its plans. (The server keeps a copy in its trash folder.)`
+            : `Delete ${project.title}? This permanently removes the project and its plans.`
+        }
         confirmLabel="Delete project"
         destructive
         onCancel={() => setConfirming(false)}

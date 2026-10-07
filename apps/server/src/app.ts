@@ -37,6 +37,20 @@ const saveBody = z.object({
     .passthrough(),
 });
 
+const workspaceBody = z.object({
+  baseVersion: z.number().int().min(0),
+  savedBy: z.string().trim().min(1).max(80),
+  force: z.boolean().optional(),
+  workspace: z
+    .object({
+      products: z.array(z.unknown()),
+      variants: z.array(z.unknown()),
+      settings: z.object({}).passthrough(),
+      templates: z.array(z.unknown()),
+    })
+    .passthrough(),
+});
+
 /** Drawings are rasterised pages and PDFs; anything bigger is refused. */
 const MAX_FILE_BYTES = 60 * 1024 * 1024;
 
@@ -51,7 +65,15 @@ export function buildApp({
   render,
   auth = createAuth({}),
   shared,
-}: { analyse?: Analyser; render?: Renderer; auth?: Auth; shared?: SharedStore } = {}) {
+  persistent = true,
+}: {
+  analyse?: Analyser;
+  render?: Renderer;
+  auth?: Auth;
+  shared?: SharedStore;
+  /** Whether the team's saves survive a redeploy (on Render: kept on a disk). */
+  persistent?: boolean;
+} = {}) {
   const app = new Hono();
 
   app.use('/api/*', auth.guard());
@@ -101,7 +123,9 @@ export function buildApp({
   });
 
   // --- projects saved for the team -----------------------------------------------------------
-  app.get('/api/shared/status', (c) => c.json({ enabled: Boolean(shared) }));
+  app.get('/api/shared/status', (c) =>
+    c.json({ enabled: Boolean(shared), persistent: shared ? persistent : false }),
+  );
 
   app.use('/api/shared/*', async (c, next) => {
     if (c.req.path === '/api/shared/status') return next();
@@ -113,7 +137,14 @@ export function buildApp({
     return next();
   });
 
-  app.get('/api/shared/projects', async (c) => c.json({ projects: await shared!.list() }));
+  // The list also says which version of the shared catalogue and settings is current, so devices
+  // only fetch those when they've changed.
+  app.get('/api/shared/projects', async (c) =>
+    c.json({
+      projects: await shared!.list(),
+      workspace: (await shared!.getWorkspace())?.meta ?? null,
+    }),
+  );
 
   app.get('/api/shared/projects/:id', async (c) => {
     const id = c.req.param('id');
@@ -133,6 +164,26 @@ export function buildApp({
       propertyAddress,
       status,
     });
+    return result.ok
+      ? c.json({ meta: result.meta })
+      : c.json({ error: 'conflict', meta: result.conflict }, 409);
+  });
+
+  app.delete('/api/shared/projects/:id', async (c) => {
+    const id = c.req.param('id');
+    if (!ID.test(id)) return c.json({ error: 'bad-request' }, 400);
+    return c.json({ removed: await shared!.remove(id) });
+  });
+
+  app.get('/api/shared/workspace', async (c) => {
+    const found = await shared!.getWorkspace();
+    return found ? c.json(found) : c.json({ error: 'not-found' }, 404);
+  });
+
+  app.put('/api/shared/workspace', async (c) => {
+    const body = workspaceBody.safeParse(await c.req.json().catch(() => null));
+    if (!body.success) return c.json({ error: 'bad-request' }, 400);
+    const result = await shared!.saveWorkspace(body.data);
     return result.ok
       ? c.json({ meta: result.meta })
       : c.json({ error: 'conflict', meta: result.conflict }, 409);

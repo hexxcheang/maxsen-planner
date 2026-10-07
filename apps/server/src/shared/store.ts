@@ -20,6 +20,16 @@ export interface SharedProject {
   bundle: unknown;
 }
 
+/** Who saved the team's catalogue, prices and settings, and when. */
+export interface WorkspaceMeta {
+  version: number;
+  savedAt: string;
+  savedBy: string;
+}
+
+export type WorkspaceResult =
+  { ok: true; meta: WorkspaceMeta } | { ok: false; conflict: WorkspaceMeta };
+
 export type SaveResult = { ok: true; meta: SharedMeta } | { ok: false; conflict: SharedMeta };
 
 /** Project and file ids as the app makes them: a prefix, an underscore and letters or digits. */
@@ -32,9 +42,12 @@ export const ID = /^[a-z]+_[A-Za-z0-9]{4,40}$/;
 export function createSharedStore(dir: string) {
   const projects = path.join(dir, 'projects');
   const files = path.join(dir, 'files');
+  const trash = path.join(dir, 'trash');
+  const workspaceFile = path.join(dir, 'workspace.json');
   const ready = Promise.all([
     mkdir(projects, { recursive: true }),
     mkdir(files, { recursive: true }),
+    mkdir(trash, { recursive: true }),
   ]);
   // Saves run one at a time, so two at once can't both pass the version check.
   let queue: Promise<unknown> = Promise.resolve();
@@ -54,6 +67,19 @@ export function createSharedStore(dir: string) {
     await ready;
     try {
       return JSON.parse(await readFile(path.join(projects, `${id}.json`), 'utf8')) as SharedProject;
+    } catch {
+      return null;
+    }
+  };
+
+  /** The team's catalogue, prices, settings and templates, as last saved. */
+  const getWorkspace = async (): Promise<{ meta: WorkspaceMeta; workspace: unknown } | null> => {
+    await ready;
+    try {
+      return JSON.parse(await readFile(workspaceFile, 'utf8')) as {
+        meta: WorkspaceMeta;
+        workspace: unknown;
+      };
     } catch {
       return null;
     }
@@ -100,6 +126,41 @@ export function createSharedStore(dir: string) {
           path.join(projects, `${id}.json`),
           JSON.stringify({ meta, bundle: input.bundle } satisfies SharedProject),
         );
+        return { ok: true, meta };
+      });
+    },
+
+    /** Takes a project off the team list, keeping it in the trash folder in case it's wanted. */
+    remove(id: string): Promise<boolean> {
+      return serial(async () => {
+        await ready;
+        const file = path.join(projects, `${id}.json`);
+        if (!existsSync(file)) return false;
+        await rename(file, path.join(trash, `${id}.${Date.now()}.json`));
+        return true;
+      });
+    },
+
+    getWorkspace,
+
+    /** Saves the workspace over version `baseVersion`, as projects are saved. */
+    saveWorkspace(input: {
+      baseVersion: number;
+      savedBy: string;
+      workspace: unknown;
+      force?: boolean;
+    }): Promise<WorkspaceResult> {
+      return serial(async () => {
+        const current = await getWorkspace();
+        const version = current?.meta.version ?? 0;
+        if (current && version !== input.baseVersion && !input.force)
+          return { ok: false, conflict: current.meta };
+        const meta: WorkspaceMeta = {
+          version: version + 1,
+          savedAt: new Date().toISOString(),
+          savedBy: input.savedBy,
+        };
+        await writeAtomic(workspaceFile, JSON.stringify({ meta, workspace: input.workspace }));
         return { ok: true, meta };
       });
     },

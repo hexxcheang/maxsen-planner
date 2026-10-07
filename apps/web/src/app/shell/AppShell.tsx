@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Outlet } from 'react-router';
 import { NavRail } from './NavRail';
 import { TopBar } from './TopBar';
+import { TeamSync } from './TeamSync';
 import { TopBarContext, type TopBarTargets } from './topbar-context';
 
 export function AppShell() {
@@ -19,6 +20,7 @@ export function AppShell() {
         <NavRail />
         <div className="flex min-w-0 flex-1 flex-col">
           <TopBar leftRef={refs.left} centerRef={refs.center} rightRef={refs.right} />
+          <TeamSync />
           <main id="main" className="relative min-h-0 flex-1 overflow-y-auto">
             <Outlet />
           </main>

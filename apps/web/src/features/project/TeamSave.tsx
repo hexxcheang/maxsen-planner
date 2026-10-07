@@ -1,229 +1,128 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { CloudDownload, CloudUpload, Check } from 'lucide-react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
+import { Check, CloudOff, CloudUpload, TriangleAlert } from 'lucide-react';
 import type { Project } from '@maxsen/domain';
-import { Button, ConfirmDialog, Dialog, Field, Input, useToast } from '@/components/ui';
+import { Button, Dialog, useToast } from '@/components/ui';
 import { useStoreContext } from '@/lib/data/store-context';
 import { formatUpdated } from '@/lib/format';
-import {
-  changedHere,
-  loadShared,
-  saveShared,
-  savedByName,
-  setSavedByName,
-  SharedError,
-  type SharedMeta,
-} from '@/lib/shared/api';
-import { refreshShared, useNow, useSharedList } from '@/lib/shared/useShared';
+import { changedHere } from '@/lib/shared/api';
+import { resolveConflict, saveNow, useNow, useTeamSync } from '@/lib/shared/useShared';
 
 /**
- * Saves the project for the whole team, and brings in a newer copy someone else saved. Work is
- * still kept on this device as it's made; this is what others see when they open the project.
+ * The project's team copy at a glance, in the top bar. Saving is automatic; this says where it
+ * stands, saves at once on a tap, and asks whose version to keep when someone else saved the
+ * project while it was changed here too.
  */
 export function TeamSave({ project }: { project: Project }) {
   const { store } = useStoreContext();
   const { toast } = useToast();
-  const { enabled, projects } = useSharedList();
+  const sync = useTeamSync();
   const now = useNow();
-  const remote = projects.find((p) => p.id === project.id);
   const state = useSyncExternalStore(
     (l) => store.subscribe(l),
     () => store.getState(),
   );
-  const [dirty, setDirty] = useState(() => changedHere(store, project.id));
-  const [busy, setBusy] = useState<'save' | 'load' | null>(null);
-  const [askName, setAskName] = useState(false);
-  const [conflict, setConflict] = useState<SharedMeta | null>(null);
-  const [offerLoad, setOfferLoad] = useState(false);
-  const autoLoaded = useRef(0);
-
+  const [pending, setPending] = useState(() => changedHere(store, project.id));
+  const [choosing, setChoosing] = useState(false);
+  const [busy, setBusy] = useState(false);
   // Fingerprinting a project reads all of it, so wait for a pause in the editing.
   useEffect(() => {
-    const t = window.setTimeout(() => setDirty(changedHere(store, project.id)), 400);
+    const t = window.setTimeout(() => setPending(changedHere(store, project.id)), 400);
     return () => window.clearTimeout(t);
-  }, [state, store, project.id]);
+  }, [state, store, project.id, sync.lastSavedAt]);
 
-  const local = project.shared?.version ?? 0;
-  const newer = remote && remote.version > local ? remote : null;
+  if (!sync.enabled || project.id.startsWith('proj_sample')) return null;
+  const conflict = sync.conflicts[project.id];
 
-  const load = async (quiet = false) => {
-    setBusy('load');
+  const keep = async (which: 'theirs' | 'mine') => {
+    setBusy(true);
     try {
-      const meta = await loadShared(store, project.id);
-      setDirty(false);
+      await resolveConflict(project.id, which);
       toast({
-        title: quiet ? `Updated to ${meta.savedBy}’s latest save` : 'Loaded the team’s latest',
-        body: `Saved ${formatUpdated(meta.savedAt)}.`,
+        title:
+          which === 'theirs' ? `Loaded ${conflict?.savedBy}’s version` : 'Your version is saved',
+        body: which === 'theirs' ? undefined : 'Everyone now sees it.',
       });
+      setChoosing(false);
     } catch (e) {
       toast({
-        title: 'The latest couldn’t be loaded',
+        title: 'That didn’t go through',
         body: e instanceof Error ? e.message : undefined,
         tone: 'danger',
       });
     } finally {
-      setBusy(null);
-      setOfferLoad(false);
+      setBusy(false);
     }
   };
-
-  // Someone saved a newer copy and nothing has changed here: take it.
-  useEffect(() => {
-    if (!newer || dirty || busy || autoLoaded.current >= newer.version) return;
-    autoLoaded.current = newer.version;
-    void load(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [newer, dirty, busy]);
-
-  const save = async (name: string, force = false) => {
-    setBusy('save');
-    try {
-      await saveShared(store, project.id, name, force);
-      setDirty(false);
-      await refreshShared();
-      toast({ title: 'Saved for the team', body: 'Everyone now sees this version.' });
-    } catch (e) {
-      if (e instanceof SharedError && e.conflict) setConflict(e.conflict);
-      else
-        toast({
-          title: 'Not saved for the team',
-          body: e instanceof Error ? e.message : undefined,
-          tone: 'danger',
-        });
-    } finally {
-      setBusy(null);
-    }
-  };
-  const startSave = () => {
-    const name = savedByName();
-    if (name) void save(name);
-    else setAskName(true);
-  };
-
-  if (!enabled) return null;
 
   return (
     <>
-      {newer && dirty ? (
-        <Button
-          size="sm"
-          icon={<CloudDownload className="size-4" />}
-          onClick={() => setOfferLoad(true)}
-          loading={busy === 'load'}
-          title={`${newer.savedBy} saved a newer version ${formatUpdated(newer.savedAt, now)}`}
-        >
-          Newer from {newer.savedBy}
-        </Button>
-      ) : null}
-      {dirty || !project.shared ? (
+      {conflict ? (
         <Button
           size="sm"
           variant="primary"
-          icon={<CloudUpload className="size-4" />}
-          loading={busy === 'save'}
-          onClick={startSave}
+          icon={<TriangleAlert className="size-4" />}
+          onClick={() => setChoosing(true)}
         >
-          Save for team
+          {conflict.savedBy} also changed this
+        </Button>
+      ) : sync.offline && pending ? (
+        <span
+          role="status"
+          className="flex items-center gap-1.5 text-meta whitespace-nowrap text-ink-2"
+        >
+          <CloudOff aria-hidden className="size-4" />
+          Will save when back online
+        </span>
+      ) : pending ? (
+        <Button
+          size="sm"
+          variant="ghost"
+          icon={<CloudUpload className="size-4" />}
+          loading={sync.saving}
+          title="Saves for the team by itself in a few seconds; tap to save now"
+          onClick={() => void saveNow()}
+        >
+          {sync.saving ? 'Saving…' : 'Save now'}
         </Button>
       ) : (
         <span
           role="status"
           className="flex items-center gap-1.5 text-meta whitespace-nowrap text-ink-2"
-          title={`Saved by ${project.shared.savedBy}, ${formatUpdated(project.shared.savedAt, now)}`}
+          title={
+            project.shared
+              ? `Saved by ${project.shared.savedBy}, ${formatUpdated(project.shared.savedAt, now)}`
+              : undefined
+          }
         >
           <Check aria-hidden className="size-4 text-ok" />
-          Team copy up to date
+          Saved for team
         </span>
       )}
 
-      <NameDialog
-        open={askName}
-        onCancel={() => setAskName(false)}
-        onDone={(name) => {
-          setSavedByName(name);
-          setAskName(false);
-          void save(name);
-        }}
-      />
-      <ConfirmDialog
-        open={conflict !== null}
-        title="Someone saved a newer version"
-        body={
-          conflict && (
-            <>
-              {conflict.savedBy} saved this project {formatUpdated(conflict.savedAt, now)}, after
-              you last saved or loaded it. Saving now replaces their version with yours. To keep
-              theirs instead, cancel and choose “Newer from {conflict.savedBy}”.
-            </>
-          )
+      <Dialog
+        open={choosing && !!conflict}
+        onOpenChange={setChoosing}
+        width="sm"
+        title="Two versions of this project"
+        description={
+          conflict &&
+          `${conflict.savedBy} saved this project ${formatUpdated(conflict.savedAt, now)}, while it was also being changed on this device. Choose which version everyone keeps.`
         }
-        confirmLabel="Replace with mine"
-        destructive
-        onCancel={() => {
-          setConflict(null);
-          void refreshShared();
-        }}
-        onConfirm={() => {
-          setConflict(null);
-          void save(savedByName() || 'Someone', true);
-        }}
-      />
-      <ConfirmDialog
-        open={offerLoad && newer !== null}
-        title={`Load ${newer?.savedBy ?? 'the team'}’s version?`}
-        body={
-          newer && (
-            <>
-              {newer.savedBy} saved this project {formatUpdated(newer.savedAt, now)}. Loading it
-              replaces the changes made on this device since your last save.
-            </>
-          )
+        footer={
+          <>
+            <Button disabled={busy} onClick={() => void keep('theirs')}>
+              Use {conflict?.savedBy}’s
+            </Button>
+            <Button variant="primary" loading={busy} onClick={() => void keep('mine')}>
+              Keep mine
+            </Button>
+          </>
         }
-        confirmLabel="Load theirs"
-        destructive
-        onCancel={() => setOfferLoad(false)}
-        onConfirm={() => void load()}
-      />
-    </>
-  );
-}
-
-function NameDialog({
-  open,
-  onCancel,
-  onDone,
-}: {
-  open: boolean;
-  onCancel: () => void;
-  onDone: (name: string) => void;
-}) {
-  const [name, setName] = useState('');
-  const ok = name.trim().length > 0;
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(o) => !o && onCancel()}
-      width="sm"
-      title="Your name"
-      description="Shown to the team with each save, so they know who changed the project. Asked once on this device."
-      footer={
-        <>
-          <Button onClick={onCancel}>Cancel</Button>
-          <Button variant="primary" disabled={!ok} onClick={() => onDone(name.trim())}>
-            Save for team
-          </Button>
-        </>
-      }
-    >
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (ok) onDone(name.trim());
-        }}
       >
-        <Field label="Name">
-          <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} />
-        </Field>
-      </form>
-    </Dialog>
+        <p className="text-control text-ink-2">
+          “Use {conflict?.savedBy}’s” replaces the changes made here. “Keep mine” replaces theirs.
+        </p>
+      </Dialog>
+    </>
   );
 }

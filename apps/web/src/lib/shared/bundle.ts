@@ -30,7 +30,7 @@ export function projectBundle(state: SampleState, projectId: string): ProjectBun
 }
 
 /** Every stored file (drawings, pages, thumbnails, product pictures) the bundle refers to. */
-export const bundleFileIds = (bundle: ProjectBundle) => [...idsIn(JSON.stringify(bundle), 'file')];
+export const bundleFileIds = (bundle: ProjectBundle) => fileIdsIn(bundle);
 
 /**
  * A short fingerprint of what matters in a project, so a change made here since the last save or
@@ -39,8 +39,11 @@ export const bundleFileIds = (bundle: ProjectBundle) => [...idsIn(JSON.stringify
 export function bundleFingerprint(bundle: ProjectBundle): string {
   const { lastOpened: _l, updatedAt: _u, recentVariantIds: _r, ...project } = bundle.project;
   const plans = bundle.plans.map(({ updatedAt: _p, ...plan }) => plan);
-  const text = JSON.stringify({ ...bundle, project, plans, products: [], variants: [] });
-  // FNV-1a, 32-bit, twice with different seeds for fewer collisions.
+  return fingerprint(JSON.stringify({ ...bundle, project, plans, products: [], variants: [] }));
+}
+
+/** A short fingerprint of some text: FNV-1a, 32-bit, twice with different seeds. */
+export function fingerprint(text: string): string {
   let a = 0x811c9dc5;
   let b = 0x01000193;
   for (let i = 0; i < text.length; i++) {
@@ -50,3 +53,6 @@ export function bundleFingerprint(bundle: ProjectBundle): string {
   }
   return `${(a >>> 0).toString(36)}${(b >>> 0).toString(36)}:${text.length}`;
 }
+
+/** File ids (drawings, pictures, logos) mentioned anywhere in some saved data. */
+export const fileIdsIn = (data: unknown) => [...idsIn(JSON.stringify(data), 'file')];

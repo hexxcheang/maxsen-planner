@@ -441,6 +441,16 @@ export function createSampleStore(
       });
     },
 
+    /** The team's catalogue, prices, settings and templates in place of this device's. */
+    importWorkspace(w: Pick<SampleState, 'products' | 'variants' | 'settings' | 'templates'>) {
+      update((d) => {
+        d.products = structuredClone(w.products);
+        d.variants = structuredClone(w.variants);
+        d.settings = structuredClone(w.settings);
+        d.templates = structuredClone(w.templates);
+      });
+    },
+
     setLastOpened(projectId: string, levelId: string, planType: PlanType) {
       update((d) => {
         const p = d.projects.find((x) => x.id === projectId);
