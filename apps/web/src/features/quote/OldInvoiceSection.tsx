@@ -34,6 +34,7 @@ import { QuotationTable } from './QuotationTable';
 import { money, quotationText, withRowEdit } from './quotation';
 import { copyText } from '@/lib/clipboard';
 import { readPdfText } from '@/lib/images';
+import { ocrPdf } from '@/lib/ocr';
 
 type Line =
   | { id: string; kind: 'item'; description: string; quantity: number; unitPrice: number }
@@ -118,6 +119,8 @@ export function OldInvoiceSection() {
   const pricing = resolvePricing(settings);
   const [draft, setDraft] = useState<OldDraft | null>(load);
   const [pasted, setPasted] = useState('');
+  /** What's happening while a scanned PDF is read, which takes a few seconds a page. */
+  const [reading, setReading] = useState<string | null>(null);
   const [making, setMaking] = useState<'pdf' | 'xlsx' | null>(null);
   const [adding, setAdding] = useState({ description: '', quantity: 1, unitPrice: 0 });
   const fileInput = useRef<HTMLInputElement>(null);
@@ -171,15 +174,13 @@ export function OldInvoiceSection() {
     try {
       if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) {
         const text = await readPdfText(file);
-        if (!text.length) {
-          toast({
-            title: 'That PDF is a scan',
-            body: 'It has pictures of the pages but no text to read. Use the Excel file, or paste its lines.',
-            tone: 'danger',
-          });
-          return;
+        if (text.length) open(pdfInvoiceGrid(text), file.name);
+        else {
+          // No text in it (a scan, or letters drawn as shapes): read the words off the pages.
+          setReading('Reading the scanned invoice…');
+          const { texts, rules } = await ocrPdf(file, setReading);
+          open(pdfInvoiceGrid(texts, rules), file.name);
         }
-        open(pdfInvoiceGrid(text), file.name);
       } else open(await readSheet(file), file.name);
     } catch (e) {
       console.error(e);
@@ -188,6 +189,8 @@ export function OldInvoiceSection() {
         body: 'Use the invoice’s PDF or Excel file (.xlsx), or paste its rows instead.',
         tone: 'danger',
       });
+    } finally {
+      setReading(null);
     }
   };
 
@@ -212,10 +215,16 @@ export function OldInvoiceSection() {
           <Button
             variant="primary"
             icon={<FileUp className="size-4" />}
+            loading={reading !== null}
             onClick={() => fileInput.current?.click()}
           >
             Choose invoice (PDF or Excel)
           </Button>
+          {reading && (
+            <p role="status" className="text-meta text-ink-2">
+              {reading} Scanned pages take a few seconds each.
+            </p>
+          )}
         </section>
         <section aria-label="Paste invoice lines" className="flex flex-col gap-3">
           <h2 className="border-b border-rule pb-1.5 text-section text-ink">Or paste its lines</h2>

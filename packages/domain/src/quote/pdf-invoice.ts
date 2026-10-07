@@ -71,7 +71,18 @@ const HEAD = {
   sn: /^(s\/?n|no\.?|#)$/i,
 };
 
-export function pdfInvoiceGrid(texts: PdfText[]): Cell[][] {
+/** A horizontal line printed across the item table (a row's border), in PDF points from the bottom. */
+export interface TableRule {
+  page: number;
+  y: number;
+}
+
+/**
+ * `rules` are the table's row borders where known (found in the picture of a page read by OCR).
+ * With them, each row is what lies between two borders, which holds however tightly the rows
+ * are packed; without them, rows are worked out from the spacing of the text.
+ */
+export function pdfInvoiceGrid(texts: PdfText[], rules: TableRule[] = []): Cell[][] {
   const runs: Run[] = texts
     .map((t) => ({ ...t, str: unspace(t.str) }))
     .filter((t) => t.str)
@@ -154,8 +165,36 @@ export function pdfInvoiceGrid(texts: PdfText[]): Cell[][] {
   const qtys = body.filter((r) => isNumber(r.str) && nearest(r) === 'qty');
   const units = body.filter((r) => isNumber(r.str) && nearest(r) === 'unit');
   const words = body
-    .filter((r) => !isNumber(r.str) && /[a-z]/i.test(r.str))
+    // Lone strokes are table borders read as letters.
+    .filter((r) => !isNumber(r.str) && /[a-z]/i.test(r.str) && !/^[|Il![\]]$/.test(r.str))
     .sort((a, b) => a.top - b.top);
+
+  const assemble = (rows: Cell[][]) => [
+    ...labelsAbove(all.slice(0, headAt)),
+    ...asRows(all.slice(0, headAt)),
+    ['Description', 'Qty', 'Unit price'],
+    ...rows,
+    ['Total'],
+    ...asRows(all.slice(end)),
+  ];
+
+  const endTop = all[end]?.[0]?.top ?? Infinity;
+  const borders = rules
+    .map((r) => r.page * 10_000 - r.y)
+    .filter((t) => t > head[0]!.top && t < endTop)
+    .sort((a, b) => a - b);
+  if (borders.length >= 2) {
+    const rows: Cell[][] = [];
+    for (let i = 0; i + 1 < borders.length; i++) {
+      const inside = (r: Run) => r.top > borders[i]! && r.top <= borders[i + 1]!;
+      const text = joinLines(words.filter(inside));
+      const qty = qtys.find(inside);
+      const unit = units.find(inside);
+      if (qty) rows.push([describe(text), qty.str, unit?.str ?? null]);
+      else if (text.length) rows.push([describe(text)]);
+    }
+    return assemble(rows);
+  }
 
   // Description lines in blocks: a gap wider than a line's spacing starts a new block.
   const blocks: Run[][] = [];
@@ -197,14 +236,23 @@ export function pdfInvoiceGrid(texts: PdfText[]): Cell[][] {
   for (const b of blocks) if (!used.has(b)) rows.push({ top: b[0]!.top, cells: [describe(b)] });
   rows.sort((a, b) => a.top - b.top);
 
-  return [
-    ...labelsAbove(all.slice(0, headAt)),
-    ...asRows(all.slice(0, headAt)),
-    ['Description', 'Qty', 'Unit price'],
-    ...rows.map((r) => r.cells),
-    ['Total'],
-    ...asRows(all.slice(end)),
-  ];
+  return assemble(rows.map((r) => r.cells));
+}
+
+/** Cells on the same line joined into one run per line, top to bottom, left to right. */
+function joinLines(cells: Run[]): Run[] {
+  const groups: Run[][] = [];
+  for (const c of [...cells].sort((a, b) => a.top - b.top)) {
+    const g = groups.at(-1);
+    if (g && Math.abs(g[0]!.top - c.top) <= Math.max(2, 0.45 * c.height)) g.push(c);
+    else groups.push([c]);
+  }
+  return groups.map((g) => {
+    const row = [...g].sort((a, b) => a.x - b.x);
+    const left = row[0]!;
+    const right = Math.max(...row.map((c) => c.x + c.width));
+    return { ...left, str: row.map((c) => c.str).join(' '), width: right - left.x };
+  });
 }
 
 /**
@@ -233,7 +281,13 @@ function describe(block: Run[]): string {
     .reduce((out, s, i) => {
       if (i === 0) return s;
       const prev = block[i - 1]!;
-      const wrapped = prev.width > 0.8 * widest && Math.abs(prev.height - block[i]!.height) < 0.5;
+      // A line carries on the one above if it starts in lower case, or if the line above filled
+      // the width (unless this one starts a new count, "5 x …", or a note in brackets).
+      const wrapped =
+        /^[a-z]/.test(s) ||
+        (prev.width > 0.8 * widest &&
+          Math.abs(prev.height - block[i]!.height) < 0.5 &&
+          !/^[\d(]/.test(s));
       return `${out}${wrapped ? ' ' : '\n'}${s}`;
     }, '');
 }

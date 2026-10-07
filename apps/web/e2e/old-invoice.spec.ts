@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 import ExcelJS from 'exceljs';
@@ -138,6 +139,33 @@ test.describe('old invoices', () => {
     await expect(page.getByLabel('Already paid (S$)')).toHaveValue(
       String(Math.round((quoted * 0.6 + due) * 100) / 100),
     );
+  });
+  test('reads a scanned invoice PDF (no text in it) by recognising its words', async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'File handling is viewport-independent');
+    test.setTimeout(120_000);
+    // The sample invoice (9 lines, S$3,922, deposit S$2,353.20) as a picture of the page.
+    await page.goto('/quote');
+    await page.getByRole('radio', { name: 'Old invoice: next payment' }).click();
+    await page
+      .getByLabel('Old invoice file')
+      .setInputFiles(path.join(import.meta.dirname, 'fixtures/scanned-invoice.pdf'));
+    await expect(page.getByRole('status').filter({ hasText: /Reading/ })).toBeVisible();
+    await expect(page.getByText(/this one is for the 2nd payment/)).toBeVisible({
+      timeout: 90_000,
+    });
+    await expect(page.getByLabel('Client’s name')).toHaveValue('Test');
+    await expect(page.getByLabel('Already paid (S$)')).toHaveValue('2353.2');
+    const lines = page.getByRole('region', { name: 'Invoice lines' });
+    await expect(lines.getByText('Ark Core Package').first()).toBeVisible();
+    await expect(lines.getByLabel(/^Quantity of /)).toHaveCount(9);
+    // Every line read: the lines add up to the invoice's total.
+    const quantities = await lines
+      .getByLabel(/^Quantity of /)
+      .evaluateAll((els) => els.map((e) => Number((e as HTMLInputElement).value)));
+    expect(quantities).toEqual([1, 2, 1, 1, 3, 15, 15, 1, 4]);
+    await page.screenshot({ path: 'test-results/screens/old-invoice-scanned.png', fullPage: true });
   });
 });
 
