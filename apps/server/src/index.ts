@@ -8,6 +8,7 @@ import { createAnalyser } from './magic/analyse.ts';
 import { createRenderer } from './sample/render.ts';
 import { createAuth } from './auth.ts';
 import { createSharedStore } from './shared/store.ts';
+import { createTimetableStore } from './timetable.ts';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -24,6 +25,7 @@ const render = createRenderer();
 
 const auth = createAuth({
   passcode: process.env.PLANNER_PASSCODE,
+  adminPasscode: process.env.ADMIN_PASSCODE,
   secret: process.env.SESSION_SECRET,
 });
 
@@ -52,6 +54,7 @@ export const app = buildApp({
   render,
   auth,
   shared,
+  timetable: createTimetableStore(dataDir),
   persistent,
 });
 

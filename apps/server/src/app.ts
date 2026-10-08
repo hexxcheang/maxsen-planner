@@ -5,6 +5,7 @@ import { AnalysisError, type Analyser } from './magic/analyse.ts';
 import { RenderError, type Renderer } from './sample/render.ts';
 import { createAuth, type Auth } from './auth.ts';
 import { ID, type SharedStore } from './shared/store.ts';
+import { eventBody, type TimetableStore } from './timetable.ts';
 
 const analyseBody = z.object({
   image: z.string().min(100).max(15_000_000),
@@ -65,8 +66,10 @@ export function buildApp({
   render,
   auth = createAuth({}),
   shared,
+  timetable,
   persistent = true,
 }: {
+  timetable?: TimetableStore;
   analyse?: Analyser;
   render?: Renderer;
   auth?: Auth;
@@ -80,8 +83,19 @@ export function buildApp({
 
   /** Whether the server checks the passcode (online), and whether this browser is signed in. */
   app.get('/api/auth/status', (c) =>
-    c.json({ required: auth.required, signedIn: auth.signedIn(c) }),
+    c.json({ required: auth.required, signedIn: auth.signedIn(c), admin: auth.isAdmin(c) }),
   );
+  /** Admin is unlocked on the server, so only the admin can change what everyone shares. */
+  app.post('/api/auth/admin', async (c) => {
+    if (!auth.signedIn(c)) return c.json({ ok: false }, 401);
+    const body = (await c.req.json().catch(() => ({}))) as { passcode?: unknown };
+    const ok = auth.unlockAdmin(c, typeof body.passcode === 'string' ? body.passcode : '');
+    return c.json({ ok }, ok ? 200 : 401);
+  });
+  app.post('/api/auth/admin/lock', (c) => {
+    auth.lockAdmin(c);
+    return c.json({ ok: true });
+  });
   app.post('/api/auth/sign-in', async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as { passcode?: unknown };
     const ok = auth.signIn(c, typeof body.passcode === 'string' ? body.passcode : '');
@@ -214,6 +228,53 @@ export function buildApp({
       'content-type': file.type,
       'cache-control': 'private, max-age=31536000, immutable',
     });
+  });
+
+  // --- the team timetable: everyone reads it, the admin schedules it ----------------------------
+  app.use('/api/timetable/*', async (c, next) => {
+    if (!timetable)
+      return c.json(
+        { error: 'not-configured', message: 'The timetable needs the team server.' },
+        503,
+      );
+    return next();
+  });
+  const notAdmin = {
+    error: 'admin',
+    message: 'Only the admin can change the timetable. Unlock admin first.',
+  };
+  app.get('/api/timetable', async (c) =>
+    timetable ? c.json(await timetable.read()) : c.json({ error: 'not-configured' }, 503),
+  );
+  app.put('/api/timetable/events/:id', async (c) => {
+    if (!auth.isAdmin(c)) return c.json(notAdmin, 403);
+    const id = c.req.param('id');
+    const body = eventBody.safeParse(await c.req.json().catch(() => null));
+    if (!/^[a-z]+_[A-Za-z0-9]{4,40}$/.test(id) || !body.success)
+      return c.json(
+        { error: 'bad-request', message: body.error?.issues[0]?.message ?? 'Check the details.' },
+        400,
+      );
+    let by = 'Admin';
+    try {
+      by = decodeURIComponent(c.req.header('x-maxsen-name') ?? '').slice(0, 80) || by;
+    } catch {
+      // A garbled name: shown as "Admin".
+    }
+    return c.json({ event: await timetable!.put(id, body.data, by) });
+  });
+  app.delete('/api/timetable/events/:id', async (c) =>
+    auth.isAdmin(c)
+      ? c.json({ removed: await timetable!.remove(c.req.param('id')) })
+      : c.json(notAdmin, 403),
+  );
+  app.put('/api/timetable/people', async (c) => {
+    if (!auth.isAdmin(c)) return c.json(notAdmin, 403);
+    const body = z
+      .object({ people: z.array(z.string().trim().min(1).max(60)).max(100) })
+      .safeParse(await c.req.json().catch(() => null));
+    if (!body.success) return c.json({ error: 'bad-request' }, 400);
+    return c.json({ people: await timetable!.setPeople(body.data.people) });
   });
 
   app.get('/api/health', (c) => c.json({ ok: true }));

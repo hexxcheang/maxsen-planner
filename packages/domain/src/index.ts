@@ -31,4 +31,5 @@ export * from './quote/old-invoice.ts';
 export * from './quote/pdf-invoice.ts';
 export * from './electrical/rates.ts';
 export * from './electrical/symbols.ts';
+export * from './timetable.ts';
 export * from './sample-shot/prompt.ts';

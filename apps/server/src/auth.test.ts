@@ -14,6 +14,7 @@ describe('sign-in on the server', () => {
     expect(await (await app.request('/api/auth/status')).json()).toEqual({
       required: false,
       signedIn: true,
+      admin: false,
     });
     expect((await app.request('/api/product-sample/status')).status).toBe(200);
   });

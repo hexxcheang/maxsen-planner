@@ -99,15 +99,25 @@ export function AuthProvider({
   }, []);
 
   const unlock = useCallback(async (passcode: string) => {
-    const ok = passcode.trim() === ADMIN_PASSCODE;
+    // The server checks it where there is one (so the admin's changes to shared things, like
+    // the timetable, are accepted); without a server, the local passcode.
+    const server = await fetch('/api/auth/admin', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ passcode }),
+    })
+      .then((r) => (r.ok ? 'ok' : r.status === 401 ? 'wrong' : 'unavailable'))
+      .catch(() => 'unavailable' as const);
+    const ok = server === 'ok' || (server === 'unavailable' && passcode.trim() === ADMIN_PASSCODE);
     if (ok) {
       write(session, ADMIN_KEY, true);
       setUnlocked(true);
     }
-    return Promise.resolve(ok);
+    return ok;
   }, []);
 
   const lock = useCallback(() => {
+    void fetch('/api/auth/admin/lock', { method: 'POST' }).catch(() => undefined);
     write(session, ADMIN_KEY, false);
     setUnlocked(false);
   }, []);

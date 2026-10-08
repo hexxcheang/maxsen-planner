@@ -19,6 +19,8 @@
   --color-danger: var(--danger);
   --color-danger-tint: var(--danger-tint);
   --color-ok: var(--ok);
+  --color-sales: var(--sales);
+  --color-sales-tint: var(--sales-tint);
 
   --font-sans: var(--font-sans);
 

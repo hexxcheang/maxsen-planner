@@ -23,6 +23,9 @@
   --brass: #a8873a;
   --brass-2: #876b29;
   --brass-tint: #f4eedf;
+  /* Timetable: sales meet-ups in blue, installations in brass. */
+  --sales: #2f5fb3;
+  --sales-tint: #eaf0fb;
 
   /* Semantic */
   --warn: #b7791f;

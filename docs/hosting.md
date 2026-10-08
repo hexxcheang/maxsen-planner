@@ -65,6 +65,14 @@ the disk is missing, the app shows a yellow warning at the top of every page. To
 After that, updates (every push to `main`) keep all projects, the catalogue and settings. Each
 device also keeps its own copy in its browser.
 
+## Timetable
+
+The **Timetable** tab shows sales meet-ups (blue) and installation duties (brass) week by week,
+the same for everyone signed in; it refreshes every minute. Only the admin schedules it:
+**Admin: schedule** asks for the admin passcode, which the server checks. Set your own in Render ›
+Environment › `ADMIN_PASSCODE` (until then it is `admin`). Appointments that book the same person
+twice at once are marked with a warning triangle. **Team** keeps the list of names to assign.
+
 ## Good to know
 
 - Optional: your own address, e.g. `planner.maxsen.sg` (Render › Settings › Custom Domains).
