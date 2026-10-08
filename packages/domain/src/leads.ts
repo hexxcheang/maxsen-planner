@@ -21,10 +21,10 @@ export type LeadChannel = (typeof LEAD_CHANNELS)[number];
 
 export const LEAD_CHANNEL_LABEL: Record<LeadChannel, string> = {
   mydigitallock: 'MyDigitalLock',
-  own: 'Our own',
+  own: 'Maxsen leads',
 };
 
-/** A lead's channel; leads added before channels count as our own. */
+/** A lead's channel; leads added before channels count as Maxsen leads. */
 export const channelOf = (l: Pick<Lead, 'channel'>): LeadChannel => l.channel ?? 'own';
 
 export const LEAD_SOURCES = [
@@ -49,7 +49,7 @@ export interface Lead {
   id: string;
   name: string;
   phone?: string;
-  /** MyDigitalLock or our own; missing on leads added before the split (our own). */
+  /** MyDigitalLock or Maxsen; missing on leads added before the split (Maxsen). */
   channel?: LeadChannel;
   email?: string;
   address?: string;

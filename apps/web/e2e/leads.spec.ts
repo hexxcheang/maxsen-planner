@@ -77,7 +77,7 @@ test('everyone adds and works leads; edits never overwrite each other', async ({
   await who.getByRole('button', { name: 'Continue' }).click();
   await expect(form).toBeHidden();
 
-  // And one of our own; the two lists are kept apart.
+  // And a Maxsen lead; the two lists are kept apart.
   await jo.getByRole('button', { name: 'New lead' }).click();
   await form.getByLabel('Name').fill('Ms Lim');
   await form.getByRole('button', { name: 'Add lead' }).click();
@@ -87,7 +87,7 @@ test('everyone adds and works leads; edits never overwrite each other', async ({
   await split.getByRole('radio', { name: /MyDigitalLock/ }).click();
   await expect(leadList.getByRole('button', { name: 'Mr Tan' })).toBeVisible();
   await expect(leadList.getByRole('button', { name: 'Ms Lim' })).toBeHidden();
-  await split.getByRole('radio', { name: /Our own/ }).click();
+  await split.getByRole('radio', { name: /Maxsen leads/ }).click();
   await expect(leadList.getByRole('button', { name: 'Ms Lim' })).toBeVisible();
   await expect(leadList.getByRole('button', { name: 'Mr Tan' })).toBeHidden();
   await split.getByRole('radio', { name: /All leads/ }).click();

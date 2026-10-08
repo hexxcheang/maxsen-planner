@@ -83,7 +83,7 @@ export function LeadsScreen() {
       // Remembered for this visit only.
     }
   };
-  // MyDigitalLock's leads and our own are worked as separate lists.
+  // MyDigitalLock's leads and Maxsen leads are worked as separate lists.
   const inChannel = leads.filter((l) => channel === 'all' || channelOf(l) === channel);
   const openIn = (c: Channel) =>
     leads.filter((l) => isOpen(l) && (c === 'all' || channelOf(l) === c)).length;

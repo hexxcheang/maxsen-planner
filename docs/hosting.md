@@ -101,9 +101,9 @@ without touching a lead someone has open.
 - Each lead is saved on its own, so two people working on different leads never overwrite each
   other. If someone else changed the same lead while you had it open, you're told who and can load
   their version or keep yours.
-- Leads are split by where they came from: **MyDigitalLock** or **Our own**. The switch at the
+- Leads are split by where they came from: **MyDigitalLock** or **Maxsen leads**. The switch at the
   top shows one list or both (each device remembers its choice); a new lead starts in the list
-  being shown. Leads added before the split count as our own.
+  being shown. Leads added before the split count as Maxsen leads.
 - **New lead** asks only for a name (phone and interest are optional). Status, follow-up,
   assignee and the rest are filled in on the lead as things progress, with the less used details
   under **More details**.
