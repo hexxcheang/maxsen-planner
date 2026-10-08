@@ -63,24 +63,32 @@ test('everyone adds and works leads; edits never overwrite each other', async ({
   const jo = await device(await browser.newContext());
   const sam = await device(await browser.newContext());
 
-  // Jo adds a lead, with a follow-up already due, and a note.
+  // Jo adds a lead with just a name and phone.
   await jo.goto('/leads');
   await jo.getByRole('button', { name: 'New lead' }).click();
   const form = jo.getByRole('dialog', { name: 'New lead' });
   await form.getByLabel('Name').fill('Mr Tan');
   await form.getByLabel('Phone').fill('9123 4567');
-  await form.getByLabel('Where they came from').selectOption('Instagram');
-  await form.getByLabel('Next follow-up').fill('2026-01-05');
-  await form.getByLabel('Interested in').fill('Switches and lighting');
+  await jo.screenshot({ path: 'test-results/screens/new-lead.png' });
   await form.getByRole('button', { name: 'Add lead' }).click();
   const who = jo.getByRole('dialog', { name: 'Your name' });
   await who.getByLabel('Name').fill('Jo');
   await who.getByRole('button', { name: 'Continue' }).click();
+  await expect(form).toBeHidden();
+
+  // Later, Jo fills in more: a follow-up already due, where they came from, and a note.
+  await jo.getByRole('list', { name: 'Leads' }).getByRole('button', { name: 'Mr Tan' }).click();
   const lead = jo.getByRole('dialog', { name: 'Mr Tan' });
   await expect(lead.getByRole('link', { name: 'WhatsApp' })).toHaveAttribute(
     'href',
     'https://wa.me/6591234567',
   );
+  await lead.getByLabel('Next follow-up').fill('2026-01-05');
+  await lead.getByLabel('Interested in').fill('Switches and lighting');
+  await lead.getByText('More details').click();
+  await lead.getByLabel('Where they came from').selectOption('Instagram');
+  await lead.getByRole('button', { name: 'Save changes' }).click();
+  await expect(lead.getByLabel('Where they came from')).toHaveValue('Instagram');
   await lead.getByLabel('New note').fill('Called, wants a showroom visit');
   await lead.getByRole('button', { name: 'Add note' }).click();
   await expect(lead.getByText('Called, wants a showroom visit')).toBeVisible();

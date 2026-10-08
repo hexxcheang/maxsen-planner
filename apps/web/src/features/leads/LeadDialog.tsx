@@ -80,6 +80,10 @@ export function LeadDialog({
   const [busy, setBusy] = useState<'save' | 'note' | null>(null);
   const [conflict, setConflict] = useState<Lead | null>(null);
   const [confirming, setConfirming] = useState(false);
+  // The extra details stay folded away until there's something in them.
+  const [more, setMore] = useState(
+    () => !!(lead?.source || lead?.address || lead?.propertyType || lead?.budget || lead?.email),
+  );
   const set = (patch: Partial<Form>) => setForm((f) => ({ ...f, ...patch }));
   const wa = form.phone ? whatsappLink(form.phone) : null;
 
@@ -151,6 +155,62 @@ export function LeadDialog({
       void navigate(`/projects/${id}/setup`);
     }
   };
+
+  if (!saved)
+    return (
+      <Dialog
+        open={open}
+        onOpenChange={(o) => !o && onClose()}
+        width="sm"
+        title="New lead"
+        description="Just who they are for now; add the rest as it comes."
+        footer={
+          <>
+            <Button onClick={onClose}>Cancel</Button>
+            <Button
+              type="submit"
+              form="new-lead"
+              variant="primary"
+              loading={busy === 'save'}
+              disabled={!form.name.trim()}
+            >
+              Add lead
+            </Button>
+          </>
+        }
+      >
+        <form
+          id="new-lead"
+          className="flex flex-col gap-3"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (!form.name.trim()) return;
+            if (await save()) {
+              toast({ title: 'Lead added' });
+              onClose();
+            }
+          }}
+        >
+          <Field label="Name">
+            <Input autoFocus value={form.name} onChange={(e) => set({ name: e.target.value })} />
+          </Field>
+          <Field label="Phone" optional>
+            <Input
+              type="tel"
+              value={form.phone ?? ''}
+              onChange={(e) => set({ phone: e.target.value })}
+            />
+          </Field>
+          <Field label="Interested in" optional>
+            <Input
+              value={form.interest ?? ''}
+              placeholder="e.g. switches, lighting, curtains"
+              onChange={(e) => set({ interest: e.target.value })}
+            />
+          </Field>
+        </form>
+      </Dialog>
+    );
 
   return (
     <>
@@ -308,44 +368,6 @@ export function LeadDialog({
                   ))}
                 </datalist>
               </Field>
-              <Field label="Where they came from">
-                <Select
-                  value={form.source ?? ''}
-                  placeholder="Choose"
-                  options={LEAD_SOURCES.map((s) => ({ value: s, label: s }))}
-                  onChange={(v) => set({ source: v })}
-                />
-              </Field>
-            </div>
-            <Field label="Address">
-              <Input
-                value={form.address ?? ''}
-                onChange={(e) => set({ address: e.target.value })}
-              />
-            </Field>
-            <div className="grid grid-cols-3 gap-3 max-[600px]:grid-cols-1">
-              <Field label="Property">
-                <Select
-                  value={form.propertyType ?? ''}
-                  placeholder="Choose"
-                  options={PROPERTY_TYPES.map((p) => ({ value: p, label: p }))}
-                  onChange={(v) => set({ propertyType: v })}
-                />
-              </Field>
-              <Field label="Budget">
-                <Input
-                  value={form.budget ?? ''}
-                  placeholder="e.g. S$8–10k"
-                  onChange={(e) => set({ budget: e.target.value })}
-                />
-              </Field>
-              <Field label="Email">
-                <Input
-                  type="email"
-                  value={form.email ?? ''}
-                  onChange={(e) => set({ email: e.target.value })}
-                />
-              </Field>
             </div>
             <Field label="Interested in">
               <Input
@@ -354,6 +376,57 @@ export function LeadDialog({
                 onChange={(e) => set({ interest: e.target.value })}
               />
             </Field>
+            <details
+              open={more}
+              onToggle={(e) => setMore(e.currentTarget.open)}
+              className="border-t border-rule pt-2"
+            >
+              <summary className="cursor-pointer text-control font-medium text-ink-2">
+                More details
+              </summary>
+              <div className="mt-3 flex flex-col gap-3">
+                <div className="grid grid-cols-2 gap-3 max-[600px]:grid-cols-1">
+                  <Field label="Where they came from">
+                    <Select
+                      value={form.source ?? ''}
+                      placeholder="Choose"
+                      options={LEAD_SOURCES.map((s) => ({ value: s, label: s }))}
+                      onChange={(v) => set({ source: v })}
+                    />
+                  </Field>
+                  <Field label="Email">
+                    <Input
+                      type="email"
+                      value={form.email ?? ''}
+                      onChange={(e) => set({ email: e.target.value })}
+                    />
+                  </Field>
+                </div>
+                <div className="grid grid-cols-2 gap-3 max-[600px]:grid-cols-1">
+                  <Field label="Property">
+                    <Select
+                      value={form.propertyType ?? ''}
+                      placeholder="Choose"
+                      options={PROPERTY_TYPES.map((p) => ({ value: p, label: p }))}
+                      onChange={(v) => set({ propertyType: v })}
+                    />
+                  </Field>
+                  <Field label="Budget">
+                    <Input
+                      value={form.budget ?? ''}
+                      placeholder="e.g. S$8–10k"
+                      onChange={(e) => set({ budget: e.target.value })}
+                    />
+                  </Field>
+                </div>
+                <Field label="Address">
+                  <Input
+                    value={form.address ?? ''}
+                    onChange={(e) => set({ address: e.target.value })}
+                  />
+                </Field>
+              </div>
+            </details>
           </div>
 
           <section aria-label="Notes" className="flex min-w-0 flex-col gap-2">

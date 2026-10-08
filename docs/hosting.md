@@ -101,6 +101,9 @@ without touching a lead someone has open.
 - Each lead is saved on its own, so two people working on different leads never overwrite each
   other. If someone else changed the same lead while you had it open, you're told who and can load
   their version or keep yours.
+- **New lead** asks only for a name (phone and interest are optional). Status, follow-up,
+  assignee and the rest are filled in on the lead as things progress, with the less used details
+  under **More details**.
 - **Notes** are only ever added, never replaced, so everyone's notes are kept.
 - **Convert to project** starts a project from the lead's details.
 - Only the admin can delete a lead; everyone else marks it **Lost**.
