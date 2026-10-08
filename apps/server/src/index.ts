@@ -10,6 +10,7 @@ import { createAuth } from './auth.ts';
 import { createSharedStore } from './shared/store.ts';
 import { createTimetableStore } from './timetable.ts';
 import { createInventoryStore } from './inventory.ts';
+import { createLeadStore } from './leads.ts';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -57,6 +58,7 @@ export const app = buildApp({
   shared,
   timetable: createTimetableStore(dataDir),
   inventory: createInventoryStore(dataDir),
+  leads: createLeadStore(dataDir),
   persistent,
 });
 

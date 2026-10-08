@@ -7,6 +7,7 @@ import { createAuth, type Auth } from './auth.ts';
 import { ID, type SharedStore } from './shared/store.ts';
 import { eventBody, type TimetableStore } from './timetable.ts';
 import { MANAGER_KINDS, movementBody, verifyBody, type InventoryStore } from './inventory.ts';
+import { leadBody, noteBody, type LeadStore } from './leads.ts';
 
 const analyseBody = z.object({
   image: z.string().min(100).max(15_000_000),
@@ -69,8 +70,10 @@ export function buildApp({
   shared,
   timetable,
   inventory,
+  leads,
   persistent = true,
 }: {
+  leads?: LeadStore;
   timetable?: TimetableStore;
   inventory?: InventoryStore;
   analyse?: Analyser;
@@ -334,6 +337,49 @@ export function buildApp({
       .safeParse(await c.req.json().catch(() => null));
     if (!body.success) return c.json({ error: 'bad-request' }, 400);
     return c.json({ minimums: await inventory.setMinimums(body.data) });
+  });
+
+  // --- leads: everyone adds and updates them; the admin deletes ---------------------------------
+  const noLeads = { error: 'not-configured', message: 'Leads need the team server.' };
+  app.get('/api/leads', async (c) =>
+    leads ? c.json({ leads: await leads.read() }) : c.json(noLeads, 503),
+  );
+  app.put('/api/leads/:id', async (c) => {
+    if (!leads) return c.json(noLeads, 503);
+    const id = c.req.param('id');
+    const body = leadBody.safeParse(await c.req.json().catch(() => null));
+    if (!ID.test(id) || !body.success)
+      return c.json(
+        { error: 'bad-request', message: body.error?.issues[0]?.message ?? 'Check the details.' },
+        400,
+      );
+    const result = await leads.save(id, body.data, nameOf(c));
+    return result.ok
+      ? c.json({ lead: result.lead })
+      : c.json(
+          {
+            error: 'conflict',
+            message: `${result.current.updatedBy} changed this lead while you were editing it.`,
+            lead: result.current,
+          },
+          409,
+        );
+  });
+  app.post('/api/leads/:id/notes', async (c) => {
+    if (!leads) return c.json(noLeads, 503);
+    const body = noteBody.safeParse(await c.req.json().catch(() => null));
+    if (!body.success) return c.json({ error: 'bad-request' }, 400);
+    const lead = await leads.addNote(c.req.param('id'), body.data.text, nameOf(c));
+    return lead ? c.json({ lead }) : c.json({ error: 'not-found' }, 404);
+  });
+  app.delete('/api/leads/:id', async (c) => {
+    if (!leads) return c.json(noLeads, 503);
+    if (!auth.isAdmin(c))
+      return c.json(
+        { error: 'admin', message: 'Only the admin can delete a lead; mark it Lost instead.' },
+        403,
+      );
+    return c.json({ removed: await leads.remove(c.req.param('id')) });
   });
 
   app.get('/api/health', (c) => c.json({ ok: true }));

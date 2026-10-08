@@ -91,6 +91,20 @@ The **Inventory** tab keeps stock as a record of every movement, shared by every
 The inventory manager is whoever has the admin passcode (`ADMIN_PASSCODE`). Products come from the
 shared catalogue.
 
+## Leads
+
+The **Leads** tab is the team's list of enquiries, kept on the server disk like the projects, so
+app updates never clear it. Anyone signed in can add a lead, change its status, assign it and set a
+follow-up day; overdue follow-ups come first and are counted in red. It refreshes every 30 seconds
+without touching a lead someone has open.
+
+- Each lead is saved on its own, so two people working on different leads never overwrite each
+  other. If someone else changed the same lead while you had it open, you're told who and can load
+  their version or keep yours.
+- **Notes** are only ever added, never replaced, so everyone's notes are kept.
+- **Convert to project** starts a project from the lead's details.
+- Only the admin can delete a lead; everyone else marks it **Lost**.
+
 ## Good to know
 
 - Optional: your own address, e.g. `planner.maxsen.sg` (Render › Settings › Custom Domains).
