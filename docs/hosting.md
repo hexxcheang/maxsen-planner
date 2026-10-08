@@ -73,6 +73,24 @@ the same for everyone signed in; it refreshes every minute. Only the admin sched
 Environment › `ADMIN_PASSCODE` (until then it is `admin`). Appointments that book the same person
 twice at once are marked with a warning triangle. **Team** keeps the list of names to assign.
 
+## Inventory
+
+The **Inventory** tab keeps stock as a record of every movement, shared by everyone signed in:
+
+- **Take out / return** (installers): say which site, pick the products and how many. A take-out
+  comes off stock at once; unused items go back with **Return unused**.
+- **Site checks** (inventory manager): each take-out waits here until the manager counts what was
+  really taken for that site and presses **Confirm count**; stock follows the count, and any
+  difference is marked.
+- **Restock** and **Count correction** (inventory manager): stock arriving, and fixes after a
+  physical count.
+- **Stock** shows what's in stock, what's out but not checked yet, and flags items at or below
+  their low-stock level (the manager sets it per product).
+- **History** lists every entry; the manager can remove one recorded by mistake.
+
+The inventory manager is whoever has the admin passcode (`ADMIN_PASSCODE`). Products come from the
+shared catalogue.
+
 ## Good to know
 
 - Optional: your own address, e.g. `planner.maxsen.sg` (Render › Settings › Custom Domains).

@@ -19,6 +19,7 @@ import {
 } from '@maxsen/domain';
 import { Button, PageHeader, SegmentedControl, Select, useToast } from '@/components/ui';
 import { Page } from '@/components/Page';
+import { useEnsureName } from '@/lib/shared/useEnsureName';
 import { useAdmin } from '@/app/auth/useAdmin';
 import { cn } from '@/lib/cn';
 import { addDays, formatDay, today, weekdayIndex } from '@/lib/dates';
@@ -44,6 +45,7 @@ export function TimetableScreen() {
   const { timetable, state, refresh, setData } = useTimetable();
   const { unlocked, requireAdmin } = useAdmin();
   const { toast } = useToast();
+  const { ensureName, dialog: nameDialog } = useEnsureName();
   const [weekStart, setWeekStart] = useState(() => addDays(today(), -weekdayIndex(today())));
   const [filter, setFilter] = useState<Filter>('all');
   const [person, setPerson] = useState(ALL_PEOPLE);
@@ -69,6 +71,7 @@ export function TimetableScreen() {
   /** Runs an admin change, asking for the admin passcode first if the server wants it. */
   const asAdmin = async <T,>(run: () => Promise<T>): Promise<T | undefined> => {
     if (!(await requireAdmin('schedule the timetable'))) return undefined;
+    if (!(await ensureName())) return undefined;
     try {
       return await run();
     } catch (e) {
@@ -306,6 +309,7 @@ export function TimetableScreen() {
           if (editing && 'id' in editing && (await onDelete(editing.id))) setEditing(null);
         }}
       />
+      {nameDialog}
       <TeamDialog
         open={team}
         people={timetable.people}

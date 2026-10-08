@@ -15,6 +15,7 @@ import {
   PencilRuler,
   ShieldCheck,
   CalendarDays,
+  Boxes,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { Tooltip } from '@/components/ui';
@@ -30,6 +31,7 @@ interface RailItem {
 const GLOBAL: RailItem[] = [
   { to: '/', label: 'Projects', icon: <FolderOpen />, end: true },
   { to: '/timetable', label: 'Timetable', icon: <CalendarDays /> },
+  { to: '/inventory', label: 'Inventory', icon: <Boxes /> },
   { to: '/quote', label: 'Quote', icon: <MessageSquareText /> },
   { to: '/electrical', label: 'Electrical', icon: <Zap /> },
   { to: '/product-sample', label: 'Sample', icon: <ImagePlus /> },

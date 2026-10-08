@@ -31,17 +31,24 @@ test.beforeAll(async () => {
   throw new Error('The API server did not start');
 });
 
+const contexts: BrowserContext[] = [];
+test.afterEach(async () => {
+  await Promise.all(contexts.splice(0).map((c) => c.close()));
+});
+
 test.afterAll(() => {
   server?.kill();
 });
 
 /** A device: its own browser storage, with team calls sent to the test server. */
 async function device(context: BrowserContext) {
+  contexts.push(context);
   await context.route('**/api/shared/**', async (route) => {
     const url = new URL(route.request().url());
     url.host = `127.0.0.1:${PORT}`;
-    const response = await route.fetch({ url: url.toString() });
-    await route.fulfill({ response });
+    // Pages left polling after the test (and its server) has ended just stop.
+    const response = await route.fetch({ url: url.toString() }).catch(() => null);
+    await (response ? route.fulfill({ response }) : route.abort().catch(() => undefined));
   });
   const page = await context.newPage();
   await signIn(page);

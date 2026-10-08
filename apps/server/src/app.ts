@@ -6,6 +6,7 @@ import { RenderError, type Renderer } from './sample/render.ts';
 import { createAuth, type Auth } from './auth.ts';
 import { ID, type SharedStore } from './shared/store.ts';
 import { eventBody, type TimetableStore } from './timetable.ts';
+import { MANAGER_KINDS, movementBody, verifyBody, type InventoryStore } from './inventory.ts';
 
 const analyseBody = z.object({
   image: z.string().min(100).max(15_000_000),
@@ -67,9 +68,11 @@ export function buildApp({
   auth = createAuth({}),
   shared,
   timetable,
+  inventory,
   persistent = true,
 }: {
   timetable?: TimetableStore;
+  inventory?: InventoryStore;
   analyse?: Analyser;
   render?: Renderer;
   auth?: Auth;
@@ -275,6 +278,62 @@ export function buildApp({
       .safeParse(await c.req.json().catch(() => null));
     if (!body.success) return c.json({ error: 'bad-request' }, 400);
     return c.json({ people: await timetable!.setPeople(body.data.people) });
+  });
+
+  // --- inventory: installers take out and return; the inventory manager (admin) restocks, -------
+  // --- corrects counts and checks each site's take-out ------------------------------------------
+  const nameOf = (c: { req: { header: (n: string) => string | undefined } }) => {
+    try {
+      return decodeURIComponent(c.req.header('x-maxsen-name') ?? '').slice(0, 80) || 'Someone';
+    } catch {
+      return 'Someone';
+    }
+  };
+  const managerOnly = {
+    error: 'admin',
+    message: 'Only the inventory manager can do this. Unlock admin first.',
+  };
+  const noInventory = { error: 'not-configured', message: 'Inventory needs the team server.' };
+  app.get('/api/inventory', async (c) =>
+    inventory ? c.json(await inventory.read()) : c.json(noInventory, 503),
+  );
+  app.post('/api/inventory/movements', async (c) => {
+    if (!inventory) return c.json(noInventory, 503);
+    const body = movementBody.safeParse(await c.req.json().catch(() => null));
+    if (!body.success)
+      return c.json(
+        { error: 'bad-request', message: body.error.issues[0]?.message ?? 'Check the items.' },
+        400,
+      );
+    if (MANAGER_KINDS.has(body.data.kind) && !auth.isAdmin(c)) return c.json(managerOnly, 403);
+    return c.json({ movement: await inventory.add(body.data, nameOf(c)) });
+  });
+  app.post('/api/inventory/movements/:id/verify', async (c) => {
+    if (!inventory) return c.json(noInventory, 503);
+    if (!auth.isAdmin(c)) return c.json(managerOnly, 403);
+    const body = verifyBody.safeParse(await c.req.json().catch(() => null));
+    if (!body.success) return c.json({ error: 'bad-request' }, 400);
+    const m = await inventory.verify(
+      c.req.param('id'),
+      body.data.counts,
+      nameOf(c),
+      body.data.note,
+    );
+    return m ? c.json({ movement: m }) : c.json({ error: 'not-found' }, 404);
+  });
+  app.delete('/api/inventory/movements/:id', async (c) => {
+    if (!inventory) return c.json(noInventory, 503);
+    if (!auth.isAdmin(c)) return c.json(managerOnly, 403);
+    return c.json({ removed: await inventory.remove(c.req.param('id')) });
+  });
+  app.put('/api/inventory/minimums', async (c) => {
+    if (!inventory) return c.json(noInventory, 503);
+    if (!auth.isAdmin(c)) return c.json(managerOnly, 403);
+    const body = z
+      .record(z.string(), z.number().finite().min(0))
+      .safeParse(await c.req.json().catch(() => null));
+    if (!body.success) return c.json({ error: 'bad-request' }, 400);
+    return c.json({ minimums: await inventory.setMinimums(body.data) });
   });
 
   app.get('/api/health', (c) => c.json({ ok: true }));

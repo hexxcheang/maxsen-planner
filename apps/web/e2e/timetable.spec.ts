@@ -32,16 +32,24 @@ test.beforeAll(async () => {
   throw new Error('The API server did not start');
 });
 
+const contexts: BrowserContext[] = [];
+test.afterEach(async () => {
+  await Promise.all(contexts.splice(0).map((c) => c.close()));
+});
+
 test.afterAll(() => {
   server?.kill();
 });
 
 async function device(context: BrowserContext) {
+  contexts.push(context);
   for (const pattern of ['**/api/timetable**', '**/api/auth/admin**'])
     await context.route(pattern, async (route) => {
       const url = new URL(route.request().url());
       url.host = `127.0.0.1:${PORT}`;
-      await route.fulfill({ response: await route.fetch({ url: url.toString() }) });
+      // Pages left polling after the test (and its server) has ended just stop.
+      const response = await route.fetch({ url: url.toString() }).catch(() => null);
+      await (response ? route.fulfill({ response }) : route.abort().catch(() => undefined));
     });
   const page = await context.newPage();
   await signIn(page);
@@ -65,7 +73,7 @@ test('the admin schedules the timetable; everyone sees it', async ({ browser }, 
   await expect(unlock).toBeHidden();
 
   // A sales meet-up, then an installation overlapping it with the same person.
-  const book = async (kind: string, title: string, start: string, end: string) => {
+  const book = async (kind: string, title: string, start: string, end: string, first = false) => {
     await admin.getByRole('button', { name: 'New appointment', exact: true }).click();
     const d = admin.getByRole('dialog', { name: 'New appointment' });
     await d.getByRole('radio', { name: kind }).click();
@@ -75,9 +83,15 @@ test('the admin schedules the timetable; everyone sees it', async ({ browser }, 
     await d.getByLabel('Add someone').fill('Jo');
     await d.getByRole('button', { name: 'Add', exact: true }).click();
     await d.getByRole('button', { name: 'Save' }).click();
+    // The first save asks once who's scheduling.
+    if (first) {
+      const who = admin.getByRole('dialog', { name: 'Your name' });
+      await who.getByLabel('Name').fill('Hexiang');
+      await who.getByRole('button', { name: 'Continue' }).click();
+    }
     await expect(d).toBeHidden();
   };
-  await book('Sales meet-up', 'Showroom visit, Mr Lim', '10:00', '11:00');
+  await book('Sales meet-up', 'Showroom visit, Mr Lim', '10:00', '11:00', true);
   await book('Installation', 'Install switches, Tan residence', '10:30', '16:00');
   const grid = admin.getByRole('grid');
   await expect(grid.getByRole('button', { name: /^Sales meet-up: Showroom visit/ })).toBeVisible();
@@ -97,6 +111,7 @@ test('the admin schedules the timetable; everyone sees it', async ({ browser }, 
   const details = worker.getByRole('dialog', { name: 'Install switches, Tan residence' });
   await expect(details).toContainText('Only the admin can change it');
   await expect(details).toContainText('Jo');
+  await expect(details).toContainText('Scheduled by Hexiang');
 
   // And the server refuses a change from it.
   const res = await worker.evaluate(() =>
