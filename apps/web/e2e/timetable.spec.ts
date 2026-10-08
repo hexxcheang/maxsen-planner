@@ -79,7 +79,7 @@ test('the admin schedules the timetable; everyone sees it', async ({ browser }, 
     await d.getByRole('radio', { name: kind }).click();
     await d.getByLabel('What').fill(title);
     await d.getByLabel('From').fill(start);
-    await d.getByLabel('To').fill(end);
+    await d.getByLabel('To', { exact: true }).fill(end);
     await d.getByLabel('Add someone').fill('Jo');
     await d.getByRole('button', { name: 'Add', exact: true }).click();
     await d.getByRole('button', { name: 'Save' }).click();
@@ -100,6 +100,21 @@ test('the admin schedules the timetable; everyone sees it', async ({ browser }, 
   await admin.getByRole('radio', { name: /^Installations/ }).click();
   await expect(grid.getByRole('button', { name: /^Sales meet-up/ })).toHaveCount(0);
   await admin.getByRole('radio', { name: 'All', exact: true }).click();
+
+  // A quick one: just the time, filled in later. It's named after its type until then.
+  await admin.getByRole('button', { name: 'New appointment', exact: true }).click();
+  const quick = admin.getByRole('dialog', { name: 'New appointment' });
+  await expect(quick.getByLabel('Client')).toBeHidden();
+  await quick.getByLabel('From').fill('17:00');
+  await admin.screenshot({ path: 'test-results/screens/new-appointment.png' });
+  await quick.getByRole('button', { name: 'Save' }).click();
+  await expect(quick).toBeHidden();
+  await grid.getByRole('button', { name: /^Sales meet-up: Sales meet-up/ }).click();
+  const later = admin.getByRole('dialog', { name: 'Appointment' });
+  await later.getByText('More details').click();
+  await later.getByLabel('Client').fill('Mdm Ong');
+  await later.getByRole('button', { name: 'Save' }).click();
+  await expect(later).toBeHidden();
   await admin.screenshot({ path: 'test-results/screens/timetable-admin.png', fullPage: true });
 
   // Another device: sees both, can't change them.

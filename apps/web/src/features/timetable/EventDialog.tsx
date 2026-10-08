@@ -67,6 +67,10 @@ export function EventDialog({
   const [notes, setNotes] = useState(event?.notes ?? '');
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  // Project, client, address and notes can wait: folded away until there's something in them.
+  const [more, setMore] = useState(
+    () => !!(event?.projectId || event?.client || event?.address || event?.notes),
+  );
   const project = projects.find((p) => p.id === (event?.projectId ?? projectId));
 
   if (!editable) {
@@ -130,7 +134,7 @@ export function EventDialog({
     );
   }
 
-  const valid = title.trim() && /^\d{4}-\d{2}-\d{2}$/.test(day) && end > start;
+  const valid = /^\d{4}-\d{2}-\d{2}$/.test(day) && end > start;
   const toggle = (p: string) =>
     setPeople((ps) => (ps.includes(p) ? ps.filter((x) => x !== p) : [...ps, p]));
   const choices = [...new Set([...team, ...people])];
@@ -168,7 +172,8 @@ export function EventDialog({
                     date: day,
                     start,
                     end,
-                    title: title.trim(),
+                    // Left blank, it's named after its type, to fill in later.
+                    title: title.trim() || TIMETABLE_KIND_LABEL[kind],
                     ...(client.trim() ? { client: client.trim() } : {}),
                     ...(address.trim() ? { address: address.trim() } : {}),
                     people,
@@ -188,6 +193,7 @@ export function EventDialog({
         <div className="flex flex-col gap-3">
           <SegmentedControl<TimetableKind>
             label="Type"
+            className="self-start"
             value={kind}
             onChange={setKind}
             options={[
@@ -195,7 +201,7 @@ export function EventDialog({
               { value: 'installation', label: 'Installation' },
             ]}
           />
-          <Field label="What">
+          <Field label="What" optional>
             <Input
               autoFocus
               value={title}
@@ -226,30 +232,6 @@ export function EventDialog({
             </Field>
             <Field label="To" error={end <= start ? 'Ends before it starts' : undefined}>
               <Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} />
-            </Field>
-          </div>
-          <Field label="Project (optional)">
-            <Select
-              value={projectId}
-              placeholder="Not linked to a project"
-              options={projects.map((p) => ({ value: p.id, label: p.title }))}
-              onChange={(id) => {
-                setProjectId(id);
-                const p = projects.find((x) => x.id === id);
-                if (p) {
-                  if (!client.trim()) setClient(p.customerName);
-                  if (!address.trim()) setAddress(p.propertyAddress);
-                  if (!title.trim()) setTitle(p.title);
-                }
-              }}
-            />
-          </Field>
-          <div className="grid grid-cols-2 gap-3 max-[600px]:grid-cols-1">
-            <Field label="Client">
-              <Input value={client} onChange={(e) => setClient(e.target.value)} />
-            </Field>
-            <Field label="Address">
-              <Input value={address} onChange={(e) => setAddress(e.target.value)} />
             </Field>
           </div>
           <fieldset className="flex flex-col gap-1.5">
@@ -300,9 +282,44 @@ export function EventDialog({
               </p>
             )}
           </fieldset>
-          <Field label="Notes">
-            <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
-          </Field>
+          <details
+            open={more}
+            onToggle={(e) => setMore(e.currentTarget.open)}
+            className="border-t border-rule pt-2"
+          >
+            <summary className="cursor-pointer text-control font-medium text-ink-2">
+              More details
+            </summary>
+            <div className="mt-3 flex flex-col gap-3">
+              <Field label="Project">
+                <Select
+                  value={projectId}
+                  placeholder="Not linked to a project"
+                  options={projects.map((p) => ({ value: p.id, label: p.title }))}
+                  onChange={(id) => {
+                    setProjectId(id);
+                    const p = projects.find((x) => x.id === id);
+                    if (p) {
+                      if (!client.trim()) setClient(p.customerName);
+                      if (!address.trim()) setAddress(p.propertyAddress);
+                      if (!title.trim()) setTitle(p.title);
+                    }
+                  }}
+                />
+              </Field>
+              <div className="grid grid-cols-2 gap-3 max-[600px]:grid-cols-1">
+                <Field label="Client">
+                  <Input value={client} onChange={(e) => setClient(e.target.value)} />
+                </Field>
+                <Field label="Address">
+                  <Input value={address} onChange={(e) => setAddress(e.target.value)} />
+                </Field>
+              </div>
+              <Field label="Notes">
+                <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
+              </Field>
+            </div>
+          </details>
         </div>
       </Dialog>
       <ConfirmDialog

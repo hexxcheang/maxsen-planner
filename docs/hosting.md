@@ -71,7 +71,9 @@ The **Timetable** tab shows sales meet-ups (blue) and installation duties (brass
 the same for everyone signed in; it refreshes every minute. Only the admin schedules it:
 **Admin: schedule** asks for the admin passcode, which the server checks. Set your own in Render ›
 Environment › `ADMIN_PASSCODE` (until then it is `admin`). Appointments that book the same person
-twice at once are marked with a warning triangle. **Team** keeps the list of names to assign.
+twice at once are marked with a warning triangle. A new appointment needs only the day and time;
+what it is, who's going and the rest (project, client, address, notes under **More details**) can
+be added later. **Team** keeps the list of names to assign.
 
 ## Inventory
 
