@@ -2,16 +2,20 @@ import { useMemo, useState } from 'react';
 import { CloudOff, MessageCircle, Phone, Plus, Search, TriangleAlert } from 'lucide-react';
 import {
   byPriority,
+  channelOf,
   isOpen,
   isOverdue,
+  LEAD_CHANNEL_LABEL,
+  LEAD_CHANNELS,
   LEAD_STATUS_LABEL,
   LEAD_STATUSES,
   matchLead,
   whatsappLink,
   type Lead,
+  type LeadChannel,
   type LeadStatus,
 } from '@maxsen/domain';
-import { Button, Input, PageHeader, Select, useToast } from '@/components/ui';
+import { Button, Input, PageHeader, SegmentedControl, Select, useToast } from '@/components/ui';
 import { Page } from '@/components/Page';
 import { useAdmin } from '@/app/auth/useAdmin';
 import { cn } from '@/lib/cn';
@@ -22,7 +26,18 @@ import { LeadDialog } from './LeadDialog';
 import { LeadError, saveLead, useLeads } from './leads-api';
 
 type Filter = 'open' | 'all' | LeadStatus;
+type Channel = 'all' | LeadChannel;
 const EVERYONE = '__all__';
+const CHANNEL_KEY = 'maxsen.leads.channel';
+
+function savedChannel(): Channel {
+  try {
+    const c = window.localStorage.getItem(CHANNEL_KEY);
+    return c === 'mydigitallock' || c === 'own' ? c : 'all';
+  } catch {
+    return 'all';
+  }
+}
 
 const STATUS_TONE: Record<LeadStatus, string> = {
   new: 'bg-sales-tint text-sales',
@@ -43,6 +58,7 @@ export function LeadsScreen() {
   const { requireAdmin } = useAdmin();
   const { toast } = useToast();
   const { ensureName, dialog: nameDialog } = useEnsureName();
+  const [channel, setChannelState] = useState<Channel>(savedChannel);
   const [filter, setFilter] = useState<Filter>('open');
   const [search, setSearch] = useState('');
   const [person, setPerson] = useState(EVERYONE);
@@ -59,14 +75,27 @@ export function LeadsScreen() {
       ].sort(),
     [timetable.people, leads],
   );
+  const setChannel = (c: Channel) => {
+    setChannelState(c);
+    try {
+      window.localStorage.setItem(CHANNEL_KEY, c);
+    } catch {
+      // Remembered for this visit only.
+    }
+  };
+  // MyDigitalLock's leads and our own are worked as separate lists.
+  const inChannel = leads.filter((l) => channel === 'all' || channelOf(l) === channel);
+  const openIn = (c: Channel) =>
+    leads.filter((l) => isOpen(l) && (c === 'all' || channelOf(l) === c)).length;
   const count = (f: Filter) =>
-    leads.filter((l) => (f === 'all' ? true : f === 'open' ? isOpen(l) : l.status === f)).length;
-  const shown = leads
+    inChannel.filter((l) => (f === 'all' ? true : f === 'open' ? isOpen(l) : l.status === f))
+      .length;
+  const shown = inChannel
     .filter((l) => (filter === 'all' ? true : filter === 'open' ? isOpen(l) : l.status === filter))
     .filter((l) => person === EVERYONE || l.assignedTo === person)
     .filter((l) => matchLead(l, search))
     .sort(byPriority(day));
-  const overdue = leads.filter((l) => isOverdue(l, day)).length;
+  const overdue = inChannel.filter((l) => isOverdue(l, day)).length;
 
   const setStatus = async (l: Lead, status: LeadStatus) => {
     if (!(await ensureName())) return;
@@ -117,6 +146,30 @@ export function LeadsScreen() {
             New lead
           </Button>
         }
+      />
+      <SegmentedControl<Channel>
+        label="Lead from"
+        className="mb-3"
+        value={channel}
+        onChange={setChannel}
+        options={[
+          {
+            value: 'all',
+            label: (
+              <>
+                All leads <span className="tnum opacity-70">{openIn('all')}</span>
+              </>
+            ),
+          },
+          ...LEAD_CHANNELS.map((c) => ({
+            value: c,
+            label: (
+              <>
+                {LEAD_CHANNEL_LABEL[c]} <span className="tnum opacity-70">{openIn(c)}</span>
+              </>
+            ),
+          })),
+        ]}
       />
       <div role="group" aria-label="Filter by status" className="mb-3 flex flex-wrap gap-1.5">
         {(['open', ...LEAD_STATUSES, 'all'] as const).map((f) => (
@@ -177,7 +230,7 @@ export function LeadsScreen() {
 
       {shown.length === 0 ? (
         <p className="border-t border-rule py-10 text-body text-ink-2">
-          {leads.length ? 'No leads match.' : 'No leads yet. Add the first with New lead.'}
+          {inChannel.length ? 'No leads match.' : 'No leads yet. Add the first with New lead.'}
         </p>
       ) : (
         <ul aria-label="Leads" className="border-t border-rule">
@@ -218,6 +271,11 @@ export function LeadsScreen() {
                       >
                         <MessageCircle className="size-3.5" />
                       </a>
+                    )}
+                    {channel === 'all' && channelOf(l) === 'mydigitallock' && (
+                      <span className="rounded-chip bg-sales-tint px-1.5 text-caption font-semibold text-sales">
+                        MyDigitalLock
+                      </span>
                     )}
                     {l.source && <span>· {l.source}</span>}
                   </p>
@@ -270,6 +328,7 @@ export function LeadsScreen() {
           key={opened === 'new' ? 'new' : opened.id}
           open
           lead={opened === 'new' ? null : opened}
+          channel={channel === 'all' ? undefined : channel}
           people={people}
           ensureName={ensureName}
           requireAdmin={requireAdmin}

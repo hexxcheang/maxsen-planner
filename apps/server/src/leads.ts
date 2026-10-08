@@ -8,6 +8,7 @@ const text = (max: number) => z.string().trim().max(max).optional();
 export const leadBody = z.object({
   name: z.string().trim().min(1).max(160),
   phone: text(40),
+  channel: z.enum(['mydigitallock', 'own']).optional(),
   email: text(160),
   address: text(300),
   propertyType: text(60),

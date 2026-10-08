@@ -15,6 +15,18 @@ export const LEAD_STATUS_LABEL: Record<LeadStatus, string> = {
   lost: 'Lost',
 };
 
+/** Where a lead came to us: passed on by MyDigitalLock, or found by us. */
+export const LEAD_CHANNELS = ['mydigitallock', 'own'] as const;
+export type LeadChannel = (typeof LEAD_CHANNELS)[number];
+
+export const LEAD_CHANNEL_LABEL: Record<LeadChannel, string> = {
+  mydigitallock: 'MyDigitalLock',
+  own: 'Our own',
+};
+
+/** A lead's channel; leads added before channels count as our own. */
+export const channelOf = (l: Pick<Lead, 'channel'>): LeadChannel => l.channel ?? 'own';
+
 export const LEAD_SOURCES = [
   'Showroom walk-in',
   'Instagram',
@@ -37,6 +49,8 @@ export interface Lead {
   id: string;
   name: string;
   phone?: string;
+  /** MyDigitalLock or our own; missing on leads added before the split (our own). */
+  channel?: LeadChannel;
   email?: string;
   address?: string;
   propertyType?: string;

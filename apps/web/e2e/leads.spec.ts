@@ -63,10 +63,11 @@ test('everyone adds and works leads; edits never overwrite each other', async ({
   const jo = await device(await browser.newContext());
   const sam = await device(await browser.newContext());
 
-  // Jo adds a lead with just a name and phone.
+  // Jo adds a lead from MyDigitalLock with just a name and phone.
   await jo.goto('/leads');
   await jo.getByRole('button', { name: 'New lead' }).click();
   const form = jo.getByRole('dialog', { name: 'New lead' });
+  await form.getByRole('radio', { name: 'MyDigitalLock' }).click();
   await form.getByLabel('Name').fill('Mr Tan');
   await form.getByLabel('Phone').fill('9123 4567');
   await jo.screenshot({ path: 'test-results/screens/new-lead.png' });
@@ -75,6 +76,21 @@ test('everyone adds and works leads; edits never overwrite each other', async ({
   await who.getByLabel('Name').fill('Jo');
   await who.getByRole('button', { name: 'Continue' }).click();
   await expect(form).toBeHidden();
+
+  // And one of our own; the two lists are kept apart.
+  await jo.getByRole('button', { name: 'New lead' }).click();
+  await form.getByLabel('Name').fill('Ms Lim');
+  await form.getByRole('button', { name: 'Add lead' }).click();
+  await expect(form).toBeHidden();
+  const split = jo.getByRole('radiogroup', { name: 'Lead from' });
+  const leadList = jo.getByRole('list', { name: 'Leads' });
+  await split.getByRole('radio', { name: /MyDigitalLock/ }).click();
+  await expect(leadList.getByRole('button', { name: 'Mr Tan' })).toBeVisible();
+  await expect(leadList.getByRole('button', { name: 'Ms Lim' })).toBeHidden();
+  await split.getByRole('radio', { name: /Our own/ }).click();
+  await expect(leadList.getByRole('button', { name: 'Ms Lim' })).toBeVisible();
+  await expect(leadList.getByRole('button', { name: 'Mr Tan' })).toBeHidden();
+  await split.getByRole('radio', { name: /All leads/ }).click();
 
   // Later, Jo fills in more: a follow-up already due, where they came from, and a note.
   await jo.getByRole('list', { name: 'Leads' }).getByRole('button', { name: 'Mr Tan' }).click();

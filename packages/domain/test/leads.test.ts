@@ -1,6 +1,13 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { byPriority, isOverdue, matchLead, whatsappLink, type Lead } from '../src/leads.ts';
+import {
+  byPriority,
+  channelOf,
+  isOverdue,
+  matchLead,
+  whatsappLink,
+  type Lead,
+} from '../src/leads.ts';
 
 const lead = (id: string, patch: Partial<Lead> = {}): Lead => ({
   id,
@@ -45,5 +52,10 @@ describe('leads', () => {
     assert.equal(whatsappLink('9123 4567'), 'https://wa.me/6591234567');
     assert.equal(whatsappLink('+60 12-345 6789'), 'https://wa.me/60123456789');
     assert.equal(whatsappLink('123'), null);
+  });
+
+  it('counts leads from before the split as our own', () => {
+    assert.equal(channelOf(lead('old')), 'own');
+    assert.equal(channelOf(lead('mdl', { channel: 'mydigitallock' })), 'mydigitallock');
   });
 });

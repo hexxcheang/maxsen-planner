@@ -2,12 +2,16 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { FolderPlus, MessageCircle, Phone, Trash2, TriangleAlert } from 'lucide-react';
 import {
+  channelOf,
+  LEAD_CHANNEL_LABEL,
+  LEAD_CHANNELS,
   LEAD_SOURCES,
   LEAD_STATUS_LABEL,
   LEAD_STATUSES,
   newId,
   whatsappLink,
   type Lead,
+  type LeadChannel,
   type LeadStatus,
   type PropertyType,
 } from '@maxsen/domain';
@@ -17,6 +21,7 @@ import {
   Dialog,
   Field,
   Input,
+  SegmentedControl,
   Select,
   Textarea,
   useToast,
@@ -27,9 +32,10 @@ import { addLeadNote, deleteLead, LeadError, saveLead, type LeadInput } from './
 
 type Form = Omit<LeadInput, 'baseUpdatedAt'>;
 
-const formOf = (l: Lead | null): Form => ({
+const formOf = (l: Lead | null, channel: LeadChannel = 'own'): Form => ({
   name: l?.name ?? '',
   phone: l?.phone ?? '',
+  channel: l ? channelOf(l) : channel,
   email: l?.email ?? '',
   address: l?.address ?? '',
   propertyType: l?.propertyType ?? '',
@@ -54,6 +60,7 @@ const clean = (f: Form): Form =>
  */
 export function LeadDialog({
   lead,
+  channel,
   open,
   people,
   ensureName,
@@ -63,6 +70,8 @@ export function LeadDialog({
   onDeleted,
 }: {
   lead: Lead | null;
+  /** Where a new lead is from, to start with. */
+  channel?: LeadChannel;
   open: boolean;
   people: string[];
   ensureName: () => Promise<boolean>;
@@ -75,7 +84,7 @@ export function LeadDialog({
   const actions = useActions();
   const navigate = useNavigate();
   const [saved, setSaved] = useState<Lead | null>(lead);
-  const [form, setForm] = useState<Form>(() => formOf(lead));
+  const [form, setForm] = useState<Form>(() => formOf(lead, channel));
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState<'save' | 'note' | null>(null);
   const [conflict, setConflict] = useState<Lead | null>(null);
@@ -191,6 +200,15 @@ export function LeadDialog({
             }
           }}
         >
+          <Field label="Lead from">
+            <SegmentedControl<LeadChannel>
+              label="Lead from"
+              className="self-start"
+              value={form.channel ?? 'own'}
+              options={LEAD_CHANNELS.map((c) => ({ value: c, label: LEAD_CHANNEL_LABEL[c] }))}
+              onChange={(c) => set({ channel: c })}
+            />
+          </Field>
           <Field label="Name">
             <Input autoFocus value={form.name} onChange={(e) => set({ name: e.target.value })} />
           </Field>
@@ -367,6 +385,15 @@ export function LeadDialog({
                     <option key={p} value={p} />
                   ))}
                 </datalist>
+              </Field>
+              <Field label="Lead from">
+                <SegmentedControl<LeadChannel>
+                  label="Lead from"
+                  className="self-start"
+                  value={form.channel ?? 'own'}
+                  options={LEAD_CHANNELS.map((c) => ({ value: c, label: LEAD_CHANNEL_LABEL[c] }))}
+                  onChange={(c) => set({ channel: c })}
+                />
               </Field>
             </div>
             <Field label="Interested in">
