@@ -46,7 +46,7 @@ test.describe('quick quote', () => {
 
     // Unit prices can be changed and discounts given per item (S$ or %); the total follows.
     const totalCell = quote
-      .getByRole('row', { name: /^Total/ })
+      .getByRole('row', { name: /^Total\s*S\$/ })
       .getByRole('cell')
       .last();
     const amount = async () => Number((await totalCell.innerText()).replace(/[^\d.]/g, ''));
@@ -84,6 +84,15 @@ test.describe('quick quote', () => {
     await wording.press('Enter');
     await expect(quote.getByText('Site visit and transport')).toBeVisible();
 
+    // A discount on the whole quotation, as its own line at the end of the items.
+    const beforeTotal = await amount();
+    await quote.getByLabel('Total discount').fill('100');
+    await expect(quote.getByRole('row', { name: /^Total discount\s*-S\$100\.00/ })).toBeVisible();
+    await expect.poll(amount).toBeCloseTo(beforeTotal - 100, 2);
+    await quote.screenshot({
+      path: `test-results/screens/quote-total-discount-${testInfo.project.name}.png`,
+    });
+
     if (testInfo.project.name !== 'desktop') return;
     const [download] = await Promise.all([
       page.waitForEvent('download'),
@@ -102,6 +111,7 @@ test.describe('quick quote', () => {
     expect(sheet.find((r) => r.b.startsWith('Add-On Per Nova+ Pro'))?.e).toBe(150);
     expect(sheet.find((r) => r.b.startsWith('Discount 10%: Nova Package'))?.e).toBe(-199);
     expect(sheet.find((r) => r.b === 'Site visit and transport')?.e).toBe(45);
+    expect(sheet.find((r) => r.b === 'Total discount')?.e).toBe(-100);
 
     // And as a proposal-style PDF.
     const [pdfDownload] = await Promise.all([
@@ -129,7 +139,7 @@ test.describe('quick quote', () => {
       (
         await quote
           .getByRole('row')
-          .filter({ hasText: /^Total/ })
+          .filter({ hasText: /^Total\s*S\$/ })
           .innerText()
       ).replace(/[^\d.]/g, ''),
     );

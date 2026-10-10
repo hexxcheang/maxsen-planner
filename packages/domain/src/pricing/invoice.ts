@@ -233,6 +233,12 @@ export function buildInvoice(
   };
 }
 
+/**
+ * The edit key for a discount on the whole invoice ("10%" or S$), taken off after the rows' own
+ * discounts, as its own line at the end of the items.
+ */
+export const TOTAL_DISCOUNT = 'total-discount';
+
 /** A hand-set unit price and/or discount for one invoice row. */
 export interface PriceEdit {
   unitPrice?: number;
@@ -279,9 +285,30 @@ export function applyPriceEdits(
       });
     }
   }
-  const total = round2(
-    rows.reduce((s, r) => (r.kind === 'item' ? s + r.quantity * (r.unitPrice ?? 0) : s), 0),
+  const sum = () =>
+    round2(rows.reduce((s, r) => (r.kind === 'item' ? s + r.quantity * (r.unitPrice ?? 0) : s), 0));
+  const whole = edits[TOTAL_DISCOUNT];
+  const subtotal = sum();
+  const off = round2(
+    Math.min(
+      Math.max(0, subtotal),
+      whole?.discountPercent ? (subtotal * (whole.discount ?? 0)) / 100 : (whole?.discount ?? 0),
+    ),
   );
+  if (off > 0) {
+    // After the last item, before the notes (the warranty line) that close the list.
+    let at = rows.length;
+    while (at > 0 && rows[at - 1]!.kind === 'note') at--;
+    rows.splice(at, 0, {
+      kind: 'item',
+      key: `${TOTAL_DISCOUNT}:discount`,
+      description: `Total discount${whole?.discountPercent ? ` ${whole.discount}%` : ''}`,
+      quantity: 1,
+      unitPrice: -off,
+      discount: true,
+    });
+  }
+  const total = sum();
   return {
     ...invoice,
     rows,

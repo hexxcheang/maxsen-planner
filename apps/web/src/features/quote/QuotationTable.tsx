@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { PencilLine, Trash2 } from 'lucide-react';
-import { parseDiscount, type Invoice, type RowEdit } from '@maxsen/domain';
+import { parseDiscount, TOTAL_DISCOUNT, type Invoice, type RowEdit } from '@maxsen/domain';
 import { IconButton, Input, NumberField, Textarea } from '@/components/ui';
 import { money } from './quotation';
 
@@ -197,6 +197,27 @@ export function QuotationTable({
         )}
       </tbody>
       <tfoot>
+        {/* A discount on the whole invoice: its line shows above, at the end of the items. */}
+        <tr>
+          <td colSpan={3} className="pt-3 text-right text-ink-2">
+            Total discount
+          </td>
+          <td className="pt-2 pl-3">
+            <Input
+              compact
+              className="w-24 text-right"
+              aria-label="Total discount"
+              placeholder="S$ or %"
+              value={edits[TOTAL_DISCOUNT]?.discount ?? ''}
+              aria-invalid={
+                !!edits[TOTAL_DISCOUNT]?.discount &&
+                parseDiscount(edits[TOTAL_DISCOUNT]?.discount).discount === undefined
+              }
+              onChange={(e) => onEdit(TOTAL_DISCOUNT, { discount: e.target.value })}
+            />
+          </td>
+          <td />
+        </tr>
         {aboveTotal && (
           <tr>
             <td colSpan={5} className="pt-3">

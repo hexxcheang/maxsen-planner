@@ -129,7 +129,7 @@ test.describe('old invoices', () => {
       .getByRole('region', { name: 'Quotation' })
       .getByRole('row')
       .filter({
-        hasText: /^Total/,
+        hasText: /^Total\s*S\$/,
       });
     const quoted = Number((await total.innerText()).replace(/[^\d.]/g, ''));
     const quoteNumber = await page.getByLabel('Quotation number').inputValue();

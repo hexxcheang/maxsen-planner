@@ -2,6 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   applyPriceEdits,
+  TOTAL_DISCOUNT,
   buildInvoice,
   withExtraLines,
   invoiceNumber,
@@ -293,6 +294,29 @@ describe('hand-set prices and discounts', () => {
     assert.equal(edited.total, 1608);
     assert.equal(edited.deposit, 964.8);
     assert.match(items(edited)[4]!.description, /^Discount 10%: /);
+  });
+
+  it('takes a total discount off everything, after the rows’ own, before the warranty', () => {
+    const edited = applyPriceEdits(
+      inv,
+      {
+        'switch-addon': { discount: 40 },
+        [TOTAL_DISCOUNT]: { discount: 10, discountPercent: true },
+      },
+      60,
+    );
+    // 1390 + 200 - 40 + 150 = 1700, less 10%.
+    const last = items(edited).at(-1)!;
+    assert.deepEqual(
+      [last.key, last.description, last.unitPrice, last.discount],
+      ['total-discount:discount', 'Total discount 10%', -170, true],
+    );
+    assert.equal(edited.total, 1530);
+    assert.equal(edited.deposit, 918);
+    assert.equal(edited.rows.at(-1)!.kind, 'note');
+    // In S$, and never more than the invoice.
+    assert.equal(applyPriceEdits(inv, { [TOTAL_DISCOUNT]: { discount: 200 } }, 60).total, 1540);
+    assert.equal(applyPriceEdits(inv, { [TOTAL_DISCOUNT]: { discount: 99999 } }, 60).total, 0);
   });
 
   it('never discounts more than the row is worth', () => {
