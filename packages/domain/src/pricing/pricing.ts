@@ -224,6 +224,22 @@ export function withDeposit(pricing: PricingSettings, depositPercent: number): P
 }
 
 /**
+ * The payment plan for paying the whole amount at once: no deposit split, and the terms asking
+ * for full payment ("…after receiving full payment (100%)."), without the 2nd and last payments.
+ */
+export function withFullPayment(pricing: PricingSettings): PricingSettings {
+  return {
+    ...pricing,
+    depositPercent: 100,
+    secondPercent: 0,
+    terms: paymentTerms(pricing.terms, 100, 0, 0).replace(
+      /100\s*%\s*deposit/i,
+      'full payment (100%)',
+    ),
+  };
+}
+
+/**
  * Terms text with its deposit, next and last percentages set ("…after receiving 60% deposit.",
  * "Next, 30% to be paid…", "Last, 10% to be paid…"). A payment that comes to nothing is left out.
  * Wording it doesn't recognise is kept as written.

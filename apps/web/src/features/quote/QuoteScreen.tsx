@@ -19,6 +19,7 @@ import {
   stageAmounts,
   STAGE_LABEL,
   withDeposit,
+  withFullPayment,
   type RowEdit,
   type QuoteLine,
 } from '@maxsen/domain';
@@ -62,6 +63,8 @@ interface Draft {
   depositPercent?: number;
   /** What the client has paid as deposit, once they have; absent until then. */
   depositPaid?: number;
+  /** Paid in full at once instead of a deposit and later payments. */
+  fullPayment?: boolean;
 }
 
 const KEY = 'maxsen.quote.draft.v1';
@@ -115,7 +118,8 @@ export function QuoteScreen() {
   const listPricing = resolvePricing(settings);
   const [draft, setDraft] = useState<Draft>(() => loadDraft(listPricing.invoicePrefix));
   // This quote's own deposit, with the payment terms worded to match.
-  const pricing = withDeposit(listPricing, draft.depositPercent ?? listPricing.depositPercent);
+  const plan = withDeposit(listPricing, draft.depositPercent ?? listPricing.depositPercent);
+  const pricing = draft.fullPayment ? withFullPayment(plan) : plan;
   const set = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }));
   useEffect(() => {
     try {
@@ -146,9 +150,10 @@ export function QuoteScreen() {
   const [addingWorks, setAddingWorks] = useState(false);
   const extraId = (key: string) => key.slice('extra:'.length);
   const invoice = applyRowEdits(base, draft.edits, pricing.depositPercent);
-  // Once the deposit is paid, the document asks for the 2nd payment instead.
-  const payment =
-    draft.depositPaid !== undefined
+  // Paid in full, it asks for the whole total; once the deposit is paid, for the 2nd payment.
+  const payment = draft.fullPayment
+    ? stageAmounts(invoice.total, pricing, { stage: 'full' })
+    : draft.depositPaid !== undefined
       ? stageAmounts(invoice.total, pricing, {
           stage: 'second',
           paid: { second: draft.depositPaid },
@@ -195,13 +200,14 @@ export function QuoteScreen() {
               number: draft.number,
               settings,
               payment,
-              label: payment ? 'Invoice' : 'Quotation',
+              label: payment?.stage === 'second' ? 'Invoice' : 'Quotation',
             })
           : await buildInvoiceXlsx({ client, invoice, pricing, number: draft.number, payment });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${payment ? 'Invoice' : 'Quotation'} ${draft.number}${payment ? ' - 2nd payment' : ''}${draft.clientName ? ` - ${draft.clientName}` : ''}.${kind}`;
+      const second = payment?.stage === 'second';
+      a.download = `${second ? 'Invoice' : 'Quotation'} ${draft.number}${second ? ' - 2nd payment' : payment ? ' - Full payment' : ''}${draft.clientName ? ` - ${draft.clientName}` : ''}.${kind}`;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 10_000);
     } catch (e) {
@@ -425,7 +431,11 @@ export function QuoteScreen() {
                     showDeposit={!payment}
                     aboveTotal={
                       <DepositControls
-                        percent={pricing.depositPercent}
+                        full={!!draft.fullPayment}
+                        onFull={(fullPayment) =>
+                          setDraft((d) => ({ ...d, fullPayment: fullPayment || undefined }))
+                        }
+                        percent={plan.depositPercent}
                         usual={listPricing.depositPercent}
                         deposit={invoice.deposit}
                         paid={draft.depositPaid}
@@ -434,28 +444,42 @@ export function QuoteScreen() {
                       />
                     }
                     footer={
-                      payment && (
-                        <>
-                          <tr>
-                            <td colSpan={4} className="py-1 text-right text-ink-2">
-                              Deposit paid
-                            </td>
-                            <td className="tnum py-1 text-right text-ink-2">
-                              {money(-payment.paid)}
-                            </td>
-                          </tr>
-                          <tr>
-                            <td colSpan={4} className="py-1 text-right font-semibold text-ink">
-                              {STAGE_LABEL.second} due ({payment.percent}% less paid)
-                            </td>
-                            <td
-                              data-testid="quote-due"
-                              className="tnum py-1 text-right font-semibold text-ink"
-                            >
-                              {money(payment.due)}
-                            </td>
-                          </tr>
-                        </>
+                      payment?.stage === 'full' ? (
+                        <tr>
+                          <td colSpan={4} className="py-1 text-right font-semibold text-ink">
+                            {STAGE_LABEL.full} due
+                          </td>
+                          <td
+                            data-testid="quote-due"
+                            className="tnum py-1 text-right font-semibold text-ink"
+                          >
+                            {money(payment.due)}
+                          </td>
+                        </tr>
+                      ) : (
+                        payment && (
+                          <>
+                            <tr>
+                              <td colSpan={4} className="py-1 text-right text-ink-2">
+                                Deposit paid
+                              </td>
+                              <td className="tnum py-1 text-right text-ink-2">
+                                {money(-payment.paid)}
+                              </td>
+                            </tr>
+                            <tr>
+                              <td colSpan={4} className="py-1 text-right font-semibold text-ink">
+                                {STAGE_LABEL.second} due ({payment.percent}% less paid)
+                              </td>
+                              <td
+                                data-testid="quote-due"
+                                className="tnum py-1 text-right font-semibold text-ink"
+                              >
+                                {money(payment.due)}
+                              </td>
+                            </tr>
+                          </>
+                        )
                       )
                     }
                     editable={(key) => key.startsWith('extra:')}
@@ -522,10 +546,12 @@ export function QuoteScreen() {
 }
 
 /**
- * Just above the total: this quote's deposit (any percentage; the payment terms follow it), and
+ * Just above the total: a deposit or full payment; for a deposit, this quote's deposit (any percentage; the payment terms follow it), and
  * whether the client has paid it, and how much.
  */
 function DepositControls({
+  full,
+  onFull,
   percent,
   usual,
   deposit,
@@ -533,6 +559,8 @@ function DepositControls({
   onPercent,
   onPaid,
 }: {
+  full: boolean;
+  onFull: (full: boolean) => void;
   percent: number;
   usual: number;
   deposit: number;
@@ -546,41 +574,58 @@ function DepositControls({
       aria-label="Deposit"
       className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2 rounded-md bg-paper px-3 py-2"
     >
-      <label className="flex items-center gap-2 text-control text-ink-2">
-        Deposit
-        <NumberField
-          compact
-          live
-          min={0}
-          max={100}
-          precision={2}
-          className="w-20"
-          aria-label="Deposit (%)"
-          value={percent}
-          onChange={(v) => onPercent(v === null || v === usual ? undefined : v)}
-        />
-        %
-      </label>
-      <Switch
-        checked={paid !== undefined}
-        onCheckedChange={(on) => onPaid(on ? deposit : undefined)}
-        label="Deposit paid"
+      <SegmentedControl<'deposit' | 'full'>
+        size="sm"
+        label="Payment"
+        className="mr-auto"
+        value={full ? 'full' : 'deposit'}
+        onChange={(v) => onFull(v === 'full')}
+        options={[
+          { value: 'deposit', label: 'Deposit' },
+          { value: 'full', label: 'Full payment' },
+        ]}
       />
-      {paid !== undefined && (
-        <label className="flex items-center gap-2 text-control text-ink-2">
-          Amount paid (S$)
-          <NumberField
-            compact
-            live
-            min={0}
-            max={10_000_000}
-            precision={2}
-            className="w-28"
-            aria-label="Deposit paid (S$)"
-            value={paid}
-            onChange={(v) => onPaid(v ?? 0)}
+      {full ? (
+        <span className="text-control text-ink-2">The whole total, paid at once</span>
+      ) : (
+        <>
+          <label className="flex items-center gap-2 text-control text-ink-2">
+            Deposit
+            <NumberField
+              compact
+              live
+              min={0}
+              max={100}
+              precision={2}
+              className="w-20"
+              aria-label="Deposit (%)"
+              value={percent}
+              onChange={(v) => onPercent(v === null || v === usual ? undefined : v)}
+            />
+            %
+          </label>
+          <Switch
+            checked={paid !== undefined}
+            onCheckedChange={(on) => onPaid(on ? deposit : undefined)}
+            label="Deposit paid"
           />
-        </label>
+          {paid !== undefined && (
+            <label className="flex items-center gap-2 text-control text-ink-2">
+              Amount paid (S$)
+              <NumberField
+                compact
+                live
+                min={0}
+                max={10_000_000}
+                precision={2}
+                className="w-28"
+                aria-label="Deposit paid (S$)"
+                value={paid}
+                onChange={(v) => onPaid(v ?? 0)}
+              />
+            </label>
+          )}
+        </>
       )}
     </div>
   );

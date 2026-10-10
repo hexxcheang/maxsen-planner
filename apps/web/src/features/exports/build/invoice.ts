@@ -12,6 +12,7 @@ import {
   invoiceNumber,
   resolvePricing,
   stageAmounts,
+  withFullPayment,
   type Invoice,
   type InvoiceStage,
   type PricingSettings,
@@ -259,6 +260,16 @@ export async function buildInvoiceXlsx({
       { formula: `F${grandRow}*${pricing.depositPercent}/100`, result: invoice.deposit },
     ]);
     emphasise(due);
+  } else if (payment.stage === 'full') {
+    const due = put('deposit', [
+      null,
+      null,
+      null,
+      null,
+      'FULL PAYMENT (S$)',
+      { formula: `F${grandRow}`, result: payment.due },
+    ]);
+    emphasise(due);
   } else {
     const paidRow = put('deposit', [null, null, null, null, 'LESS PAID (S$)', payment.paid]);
     ws.getCell(`E${paidRow}`).font = {
@@ -417,9 +428,11 @@ export function projectInvoiceNumber(
 export function projectPayment(
   ctx: Pick<ExportContext, 'lines' | 'settings' | 'variants' | 'project'>,
 ) {
-  const { pricing, base, invoice } = projectInvoice(ctx);
+  const { pricing: plan, base, invoice } = projectInvoice(ctx);
   const billing = ctx.project.exportSettings.billing;
-  const amounts = stageAmounts(invoice.total, pricing, billing);
+  const amounts = stageAmounts(invoice.total, plan, billing);
+  // Paid in full: the terms ask for the whole amount instead of a deposit.
+  const pricing = amounts.stage === 'full' ? withFullPayment(plan) : plan;
   return {
     pricing,
     base,

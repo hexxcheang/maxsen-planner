@@ -61,12 +61,14 @@ export function quotationText({
   out.push(
     '',
     `Total: ${money(invoice.total)}`,
-    ...(payment && payment.stage !== 'deposit'
-      ? [
-          `Paid: ${money(-payment.paid)}`,
-          `${STAGE_LABEL[payment.stage]} due: ${money(payment.due)}`,
-        ]
-      : [`Deposit (${pricing.depositPercent}%): ${money(invoice.deposit)}`]),
+    ...(payment?.stage === 'full'
+      ? [`${STAGE_LABEL.full} due: ${money(payment.due)}`]
+      : payment && payment.stage !== 'deposit'
+        ? [
+            `Paid: ${money(-payment.paid)}`,
+            `${STAGE_LABEL[payment.stage]} due: ${money(payment.due)}`,
+          ]
+        : [`Deposit (${pricing.depositPercent}%): ${money(invoice.deposit)}`]),
     '',
     pricing.warranty,
     '',

@@ -38,6 +38,7 @@ const SUFFIX: Record<ExportKind, string> = {
 const STAGE_SUFFIX: Record<Exclude<InvoiceStage, 'deposit'>, string> = {
   second: ' - 2nd Payment Invoice.xlsx',
   final: ' - Final Invoice.xlsx',
+  full: ' - Full Payment Invoice.xlsx',
 };
 
 /** Export filenames per product spec §11. */

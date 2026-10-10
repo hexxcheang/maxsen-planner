@@ -175,5 +175,34 @@ test.describe('quick quote', () => {
       page.getByRole('button', { name: 'Download quotation (PDF)' }).click(),
     ]);
     expect(pdf.suggestedFilename()).toMatch(/^Invoice .* - 2nd payment - Mr Lee\.pdf$/);
+
+    // Or paid in full at once: the whole total, with the terms asking for full payment.
+    await quote.getByRole('radio', { name: 'Full payment' }).click();
+    await expect(quote.getByLabel('Deposit (%)')).toBeHidden();
+    await expect(page.getByTestId('quote-due')).toContainText(
+      total.toLocaleString('en-SG', { minimumFractionDigits: 2 }),
+    );
+    await page.screenshot({ path: 'test-results/screens/quote-full-payment.png', fullPage: true });
+    const [full] = await Promise.all([
+      page.waitForEvent('download'),
+      page.getByRole('button', { name: 'Download quotation (Excel)' }).click(),
+    ]);
+    expect(full.suggestedFilename()).toMatch(/^Quotation .* - Full payment - Mr Lee\.xlsx$/);
+    const fullPath = testInfo.outputPath('full.xlsx');
+    await full.saveAs(fullPath);
+    const fwb = new ExcelJS.Workbook();
+    await fwb.xlsx.load(
+      (await readFile(fullPath)) as unknown as Parameters<typeof fwb.xlsx.load>[0],
+    );
+    const ftext: string[] = [];
+    fwb.worksheets[0]!.eachRow((row) =>
+      row.eachCell((c) => {
+        if (typeof c.value === 'string') ftext.push(c.value);
+      }),
+    );
+    const fall = ftext.join('\n');
+    expect(fall).toContain('FULL PAYMENT (S$)');
+    expect(fall).toContain('after receiving full payment (100%)');
+    expect(fall).not.toContain('Next, ');
   });
 });

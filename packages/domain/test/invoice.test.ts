@@ -172,7 +172,6 @@ describe('buildInvoice', () => {
     );
   });
 
-
   it('prices pieces individually below a package, and lists anything without a price', () => {
     const few = buildInvoice(
       [

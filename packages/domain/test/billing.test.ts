@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { exportFilename, stageAmounts } from '../src/index.ts';
+import { DEFAULT_PRICING, exportFilename, stageAmounts, withFullPayment } from '../src/index.ts';
 
 const pricing = { depositPercent: 60, secondPercent: 30 };
 
@@ -45,5 +45,18 @@ describe('invoice payment stages', () => {
     assert.equal(exportFilename('Tan', 'invoice'), 'Tan - Invoice.xlsx');
     assert.equal(exportFilename('Tan', 'invoice-pdf'), 'Tan - Invoice.pdf');
     assert.equal(exportFilename('Tan', 'invoice-pdf', 'final'), 'Tan - Final Invoice.pdf');
+  });
+
+  it('asks for the whole total at once for full payment', () => {
+    const a = stageAmounts(10000, pricing, { stage: 'full', paid: { full: 500 } });
+    assert.deepEqual([a.stage, a.percent, a.paid, a.due], ['full', 100, 0, 10000]);
+    assert.equal(exportFilename('Tan', 'invoice-pdf', 'full'), 'Tan - Full Payment Invoice.pdf');
+  });
+
+  it('words the terms for full payment, without the 2nd and last payments', () => {
+    const terms = withFullPayment(DEFAULT_PRICING).terms;
+    assert.match(terms, /commence after receiving full payment \(100%\)\./);
+    assert.doesNotMatch(terms, /Next,|Last,|Then,|deposit/i);
+    assert.match(terms, /Payment Terms: Grant Total in the final invoice/);
   });
 });

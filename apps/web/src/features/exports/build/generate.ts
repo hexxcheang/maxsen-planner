@@ -918,7 +918,7 @@ export async function buildQuotationPdf({
   doc.text(money(invoice.total), col.amount - 2, y, { align: 'right' });
   y += 9;
   const later = payment && payment.stage !== 'deposit';
-  if (later) {
+  if (later && payment.stage !== 'full') {
     // What the client has paid so far: the deposit, or for the final payment the 2nd one too.
     const paidLabel = payment.stage === 'final' ? 'Deposit & 2nd payment paid' : 'Deposit paid';
     eyebrow(doc, paidLabel, left, y, BRONZE, 7);

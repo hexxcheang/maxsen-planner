@@ -100,7 +100,7 @@ const customerToggles = {
   showPropertyAddress: z.boolean(),
 };
 
-const invoiceStageSchema = z.enum(['deposit', 'second', 'final']);
+const invoiceStageSchema = z.enum(['deposit', 'second', 'final', 'full']);
 
 export const exportSettingsSchema = z.object({
   floorPlan: z.object({

@@ -11,6 +11,7 @@ import {
   pdfInvoiceGrid,
   resolvePricing,
   withDeposit,
+  withFullPayment,
   stageAmounts,
   STAGE_LABEL,
   type Cell,
@@ -151,7 +152,10 @@ export function OldInvoiceSection() {
     asked && asked.total > 0
       ? Math.round((asked.due / asked.total) * 100)
       : resolvePricing(settings).depositPercent;
-  const pricing = withDeposit(resolvePricing(settings), draft?.depositPercent ?? askedPercent);
+  const plan = withDeposit(resolvePricing(settings), draft?.depositPercent ?? askedPercent);
+  // Paid in full: the whole total at once, with the terms asking for it.
+  const full = draft?.stage === 'full';
+  const pricing = full ? withFullPayment(plan) : plan;
   const quoteCatalogue = useQuoteCatalogue();
   const [addingWorks, setAddingWorks] = useState(false);
   const [pasted, setPasted] = useState('');
@@ -528,46 +532,49 @@ export function OldInvoiceSection() {
               { value: 'deposit', label: 'Deposit' },
               { value: 'second', label: '2nd payment' },
               { value: 'final', label: 'Final' },
+              { value: 'full', label: 'Full payment' },
             ]}
           />
         </Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field
-            label="Deposit (%)"
-            hint={
-              draft.depositPercent === undefined
-                ? 'As the old invoice asked; the terms follow it.'
-                : 'Changed; the terms follow it.'
-            }
-          >
-            <NumberField
-              compact
-              live
-              min={0}
-              max={100}
-              precision={2}
-              value={pricing.depositPercent}
-              aria-label="Deposit (%)"
-              onChange={(v) =>
-                set({ depositPercent: v === null || v === askedPercent ? undefined : v })
+        {!full && (
+          <div className="grid grid-cols-2 gap-3">
+            <Field
+              label="Deposit (%)"
+              hint={
+                draft.depositPercent === undefined
+                  ? 'As the old invoice asked; the terms follow it.'
+                  : 'Changed; the terms follow it.'
               }
-            />
-          </Field>
-          {draft.stage !== 'deposit' && (
-            <Field label="Already paid (S$)">
+            >
               <NumberField
                 compact
                 live
                 min={0}
+                max={100}
                 precision={2}
-                value={amounts.paid}
-                aria-label="Already paid (S$)"
-                onChange={(v) => set({ paid: v ?? 0 })}
+                value={plan.depositPercent}
+                aria-label="Deposit (%)"
+                onChange={(v) =>
+                  set({ depositPercent: v === null || v === askedPercent ? undefined : v })
+                }
               />
             </Field>
-          )}
-        </div>
-        {draft.stage !== 'deposit' && (
+            {draft.stage !== 'deposit' && (
+              <Field label="Already paid (S$)">
+                <NumberField
+                  compact
+                  live
+                  min={0}
+                  precision={2}
+                  value={amounts.paid}
+                  aria-label="Already paid (S$)"
+                  onChange={(v) => set({ paid: v ?? 0 })}
+                />
+              </Field>
+            )}
+          </div>
+        )}
+        {draft.stage !== 'deposit' && !full && (
           <p className="-mt-2 text-meta text-ink-2">
             Suggested {money(amounts.suggestedPaid)} ({amounts.suggestedFrom}).{' '}
             {draft.paid !== undefined && (
@@ -591,7 +598,9 @@ export function OldInvoiceSection() {
               ? `${amounts.percent}% of ${money(invoice.total)}`
               : draft.stage === 'second'
                 ? `${amounts.percent}% of ${money(invoice.total)}, less ${money(amounts.paid)} paid`
-                : `Balance of ${money(invoice.total)}, less ${money(amounts.paid)} paid`}
+                : full
+                  ? `The whole of ${money(invoice.total)}`
+                  : `Balance of ${money(invoice.total)}, less ${money(amounts.paid)} paid`}
           </p>
         </div>
       </section>
@@ -647,12 +656,14 @@ export function OldInvoiceSection() {
             footer={
               draft.stage !== 'deposit' && (
                 <>
-                  <tr>
-                    <td colSpan={4} className="py-1 text-right text-ink-2">
-                      Already paid
-                    </td>
-                    <td className="tnum py-1 text-right text-ink-2">{money(-amounts.paid)}</td>
-                  </tr>
+                  {!full && (
+                    <tr>
+                      <td colSpan={4} className="py-1 text-right text-ink-2">
+                        Already paid
+                      </td>
+                      <td className="tnum py-1 text-right text-ink-2">{money(-amounts.paid)}</td>
+                    </tr>
+                  )}
                   <tr>
                     <td colSpan={4} className="py-1 text-right font-semibold text-ink">
                       {STAGE_LABEL[draft.stage]} due

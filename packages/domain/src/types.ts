@@ -182,7 +182,8 @@ export interface ExportSettings {
 }
 
 /** The three payments in Maxsen's terms: deposit, at the start of installation, and the balance. */
-export type InvoiceStage = 'deposit' | 'second' | 'final';
+/** The usual three payments, or the whole amount at once. */
+export type InvoiceStage = 'deposit' | 'second' | 'final' | 'full';
 
 export interface IssuedInvoice {
   number: string;

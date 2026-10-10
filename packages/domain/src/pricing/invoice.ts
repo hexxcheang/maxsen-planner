@@ -160,7 +160,8 @@ export function buildInvoice(
   const lights = qty(isLight);
   const metres = round(qty(isStrip));
   const drivers = qty(isDriver);
-  if (lights + metres + drivers + qty(isRgbStrip) > 0) rows.push({ kind: 'section', title: 'Lighting' });
+  if (lights + metres + drivers + qty(isRgbStrip) > 0)
+    rows.push({ kind: 'section', title: 'Lighting' });
 
   const ltPackages = packagesFor(lights, lt.packageSize);
   if (ltPackages > 0) {

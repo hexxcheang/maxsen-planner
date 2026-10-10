@@ -7,12 +7,13 @@
 import type { InvoiceStage, ProjectBilling } from '../types.ts';
 import type { PricingSettings } from './pricing.ts';
 
-export const INVOICE_STAGES: InvoiceStage[] = ['deposit', 'second', 'final'];
+export const INVOICE_STAGES: InvoiceStage[] = ['deposit', 'second', 'final', 'full'];
 
 export const STAGE_LABEL: Record<InvoiceStage, string> = {
   deposit: 'Deposit',
   second: '2nd payment',
   final: 'Final payment',
+  full: 'Full payment',
 };
 
 export interface StageAmounts {
@@ -43,27 +44,27 @@ export function stageAmounts(
   const secondDue =
     issued.second?.due ?? Math.max(0, round2((total * upToSecond) / 100 - paidBeforeSecond));
 
+  // Full payment: the whole total in one go, with nothing paid before it.
+  const first = stage === 'deposit' || stage === 'full';
   const percent = stage === 'deposit' ? dep : stage === 'second' ? upToSecond : 100;
-  const suggestedPaid =
-    stage === 'deposit'
-      ? 0
-      : stage === 'second'
-        ? depositDue
-        : round2(paidBeforeSecond + secondDue);
-  const suggestedFrom =
-    stage === 'deposit'
-      ? ''
-      : stage === 'second'
-        ? issued.deposit
-          ? `Deposit invoice ${issued.deposit.number}`
-          : `${dep}% deposit of today’s total`
-        : [
-            issued.deposit ? `deposit ${issued.deposit.number}` : `${dep}% deposit`,
-            issued.second
-              ? `2nd payment ${issued.second.number}`
-              : `${pricing.secondPercent}% 2nd payment`,
-          ].join(' + ');
-  const typed = stage === 'deposit' ? undefined : billing?.paid?.[stage];
+  const suggestedPaid = first
+    ? 0
+    : stage === 'second'
+      ? depositDue
+      : round2(paidBeforeSecond + secondDue);
+  const suggestedFrom = first
+    ? ''
+    : stage === 'second'
+      ? issued.deposit
+        ? `Deposit invoice ${issued.deposit.number}`
+        : `${dep}% deposit of today’s total`
+      : [
+          issued.deposit ? `deposit ${issued.deposit.number}` : `${dep}% deposit`,
+          issued.second
+            ? `2nd payment ${issued.second.number}`
+            : `${pricing.secondPercent}% 2nd payment`,
+        ].join(' + ');
+  const typed = first ? undefined : billing?.paid?.[stage];
   const paid = round2(typed ?? suggestedPaid);
   const due = Math.max(0, round2((total * percent) / 100 - paid));
   return { stage, percent, paid, suggestedPaid, suggestedFrom, due };

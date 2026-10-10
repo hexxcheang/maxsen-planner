@@ -167,12 +167,14 @@ export function InvoicePricesDialog({
         footer={
           amounts.stage !== 'deposit' && (
             <>
-              <tr>
-                <td colSpan={4} className="py-1 text-right text-ink-2">
-                  Already paid
-                </td>
-                <td className="tnum py-1 text-right text-ink-2">{money(-amounts.paid)}</td>
-              </tr>
+              {amounts.stage !== 'full' && (
+                <tr>
+                  <td colSpan={4} className="py-1 text-right text-ink-2">
+                    Already paid
+                  </td>
+                  <td className="tnum py-1 text-right text-ink-2">{money(-amounts.paid)}</td>
+                </tr>
+              )}
               <tr>
                 <td colSpan={4} className="py-1 text-right font-semibold text-ink">
                   {STAGE_LABEL[amounts.stage]} due

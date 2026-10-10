@@ -41,7 +41,9 @@ export function InvoiceOptions({ project, settings }: { project: Project; settin
   const p = invoice.packages;
   const stage = amounts.stage;
   const billing = project.exportSettings.billing;
-  const paidTyped = stage !== 'deposit' && billing?.paid?.[stage] !== undefined;
+  // The deposit and a full payment come first: nothing has been paid before them.
+  const first = stage === 'deposit' || stage === 'full';
+  const paidTyped = !first && billing?.paid?.[stage] !== undefined;
   const update = (recipe: (b: NonNullable<typeof billing>) => void) =>
     actions.updateExportSettings(project.id, (s) => {
       s.billing ??= { stage: 'deposit' };
@@ -66,6 +68,7 @@ export function InvoiceOptions({ project, settings }: { project: Project; settin
             { value: 'deposit', label: 'Deposit' },
             { value: 'second', label: '2nd payment' },
             { value: 'final', label: 'Final' },
+            { value: 'full', label: 'Full payment' },
           ]}
         />
       </Field>
@@ -91,7 +94,7 @@ export function InvoiceOptions({ project, settings }: { project: Project; settin
           }
         />
       </Field>
-      {stage !== 'deposit' && (
+      {!first && (
         <Field
           label="Already paid (S$)"
           hint={
@@ -142,7 +145,7 @@ export function InvoiceOptions({ project, settings }: { project: Project; settin
         </dd>
         <dt className="text-ink-3">Total</dt>
         <dd className="tnum text-ink">S${formatMoney(invoice.total)}</dd>
-        {stage !== 'deposit' && (
+        {!first && (
           <>
             <dt className="text-ink-3">Paid</dt>
             <dd className="tnum text-ink">−S${formatMoney(amounts.paid)}</dd>
@@ -155,7 +158,9 @@ export function InvoiceOptions({ project, settings }: { project: Project; settin
             ? ` (${amounts.percent}% of total)`
             : stage === 'second'
               ? ` (${amounts.percent}% of total, less paid)`
-              : ' (balance)'}
+              : stage === 'full'
+                ? ' (the whole total)'
+                : ' (balance)'}
         </dd>
       </dl>
       <div className="flex flex-col gap-1">
