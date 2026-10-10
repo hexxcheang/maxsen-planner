@@ -50,6 +50,32 @@ describe('reading an old invoice', () => {
     assert.equal(issued.second?.due, 774);
   });
 
+  it('takes the client from Attn, not the sales person under Prepared by', () => {
+    const old = parseOldInvoice([
+      // Read off a scan, the headings can come out in a row of their own.
+      ['TO', 'Attn:'],
+      ...template.slice(0, 5),
+      ['Attn:', 'Ting', null, null, null, null],
+      ...template.slice(6),
+      ['Prepared by:', null, null, null, null, null],
+      ['Name: Cheang He Xiang', null, null, null, null, null],
+    ]);
+    assert.equal(old.client.name, 'Ting');
+  });
+
+  it('restores a deposit whose leading digits a narrow column cut off', () => {
+    const cut = (deposit: number) =>
+      parseOldInvoice([
+        ...template.slice(0, -2),
+        [null, null, null, null, 'GRANT TOTAL (S$)', 4830],
+        [null, null, null, null, 'DEPOSIT REQUEST (S$', deposit],
+      ]).deposit;
+    // "898.00" printed for S$2,898.00, 60% of S$4,830.
+    assert.equal(cut(898), 2898);
+    // A whole percentage is kept as printed.
+    assert.equal(cut(2415), 2415);
+  });
+
   it('reads rows pasted from a spreadsheet without headings', () => {
     const old = parseOldInvoice([
       ['1', 'Nova Package', '1', '1,990.00'],

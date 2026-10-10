@@ -37,6 +37,9 @@ const num = (c: Cell): number | null => {
   return Number(t);
 };
 
+/** A label rather than a value: "Attn:", "Phone:". */
+const isLabel = (t: string) => /^[A-Za-z][A-Za-z .#/]*:$/.test(t);
+
 /** The first non-empty cell after a label (in the same row), for header fields. */
 function after(grid: Cell[][], label: RegExp): Cell {
   for (const row of grid) {
@@ -46,8 +49,10 @@ function after(grid: Cell[][], label: RegExp): Cell {
     const own = text(row[i])
       .replace(label, '')
       .replace(/^[:\s]+/, '');
-    if (own) return own;
-    for (let j = i + 1; j < row.length; j++) if (text(row[j])) return row[j];
+    if (own && !isLabel(own)) return own;
+    // Another label beside it ("TO", "Attn:") isn't its value: look further on.
+    for (let j = i + 1; j < row.length; j++)
+      if (text(row[j]) && !isLabel(text(row[j]))) return row[j];
   }
   return null;
 }
@@ -66,6 +71,23 @@ function amountBeside(grid: Cell[][], label: RegExp): number | null {
 }
 
 const TOTAL = /total/i;
+
+/**
+ * The deposit as printed, or what it was before a narrow column cut its leading digits off
+ * ("898.00" for S$2,898.00): when the printed amount isn't a whole percentage of the total but
+ * the end of one is, that's the deposit.
+ */
+function wholeDeposit(printed: number | null, total: number | null): number | null {
+  if (printed === null || !total || total <= 0) return printed;
+  const isWhole = (n: number) => Math.abs(((n / total) * 100) % 1) < 0.005;
+  if (isWhole(printed)) return printed;
+  const tail = printed.toFixed(2);
+  for (let p = 1; p <= 100; p++) {
+    const due = Math.round(total * p) / 100;
+    if (due > printed && due.toFixed(2).endsWith(tail)) return due;
+  }
+  return printed;
+}
 
 export function parseOldInvoice(grid: Cell[][]): OldInvoice {
   // The item table's heading row, and which columns hold what.
@@ -121,6 +143,13 @@ export function parseOldInvoice(grid: Cell[][]): OldInvoice {
   );
 
   const date = after(grid, /^date\b/i);
+  // The client's details, not the sales person's under "Prepared by" at the foot.
+  const foot = grid.findIndex((r) => r.some((c) => /^prepared\s*by\b/i.test(text(c))));
+  const top = foot < 0 ? grid : grid.slice(0, foot);
+  const total =
+    amountBeside(grid, /gran[dt]\s*total/i) ??
+    amountBeside(grid, /total\s*price/i) ??
+    amountBeside(grid, /^total$/i);
   const paid = amountBeside(grid, /less\s*paid|already\s*paid|deposit\b.*\bpaid\b/i);
   return {
     number: text(
@@ -131,17 +160,17 @@ export function parseOldInvoice(grid: Cell[][]): OldInvoice {
     date: text(date),
     client: {
       name:
-        text(after(grid, /^name\s*:?/i)) ||
-        text(after(grid, /^prepared\s*for\s*:?/i)) ||
-        text(after(grid, /^(to|attn)\b\s*:?/i)),
-      contact: text(after(grid, /^(phone|contact|tel)\s*:?/i)),
+        text(after(top, /^name\s*:?/i)) ||
+        text(after(top, /^prepared\s*for\s*:?/i)) ||
+        text(after(top, /^(to|attn)\b\s*:?/i)),
+      contact: text(after(top, /^(phone|contact|tel)\s*:?/i)),
     },
     rows: kept,
-    total:
-      amountBeside(grid, /gran[dt]\s*total/i) ??
-      amountBeside(grid, /total\s*price/i) ??
-      amountBeside(grid, /^total$/i),
-    deposit: amountBeside(grid, /deposit\s*request/i) ?? amountBeside(grid, /^deposit\s*\(\d+%\)/i),
+    total,
+    deposit: wholeDeposit(
+      amountBeside(grid, /deposit\s*request/i) ?? amountBeside(grid, /^deposit\s*\(\d+%\)/i),
+      total,
+    ),
     // Printed as "-S$2,353.20" on the PDF.
     lessPaid: paid === null ? null : Math.abs(paid),
     secondPayment: amountBeside(grid, /(2nd|second)\s*payment(?!\s*paid)/i),
