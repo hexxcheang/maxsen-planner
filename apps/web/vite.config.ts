@@ -58,7 +58,7 @@ export default defineConfig({
   // Pre-bundle the lazily imported export and PDF libraries at startup; otherwise Vite discovers
   // them on first use and reloads the page mid-session.
   optimizeDeps: {
-    include: ['pdfjs-dist', 'jspdf', 'exceljs', 'tesseract.js'],
+    include: ['pdfjs-dist/legacy/build/pdf.mjs', 'jspdf', 'exceljs', 'tesseract.js'],
   },
   server: {
     // Also reachable from other devices on the same Wi-Fi (a tablet), at the Network address

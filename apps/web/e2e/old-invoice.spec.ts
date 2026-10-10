@@ -167,6 +167,19 @@ test.describe('old invoices', () => {
   }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop', 'File handling is viewport-independent');
     test.setTimeout(120_000);
+    // As on older Safari (Mac and iPad): without the newest JavaScript features pdf.js uses.
+    await page.addInitScript(() => {
+      const strip = (o: object, ...keys: string[]) => {
+        for (const k of keys) Reflect.deleteProperty(o, k);
+      };
+      strip(Promise, 'try', 'withResolvers');
+      strip(Math, 'sumPrecise');
+      strip(globalThis, 'Float16Array');
+      strip(Uint8Array, 'fromBase64');
+      strip(Uint8Array.prototype, 'toHex', 'toBase64');
+      strip(Map.prototype, 'getOrInsert', 'getOrInsertComputed');
+      strip(WeakMap.prototype, 'getOrInsert', 'getOrInsertComputed');
+    });
     // The sample invoice (9 lines, S$3,922, deposit S$2,353.20) as a picture of the page.
     await page.goto('/quote');
     await page.getByRole('radio', { name: 'Old invoice: next payment' }).click();

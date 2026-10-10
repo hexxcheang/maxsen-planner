@@ -6,6 +6,7 @@
  */
 import type { PdfText, TableRule } from '@maxsen/domain';
 import type { Worker as TesseractWorker } from 'tesseract.js';
+import { loadPdfjs } from './pdfjs';
 
 /** Pixels per PDF point: about 250 dpi, where Tesseract reads invoice print best. */
 const SCALE = 250 / 72;
@@ -29,9 +30,7 @@ export async function ocrPdf(
   file: File,
   onProgress?: (message: string) => void,
 ): Promise<{ texts: PdfText[]; rules: TableRule[] }> {
-  const pdfjs = await import('pdfjs-dist');
-  const pdfWorker = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
-  pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker.default;
+  const pdfjs = await loadPdfjs();
   const doc = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
 
   onProgress?.('Getting the text reader ready…');
@@ -77,6 +76,7 @@ export async function ocrPdf(
         for (const strip of head.strips) {
           const crop = clearRules(clean, strip);
           const found = (await recognise(worker, crop)).filter((w) => NUMBER.test(w.text));
+          release(crop);
           const inStrip = (w: Word) => {
             const cx = (w.bbox.x0 + w.bbox.x1) / 2;
             return cx > strip.x0 && cx < strip.x1 && w.bbox.y0 > strip.y0 && w.bbox.y1 < strip.y1;
@@ -99,6 +99,11 @@ export async function ocrPdf(
           rules.push({ page: p, y: viewport.height / SCALE - y / SCALE });
       }
 
+      // Safari on iPad stops drawing once page-sized canvases add up, so each page's go at once.
+      release(clean);
+      release(canvas);
+      page.cleanup();
+
       const pageHeight = viewport.height / SCALE;
       for (const w of words)
         texts.push({
@@ -113,8 +118,15 @@ export async function ocrPdf(
     }
   } finally {
     await worker.terminate();
+    void doc.destroy();
   }
   return { texts, rules };
+}
+
+/** Gives a canvas's memory back straight away, rather than whenever it's collected. */
+function release(canvas: HTMLCanvasElement) {
+  canvas.width = 0;
+  canvas.height = 0;
 }
 
 async function recognise(worker: TesseractWorker, image: HTMLCanvasElement): Promise<Word[]> {
