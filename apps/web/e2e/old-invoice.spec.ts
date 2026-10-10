@@ -32,6 +32,7 @@ test.describe('old invoices', () => {
     await page.getByLabel('Client’s message').fill('- 12 switches\n- 15 downlights warm white');
     await page.getByLabel('Client’s name').fill('Mr Tan');
     await page.getByRole('button', { name: 'Read message' }).click();
+    const quoteNumber = await page.getByLabel('Quotation number').inputValue();
     const [first] = await Promise.all([
       page.waitForEvent('download'),
       page.getByRole('button', { name: 'Download quotation (Excel)' }).click(),
@@ -46,6 +47,11 @@ test.describe('old invoices', () => {
     await page.getByLabel('Old invoice file').setInputFiles(oldPath);
     await expect(page.getByText(/this one is for the 2nd payment/)).toBeVisible();
     await expect(page.getByLabel('Client’s name')).toHaveValue('Mr Tan');
+    // The next invoice keeps the old one's number, whichever payment it's for.
+    await expect(page.getByLabel('Invoice number')).toHaveValue(quoteNumber);
+    await page.getByRole('radio', { name: 'Final', exact: true }).click();
+    await expect(page.getByLabel('Invoice number')).toHaveValue(quoteNumber);
+    await page.getByRole('radio', { name: '2nd payment' }).click();
     await expect(page.getByRole('radio', { name: '2nd payment' })).toBeChecked();
     const paid = page.getByLabel('Already paid (S$)');
     await expect(paid).toHaveValue(String(deposit.result));
@@ -126,6 +132,7 @@ test.describe('old invoices', () => {
         hasText: /^Total/,
       });
     const quoted = Number((await total.innerText()).replace(/[^\d.]/g, ''));
+    const quoteNumber = await page.getByLabel('Quotation number').inputValue();
     const [first] = await Promise.all([
       page.waitForEvent('download'),
       page.getByRole('button', { name: 'Download quotation (PDF)' }).click(),
@@ -158,6 +165,7 @@ test.describe('old invoices', () => {
     await page.getByRole('button', { name: /Open another/ }).click();
     await page.getByLabel('Old invoice file').setInputFiles(secondPath);
     await expect(page.getByText(/this one is for the final payment/)).toBeVisible();
+    await expect(page.getByLabel('Invoice number')).toHaveValue(quoteNumber);
     await expect(page.getByLabel('Already paid (S$)')).toHaveValue(
       String(Math.round((quoted * 0.6 + due) * 100) / 100),
     );

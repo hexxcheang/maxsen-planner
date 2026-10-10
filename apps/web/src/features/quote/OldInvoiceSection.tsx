@@ -195,7 +195,10 @@ export function OldInvoiceSection() {
       lines: old.rows.map((r) => ({ id: newId('room'), ...r })),
       issued,
       stage,
-      number: invoiceNumber(pricing.invoicePrefix, new Date(), INVOICE_STAGES.indexOf(stage) + 1),
+      // The next payment's invoice keeps the old invoice's number; a new one only if none was read.
+      number:
+        old.number ||
+        invoiceNumber(pricing.invoicePrefix, new Date(), INVOICE_STAGES.indexOf(stage) + 1),
       edits: {},
     });
     toast({
@@ -508,7 +511,15 @@ export function OldInvoiceSection() {
               onChange={(e) => set({ clientContact: e.target.value })}
             />
           </Field>
-          <Field label="Invoice number" className="col-span-2">
+          <Field
+            label="Invoice number"
+            hint={
+              draft.oldNumber && draft.number === draft.oldNumber
+                ? 'As on the old invoice.'
+                : undefined
+            }
+            className="col-span-2"
+          >
             <Input value={draft.number} onChange={(e) => set({ number: e.target.value })} />
           </Field>
         </div>
@@ -521,11 +532,14 @@ export function OldInvoiceSection() {
               set({
                 stage,
                 paid: undefined,
-                number: invoiceNumber(
-                  pricing.invoicePrefix,
-                  new Date(),
-                  INVOICE_STAGES.indexOf(stage) + 1,
-                ),
+                // Following the old invoice, its number (or the one typed) stays as it is.
+                number: draft.oldNumber
+                  ? draft.number
+                  : invoiceNumber(
+                      pricing.invoicePrefix,
+                      new Date(),
+                      INVOICE_STAGES.indexOf(stage) + 1,
+                    ),
               })
             }
             options={[
