@@ -1,0 +1,832 @@
+[
+  {
+    "page": 1,
+    "x": 30.7,
+    "y": 793.7,
+    "width": 101.5,
+    "height": 8.9,
+    "str": "MAXSEN SMART HOME",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 39.2,
+    "y": 782,
+    "width": 92.4,
+    "height": 5.7,
+    "str": "Company Reg. No. 202433824M",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 39.2,
+    "y": 775.3,
+    "width": 85.7,
+    "height": 5.7,
+    "str": "9004 Tampines St 93, #2-122",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 39.2,
+    "y": 767.4,
+    "width": 52.4,
+    "height": 5.7,
+    "str": "Singapore 528838",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 39.2,
+    "y": 760.1,
+    "width": 47.2,
+    "height": 5.7,
+    "str": "(+65) 89881882",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 39.2,
+    "y": 752.8,
+    "width": 78.8,
+    "height": 5.7,
+    "str": "Email: hexiang@maxsen.sg",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 39.2,
+    "y": 745,
+    "width": 90.7,
+    "height": 5.7,
+    "str": "Website: http://www.maxsen.sg",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 468,
+    "y": 745,
+    "width": 15.3,
+    "height": 5.7,
+    "str": "DATE",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 513.1,
+    "y": 745,
+    "width": 31.6,
+    "height": 5.7,
+    "str": "7 Oct 2026",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 453.2,
+    "y": 737.1,
+    "width": 30.1,
+    "height": 5.7,
+    "str": "INVOICE #",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 522.7,
+    "y": 737.1,
+    "width": 12.4,
+    "height": 5.7,
+    "str": "MX1",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 39.2,
+    "y": 728.1,
+    "width": 11.8,
+    "height": 6.1,
+    "str": "TO:",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 39.2,
+    "y": 720.1,
+    "width": 19.5,
+    "height": 5.7,
+    "str": "Phone:",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 79.5,
+    "y": 720.1,
+    "width": 5.2,
+    "height": 5.7,
+    "str": "Jo",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 39.2,
+    "y": 711,
+    "width": 18.7,
+    "height": 5.7,
+    "str": "Name:",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 79.5,
+    "y": 711,
+    "width": 12.2,
+    "height": 5.7,
+    "str": "Test",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 44.2,
+    "y": 680.8,
+    "width": 11.7,
+    "height": 6.1,
+    "str": "S/N",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 183.5,
+    "y": 680.8,
+    "width": 65.2,
+    "height": 6.1,
+    "str": "ITEM/DESCRIPTION",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 369.3,
+    "y": 683.1,
+    "width": 35,
+    "height": 6.1,
+    "str": "QUANTITY",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 424.6,
+    "y": 683.1,
+    "width": 55.1,
+    "height": 6.1,
+    "str": "UNIT PRICE (S$)",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 510.8,
+    "y": 683.1,
+    "width": 36.4,
+    "height": 6.1,
+    "str": "PRICE (S$)",
+    "pageHeight": 841.9
+  },
+  { "page": 1, "x": 47.9, "y": 614, "width": 4.2, "height": 6.1, "str": "1", "pageHeight": 841.9 },
+  {
+    "page": 1,
+    "x": 384.6,
+    "y": 643.1,
+    "width": 4.2,
+    "height": 6.1,
+    "str": "1",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 443.7,
+    "y": 643.1,
+    "width": 17,
+    "height": 6.1,
+    "str": "1390",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 537.2,
+    "y": 643.2,
+    "width": 25.3,
+    "height": 5.7,
+    "str": "1,390.00",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 47.9,
+    "y": 594.6,
+    "width": 4.2,
+    "height": 6.1,
+    "str": "2",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 384.6,
+    "y": 599.9,
+    "width": 4.2,
+    "height": 6.1,
+    "str": "2",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 445.8,
+    "y": 599.9,
+    "width": 12.7,
+    "height": 6.1,
+    "str": "100",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 542.6,
+    "y": 600.1,
+    "width": 19.9,
+    "height": 5.7,
+    "str": "200.00",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 47.9,
+    "y": 575.1,
+    "width": 4.2,
+    "height": 6.1,
+    "str": "3",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 384.6,
+    "y": 580.5,
+    "width": 4.2,
+    "height": 6.1,
+    "str": "1",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 447.9,
+    "y": 580.5,
+    "width": 8.5,
+    "height": 6.1,
+    "str": "50",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 546.2,
+    "y": 580.6,
+    "width": 16.3,
+    "height": 5.7,
+    "str": "50.00",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 201.8,
+    "y": 549.6,
+    "width": 28.4,
+    "height": 6.1,
+    "str": "Lighting",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 47.9,
+    "y": 509.5,
+    "width": 4.2,
+    "height": 6.1,
+    "str": "4",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 384.6,
+    "y": 525.2,
+    "width": 4.2,
+    "height": 6.1,
+    "str": "1",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 445.8,
+    "y": 525.2,
+    "width": 12.7,
+    "height": 6.1,
+    "str": "988",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 542.6,
+    "y": 525.4,
+    "width": 19.9,
+    "height": 5.7,
+    "str": "988.00",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 47.9,
+    "y": 487.7,
+    "width": 4.2,
+    "height": 6.1,
+    "str": "5",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 384.6,
+    "y": 494.3,
+    "width": 4.2,
+    "height": 6.1,
+    "str": "3",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 447.9,
+    "y": 494.3,
+    "width": 8.5,
+    "height": 6.1,
+    "str": "78",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 542.6,
+    "y": 494.4,
+    "width": 19.9,
+    "height": 5.7,
+    "str": "234.00",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 47.9,
+    "y": 468.3,
+    "width": 4.2,
+    "height": 6.1,
+    "str": "6",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 382.5,
+    "y": 473.6,
+    "width": 8.5,
+    "height": 6.1,
+    "str": "15",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 447.9,
+    "y": 473.6,
+    "width": 8.5,
+    "height": 6.1,
+    "str": "15",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 542.6,
+    "y": 473.8,
+    "width": 19.9,
+    "height": 5.7,
+    "str": "225.00",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 47.9,
+    "y": 448.8,
+    "width": 4.2,
+    "height": 6.1,
+    "str": "7",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 382.5,
+    "y": 454.2,
+    "width": 8.5,
+    "height": 6.1,
+    "str": "15",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 446.6,
+    "y": 454.2,
+    "width": 11,
+    "height": 6.1,
+    "str": "-15",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 539.9,
+    "y": 454.3,
+    "width": 24.4,
+    "height": 5.7,
+    "str": "(225.00)",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 47.9,
+    "y": 417.9,
+    "width": 4.2,
+    "height": 6.1,
+    "str": "8",
+    "pageHeight": 841.9
+  },
+  { "page": 1, "x": 384.6, "y": 429, "width": 4.2, "height": 6.1, "str": "1", "pageHeight": 841.9 },
+  {
+    "page": 1,
+    "x": 445.8,
+    "y": 429,
+    "width": 12.7,
+    "height": 6.1,
+    "str": "988",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 542.6,
+    "y": 429.1,
+    "width": 19.9,
+    "height": 5.7,
+    "str": "988.00",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 47.9,
+    "y": 398.4,
+    "width": 4.2,
+    "height": 6.1,
+    "str": "9",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 384.6,
+    "y": 403.8,
+    "width": 4.2,
+    "height": 6.1,
+    "str": "4",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 447.9,
+    "y": 403.8,
+    "width": 8.5,
+    "height": 6.1,
+    "str": "18",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 546.2,
+    "y": 403.9,
+    "width": 16.3,
+    "height": 5.7,
+    "str": "72.00",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 108.2,
+    "y": 376.6,
+    "width": 215.8,
+    "height": 6.1,
+    "str": "2 Years On-Site Warranty for All Devices Stated in the Invoice.",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 150.9,
+    "y": 362.6,
+    "width": 130.3,
+    "height": 6.1,
+    "str": "Smart Home + Installation Total Price",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 532.3,
+    "y": 365.2,
+    "width": 30.1,
+    "height": 6.1,
+    "str": "3,922.00",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 412.4,
+    "y": 341.7,
+    "width": 60,
+    "height": 5.7,
+    "str": "GRANT TOTAL (S$)",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 537.2,
+    "y": 341.7,
+    "width": 25.3,
+    "height": 5.7,
+    "str": "3,922.00",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 412.4,
+    "y": 330.7,
+    "width": 80,
+    "height": 6.1,
+    "str": "DEPOSIT REQUEST (S$)",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 523.8,
+    "y": 330.2,
+    "width": 37.9,
+    "height": 7.7,
+    "str": "2,353.20",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 30.7,
+    "y": 309.8,
+    "width": 26.7,
+    "height": 5.7,
+    "str": "DETAILS",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 185.8,
+    "y": 656.9,
+    "width": 60.5,
+    "height": 6.1,
+    "str": "Ark Core Package",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 162.4,
+    "y": 649.8,
+    "width": 107.4,
+    "height": 6.1,
+    "str": "10 x Ark Series Smart Switches",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 174,
+    "y": 642.6,
+    "width": 84,
+    "height": 6.1,
+    "str": "4 x Aircon IR Integration",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 161.8,
+    "y": 635.5,
+    "width": 108.4,
+    "height": 6.1,
+    "str": "1 x Zigbee Gateway Integration",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 172.5,
+    "y": 628.3,
+    "width": 87,
+    "height": 6.1,
+    "str": "Installation & Integration",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 187.9,
+    "y": 621.2,
+    "width": 56.2,
+    "height": 6.1,
+    "str": "1 Year Warranty",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 144.4,
+    "y": 614.1,
+    "width": 143.5,
+    "height": 6.1,
+    "str": "Package Discounted to $1390 from $1690",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 124.9,
+    "y": 594.6,
+    "width": 182.5,
+    "height": 6.1,
+    "str": "Add-On Per Ark Series Smart Switch with Installation",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 195.1,
+    "y": 575.2,
+    "width": 41.9,
+    "height": 6.1,
+    "str": "IR Blaster, x",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 128.2,
+    "y": 523.9,
+    "width": 173.7,
+    "height": 6.1,
+    "str": "Luna Premier Light Package of 12 Downlights Sets",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 139,
+    "y": 516.7,
+    "width": 154.2,
+    "height": 6.1,
+    "str": "with 1 Nova+ Smart Portable Dimmer/Switch",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 73.1,
+    "y": 509.6,
+    "width": 286.1,
+    "height": 6.1,
+    "str": "(Total 12 Selection of Smart Heat Sink Luna Downlights/Surface Lights/Tracklights)",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 72.5,
+    "y": 494.9,
+    "width": 287.4,
+    "height": 6.1,
+    "str": "Add On Per Luna Smart Light Selection (Was $118 Per Light Discounted to $78 with",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 190.6,
+    "y": 487.7,
+    "width": 51,
+    "height": 6.1,
+    "str": "Package Price)",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 158.8,
+    "y": 468.3,
+    "width": 114.5,
+    "height": 6.1,
+    "str": "Integration of Per Smart Lighting",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 183,
+    "y": 448.9,
+    "width": 66,
+    "height": 6.1,
+    "str": "Integration Waived",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 71.6,
+    "y": 432.2,
+    "width": 289.2,
+    "height": 6.1,
+    "str": "Luna Cove LED Package of 30 Meters , 6 Driver + Smart Controller Set with 1 Nova+",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 163,
+    "y": 425.1,
+    "width": 106.2,
+    "height": 6.1,
+    "str": "Smart Portable Dimmer/Switch",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 136.3,
+    "y": 417.9,
+    "width": 159.5,
+    "height": 6.1,
+    "str": "(Total 30Meters, 6 Drivers + Smart Controller)",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 131.7,
+    "y": 398.5,
+    "width": 168.7,
+    "height": 6.1,
+    "str": "Add-On Per 1 Meter of Smart Lumi LED COB Strip",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 30.7,
+    "y": 301.6,
+    "width": 226.1,
+    "height": 5.7,
+    "str": "Delivery Terms: The services/items will commence after receiving 60% deposit.",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 30.7,
+    "y": 294.9,
+    "width": 524.3,
+    "height": 5.7,
+    "str": "Payment Terms: Next, 30% to be paid on the starting date of installation of the proposed devices in the above statement. Last, 10% to be paid before the integration of all stated smart",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 30.7,
+    "y": 288.3,
+    "width": 388.9,
+    "height": 5.7,
+    "str": "home devices into the smartlife application. Grant Total in the final invoice is subjected to changes made during the Installation process.",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 30.7,
+    "y": 273.6,
+    "width": 63.4,
+    "height": 5.7,
+    "str": "Bank details as follow:",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 34.3,
+    "y": 267,
+    "width": 123.7,
+    "height": 5.7,
+    "str": "- Beneficiary: Maxsen Smart Home Pte. Ltd.",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 34.3,
+    "y": 260.4,
+    "width": 152.4,
+    "height": 5.7,
+    "str": "- Bank: Oversea-Chinese Banking Corporation (OCBC)",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 34.3,
+    "y": 253.7,
+    "width": 58.6,
+    "height": 5.7,
+    "str": "- UEN.: 202433824M",
+    "pageHeight": 841.9
+  },
+  {
+    "page": 1,
+    "x": 30.7,
+    "y": 247.1,
+    "width": 483.5,
+    "height": 5.7,
+    "str": "We accept both cheque payment, bank transfer, PayNow. If you have any questions about this invoice, please contact Cheang He Xiang, 89881882, hexiang@maxsen.sg.",
+    "pageHeight": 841.9
+  }
+]

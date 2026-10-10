@@ -147,7 +147,9 @@ describe('buildScene', () => {
   });
 
   it('legend lists present categories in fixed order and ignores notes', () => {
-    const s = scene(doc([note('n', 0), led('c', 1, 1), marker('a', 'sw', 2), marker('a2', 'sw', 3)]));
+    const s = scene(
+      doc([note('n', 0), led('c', 1, 1), marker('a', 'sw', 2), marker('a2', 'sw', 3)]),
+    );
     assert.deepEqual(
       s.legend.map((l) => l.categoryId),
       ['smart-switches', 'led-strips'],
@@ -171,7 +173,15 @@ describe('buildScene', () => {
   });
 
   it('led label text shows entered metres and the track label uses head count', () => {
-    const s = scene(doc([led('l1', 0, 4.5), led('l2', 1, 6.25), led('l3', 2, null), track('t', 3, 'tr', 3), track('m', 4, 'mt', 5)]));
+    const s = scene(
+      doc([
+        led('l1', 0, 4.5),
+        led('l2', 1, 6.25),
+        led('l3', 2, null),
+        track('t', 3, 'tr', 3),
+        track('m', 4, 'mt', 5),
+      ]),
+    );
     const texts = s.items.map((i) => (i.type === 'path' ? i.label?.text : undefined));
     assert.deepEqual(texts, [
       '4.5m LED Strip',
@@ -205,7 +215,9 @@ describe('buildScene', () => {
   });
 
   it('elements are emitted in z order', () => {
-    const s = scene(doc([note('n', 5), marker('a', 'sw', 1), led('c', 3, 1), marker('b', 'se', 0)]));
+    const s = scene(
+      doc([note('n', 5), marker('a', 'sw', 1), led('c', 3, 1), marker('b', 'se', 0)]),
+    );
     assert.deepEqual(
       s.items.map((i) => i.elementId),
       ['b', 'a', 'c', 'n'],
@@ -224,5 +236,19 @@ describe('buildScene', () => {
     const s = scene(doc([note('n', 0)]));
     assert.equal(s.items[0]?.type, 'note');
     assert.deepEqual(scene(doc([note('n', 0)]), { showNotes: false }).items, []);
+  });
+});
+
+describe('badgeTextColor', () => {
+  it('uses white on dark fills and ink on light fills, at least 4.5:1 for every default', async () => {
+    const { badgeTextColor, contrastRatio } = await import('../src/render/styles.ts');
+    const { CATEGORIES } = await import('../src/categories.ts');
+    assert.equal(badgeTextColor('#2F5FB3'), '#FFFFFF');
+    assert.equal(badgeTextColor('#D28A00'), '#1F1D1A');
+    for (const c of CATEGORIES) {
+      if (c.kind !== 'point') continue;
+      const ratio = contrastRatio(c.defaults.color, badgeTextColor(c.defaults.color));
+      assert.ok(ratio >= 4.5, `${c.id} badge contrast ${ratio.toFixed(2)}`);
+    }
   });
 });

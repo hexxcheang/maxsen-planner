@@ -23,7 +23,7 @@ const coordinatesIn = (d: string): number[] => {
 
 describe('iconPath', () => {
   it('every shape returns a non-empty path starting with M', () => {
-    assert.equal(ICON_SHAPES.length, 18);
+    assert.equal(ICON_SHAPES.length, 20);
     for (const shape of ICON_SHAPES) {
       const d = iconPath(shape);
       assert.ok(d.length > 0, `${shape} empty`);
@@ -40,9 +40,9 @@ describe('iconPath', () => {
     }
   });
 
-  it('isPathShape true only for track, strip, magnetic', () => {
+  it('isPathShape true only for track, strip, magnetic, curtain', () => {
     const pathShapes = ICON_SHAPES.filter(isPathShape);
-    assert.deepEqual([...pathShapes].sort(), ['magnetic', 'strip', 'track']);
+    assert.deepEqual([...pathShapes].sort(), ['curtain', 'magnetic', 'strip', 'track']);
   });
 
   it('every category shape is a known icon shape and path categories use path shapes', () => {

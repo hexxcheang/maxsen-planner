@@ -1,4 +1,7 @@
-export type ExportKind = 'floor-plan' | 'product-description' | 'quantity';
+import type { InvoiceStage } from '../types.ts';
+
+export type ExportKind =
+  'floor-plan' | 'product-description' | 'quantity' | 'invoice' | 'invoice-pdf';
 
 const MAX_LENGTH = 100;
 const FALLBACK = 'Project';
@@ -9,6 +12,10 @@ const RESERVED = /[\\/:*?"<>|\u0000-\u001F\u007F]/g;
 /** Makes a project title safe for use as a filename on Windows, macOS and Linux. */
 export function sanitiseFilename(title: string): string {
   const cleaned = title
+    // Typographic punctuation becomes plain ASCII so every OS, browser and mail client keeps the name.
+    .replace(/[\u2012-\u2015\u2212]/g, '-')
+    .replace(/[\u2018\u2019\u201A\u2032]/g, "'")
+    .replace(/[\u201C\u201D\u201E\u2033]/g, '')
     .replace(/\s+/g, ' ')
     .replace(RESERVED, '')
     .replace(/\s+/g, ' ')
@@ -24,9 +31,21 @@ const SUFFIX: Record<ExportKind, string> = {
   'floor-plan': ' - Marked Floor Plan.pdf',
   'product-description': ' - Product Description.pdf',
   quantity: ' - Quantity List.xlsx',
+  invoice: ' - Invoice.xlsx',
+  'invoice-pdf': ' - Invoice.pdf',
+};
+
+const STAGE_SUFFIX: Record<Exclude<InvoiceStage, 'deposit'>, string> = {
+  second: ' - 2nd Payment Invoice.xlsx',
+  final: ' - Final Invoice.xlsx',
+  full: ' - Full Payment Invoice.xlsx',
 };
 
 /** Export filenames per product spec §11. */
-export function exportFilename(title: string, kind: ExportKind): string {
-  return `${sanitiseFilename(title)}${SUFFIX[kind]}`;
+export function exportFilename(title: string, kind: ExportKind, stage?: InvoiceStage): string {
+  const suffix =
+    (kind === 'invoice' || kind === 'invoice-pdf') && stage && stage !== 'deposit'
+      ? STAGE_SUFFIX[stage].replace('.xlsx', kind === 'invoice-pdf' ? '.pdf' : '.xlsx')
+      : SUFFIX[kind];
+  return `${sanitiseFilename(title)}${suffix}`;
 }

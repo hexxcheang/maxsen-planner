@@ -15,7 +15,8 @@ export type Adjustments = Record<string, QuantityAdjustment>;
 export function applyAdjustments(lines: TotalLine[], adjustments: Adjustments): ReviewLine[] {
   return lines.map((line) => {
     const adjustment = adjustments[line.key];
-    if (!adjustment) return { ...line, exportQuantity: line.calculated, adjusted: false, warning: false };
+    if (!adjustment)
+      return { ...line, exportQuantity: line.calculated, adjusted: false, warning: false };
     return {
       ...line,
       exportQuantity: adjustment.quantity,

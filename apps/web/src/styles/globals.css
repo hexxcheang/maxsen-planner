@@ -19,6 +19,8 @@
   --color-danger: var(--danger);
   --color-danger-tint: var(--danger-tint);
   --color-ok: var(--ok);
+  --color-sales: var(--sales);
+  --color-sales-tint: var(--sales-tint);
 
   --font-sans: var(--font-sans);
 
@@ -65,6 +67,19 @@
     margin: 0;
     min-height: 100dvh;
     overscroll-behavior: none;
+    /* No grey flash on tap, on Android tablets. */
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Taps act at once: no wait to see if it's a double-tap zoom. */
+  button,
+  a,
+  input,
+  select,
+  textarea,
+  label,
+  [role='button'] {
+    touch-action: manipulation;
   }
 
   /* Every interactive control shows the same brass focus ring, keyboard only. */
@@ -99,5 +114,25 @@
       animation-iteration-count: 1 !important;
       scroll-behavior: auto !important;
     }
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 4px));
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
   }
 }

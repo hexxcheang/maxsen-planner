@@ -5,10 +5,15 @@
  */
 import { CATEGORIES, type BadgeStyle, type CategoryId, type ElementKind } from '../categories.ts';
 import { badgePlacement, iconPath, type IconShape } from '../icons.ts';
-import { headPositions, pathMidpoint, polylineToSvgPath, smoothToSvgPath } from '../geometry/path.ts';
+import {
+  headPositions,
+  pathMidpoint,
+  polylineToSvgPath,
+  smoothToSvgPath,
+} from '../geometry/path.ts';
 import type { VariantResolver } from '../totals/compute-totals.ts';
 import type { PlanDocument, Pt, Settings } from '../types.ts';
-import { resolveCategoryStyle } from './styles.ts';
+import { badgeTextColor, resolveCategoryStyle } from './styles.ts';
 
 export interface SceneOptions {
   showLabels: boolean;
@@ -27,6 +32,8 @@ export interface SceneLabel {
 
 export interface SceneBadge {
   text: string;
+  /** Text colour: readable on the fill for filled badges, the category colour for outline ones. */
+  color: string;
   /** Offset from the icon centre in plan units, before rotation. */
   dx: number;
   dy: number;
@@ -63,7 +70,7 @@ export interface ScenePath {
   elementId: string;
   z: number;
   categoryId: CategoryId;
-  kind: 'led-strip' | 'track';
+  kind: 'led-strip' | 'track' | 'curtain';
   shape: IconShape;
   d: string;
   points: Pt[];
@@ -71,6 +78,8 @@ export interface ScenePath {
   smooth: boolean;
   strokeWidth: number;
   color: string;
+  /** Dot pattern (dash, gap) for a dotted line (curtains); absent for a solid one. */
+  dash?: [number, number];
   heads: SceneHead[];
   label?: SceneLabel;
 }
@@ -116,6 +125,8 @@ export interface SceneContext {
   height: number;
 }
 
+/** The name printed on every curtain track. */
+export const CURTAIN_LABEL = 'S. Curtains';
 const LABEL_OFFSET = 0.85;
 const LABEL_FONT = 0.5;
 const BADGE_FONT = 0.42;
@@ -143,7 +154,18 @@ export function buildScene(doc: PlanDocument, ctx: SceneContext, opts: SceneOpti
   for (const el of elements) {
     if (el.kind === 'note') {
       if (!opts.showNotes) continue;
-      items.push({ type: 'note', elementId: el.id, z: el.z, x: el.x, y: el.y, text: el.text, fontSize: el.fontSize, bold: el.bold, color: el.color, highlight: el.highlight });
+      items.push({
+        type: 'note',
+        elementId: el.id,
+        z: el.z,
+        x: el.x,
+        y: el.y,
+        text: el.text,
+        fontSize: el.fontSize,
+        bold: el.bold,
+        color: el.color,
+        highlight: el.highlight,
+      });
       continue;
     }
 
@@ -170,6 +192,7 @@ export function buildScene(doc: PlanDocument, ctx: SceneContext, opts: SceneOpti
         badgeStyle: style.badgeStyle,
         badge: {
           text: style.badge,
+          color: style.badgeStyle === 'filled' ? badgeTextColor(style.color) : style.color,
           dx: placement.x * style.size,
           dy: placement.y * style.size,
           fontSize: style.size * BADGE_FONT * placement.scale * badgeScale,
@@ -177,9 +200,42 @@ export function buildScene(doc: PlanDocument, ctx: SceneContext, opts: SceneOpti
         pathD: iconPath(style.shape),
       };
       if (opts.showLabels && el.label.trim().length > 0) {
-        marker.label = { text: el.label, x: el.x, y: el.y + style.size * LABEL_OFFSET, fontSize: style.size * LABEL_FONT };
+        marker.label = {
+          text: el.label,
+          x: el.x,
+          y: el.y + style.size * LABEL_OFFSET,
+          fontSize: style.size * LABEL_FONT,
+        };
       }
       items.push(marker);
+      continue;
+    }
+
+    if (el.kind === 'curtain') {
+      // A curtain track: a dotted line along the window, a little heavier than an LED strip.
+      const strokeWidth = style.size * STROKE_FACTOR * 1.1;
+      items.push({
+        type: 'path',
+        elementId: el.id,
+        z: el.z,
+        categoryId,
+        kind: 'curtain',
+        shape: style.shape,
+        d: polylineToSvgPath(el.points, false),
+        points: el.points,
+        closed: false,
+        smooth: false,
+        strokeWidth,
+        color: style.color,
+        dash: [0.001, strokeWidth * 1.9],
+        heads: [],
+        // Named on the plan so the dotted line reads as smart curtains.
+        label: {
+          text: CURTAIN_LABEL,
+          ...pathMidpoint(el.points, false).point,
+          fontSize: style.size * LABEL_FONT,
+        },
+      });
       continue;
     }
 
@@ -201,7 +257,12 @@ export function buildScene(doc: PlanDocument, ctx: SceneContext, opts: SceneOpti
       color: style.color,
       heads: isLed
         ? []
-        : headPositions(el.points, el.headCount).map((h) => ({ x: h.point.x, y: h.point.y, angle: h.angle, size: style.size * HEAD_FACTOR })),
+        : headPositions(el.points, el.headCount).map((h) => ({
+            x: h.point.x,
+            y: h.point.y,
+            angle: h.angle,
+            size: style.size * HEAD_FACTOR,
+          })),
     };
     const wantLabel = isLed ? opts.showLedLengths : opts.showTrackLabels;
     if (wantLabel && el.showLabel) {
@@ -218,15 +279,24 @@ export function buildScene(doc: PlanDocument, ctx: SceneContext, opts: SceneOpti
 
   const legend: SceneLegendEntry[] = CATEGORIES.filter((c) => present.has(c.id)).map((c) => {
     const style = resolveCategoryStyle(c.id, ctx.settings);
-    return { categoryId: c.id, name: c.name, shape: c.shape, color: style.color, badge: style.badge, badgeStyle: style.badgeStyle, kind: c.kind };
+    return {
+      categoryId: c.id,
+      name: c.name,
+      shape: c.shape,
+      color: style.color,
+      badge: style.badge,
+      badgeStyle: style.badgeStyle,
+      kind: c.kind,
+    };
   });
 
   return { width: ctx.width, height: ctx.height, items, legend };
 }
 
 /** Category used when a variant cannot be resolved, so the element is still drawn. */
-function fallbackCategory(kind: 'marker' | 'led-strip' | 'track'): CategoryId {
+function fallbackCategory(kind: 'marker' | 'led-strip' | 'track' | 'curtain'): CategoryId {
   if (kind === 'led-strip') return 'led-strips';
+  if (kind === 'curtain') return 'curtains-blinds';
   if (kind === 'track') return 'track-lights';
   return 'misc-smart-home';
 }

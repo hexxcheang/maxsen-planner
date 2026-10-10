@@ -76,7 +76,7 @@ No gradients. Shadows only on floating toolbar, popovers, dialogs: `0 4px 16px r
 | Spotlights | `star4` | four-point star |
 | Misc. Lighting Accessories | `smallHexagon` | hexagon (0.7 scale) |
 
-Default colours (admin-editable): Smart Switches `#2F5FB3`, Control Panels `#5B3FA6`, Curtains/Blinds `#1D8F7A`, Aircon `#2498B9`, Gateways `#7A4E9E`, Sensors `#C2651B`, Cameras `#B4323A`, Network `#3C7A3C`, Smart Locks `#8C6D1F`, Misc Smart Home `#6B6B6B`, Downlights `#D28A00`, Surface `#B8551F`, Track `#2C2C2C`, LED Strips `#C99700`, Magnetic Track `#1E6B8C`, Pendant `#A33B86`, Spotlights `#C7462C`, Misc Lighting `#7D7A72`. Default badges: `SW CP CB AC GW SE CA NW LK AX DL SL TR LED MT PD SP LX`. Default size 20 plan units for all point categories.
+Default colours (admin-editable): Smart Switches `#2F5FB3`, Control Panels `#5B3FA6`, Curtains/Blinds `#177A68`, Aircon `#1A7B9C`, Gateways `#7A4E9E`, Sensors `#AD5813`, Cameras `#B4323A`, Network `#3C7A3C`, Smart Locks `#8C6D1F`, Misc Smart Home `#6B6B6B`, Downlights `#D28A00`, Surface `#B8551F`, Track `#2C2C2C`, LED Strips `#C99700`, Magnetic Track `#1E6B8C`, Pendant `#A33B86`, Spotlights `#C7462C`, Misc Lighting `#6F6C65` (four mid-tones darkened in Task 12 so white badge text reaches 4.5:1; light fills such as Downlights get ink badge text via `badgeTextColor`). Default badges: `SW CP CB AC GW SE CA NW LK AX DL SL TR LED MT PD SP LX`. Default size 20 plan units for all point categories.
 
 ## Review Focus
 

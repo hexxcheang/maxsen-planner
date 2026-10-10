@@ -3,7 +3,7 @@ import type { IconShape } from './icons.ts';
 export type PlanType = 'smart-home' | 'lighting';
 
 /** How elements of a category are drawn and counted. */
-export type ElementKind = 'point' | 'led-strip' | 'track';
+export type ElementKind = 'point' | 'led-strip' | 'track' | 'curtain';
 
 export type CategoryId =
   | 'smart-switches'
@@ -22,6 +22,7 @@ export type CategoryId =
   | 'led-strips'
   | 'magnetic-track-lights'
   | 'pendant-lights'
+  | 'ceiling-fans'
   | 'spotlights'
   | 'misc-lighting';
 
@@ -72,24 +73,61 @@ const def = (
 const ORDERED: Omit<CategoryDef, 'order'>[] = [
   // Smart Home Plan categories (product spec §8.1)
   def('smart-switches', 'smart-home', 'Smart Switches', 'point', 'square', '#2F5FB3', 'SW'),
-  def('control-panels', 'smart-home', 'Control Panels', 'point', 'panel', '#5B3FA6', 'CP'),
-  def('curtains-blinds', 'smart-home', 'Curtains / Blinds', 'point', 'pill', '#1D8F7A', 'CB'),
-  def('aircon-controllers', 'smart-home', 'Aircon Controllers', 'point', 'hexagon', '#2498B9', 'AC'),
+  // Control panels are drawn larger than the switches around them.
+  {
+    ...def('control-panels', 'smart-home', 'Control Panels', 'point', 'panel', '#5B3FA6', 'CP'),
+    defaults: { color: '#5B3FA6', badge: 'CP', badgeStyle: 'filled', size: 30 },
+  },
+  def('curtains-blinds', 'smart-home', 'Curtains / Blinds', 'curtain', 'curtain', '#177A68', 'CB'),
+  def(
+    'aircon-controllers',
+    'smart-home',
+    'Aircon Controllers',
+    'point',
+    'hexagon',
+    '#1A7B9C',
+    'AC',
+  ),
   def('gateways', 'smart-home', 'Gateways', 'point', 'diamond', '#7A4E9E', 'GW'),
-  def('sensors', 'smart-home', 'Sensors', 'point', 'target', '#C2651B', 'SE'),
+  def('sensors', 'smart-home', 'Sensors', 'point', 'target', '#AD5813', 'SE'),
   def('cameras', 'smart-home', 'Cameras', 'point', 'dome', '#B4323A', 'CA'),
   def('network-devices', 'smart-home', 'Network Devices', 'point', 'triangle', '#3C7A3C', 'NW'),
   def('smart-locks', 'smart-home', 'Smart Locks', 'point', 'arch', '#8C6D1F', 'LK'),
-  def('misc-smart-home', 'smart-home', 'Miscellaneous Smart Home Accessories', 'point', 'dot', '#6B6B6B', 'AX'),
+  def(
+    'misc-smart-home',
+    'smart-home',
+    'Miscellaneous Smart Home Accessories',
+    'point',
+    'dot',
+    '#6B6B6B',
+    'AX',
+  ),
   // Lighting Plan categories (product spec §8.2)
   def('downlights', 'lighting', 'Downlights', 'point', 'circle', '#D28A00', 'DL'),
   def('surface-lights', 'lighting', 'Surface Lights', 'point', 'roundedSquare', '#B8551F', 'SL'),
   def('track-lights', 'lighting', 'Track Lights', 'track', 'track', '#2C2C2C', 'TR'),
   def('led-strips', 'lighting', 'LED Strips', 'led-strip', 'strip', '#C99700', 'LED'),
-  def('magnetic-track-lights', 'lighting', 'Magnetic Track Lights', 'track', 'magnetic', '#1E6B8C', 'MT'),
+  def(
+    'magnetic-track-lights',
+    'lighting',
+    'Magnetic Track Lights',
+    'track',
+    'magnetic',
+    '#1E6B8C',
+    'MT',
+  ),
   def('pendant-lights', 'lighting', 'Pendant Lights', 'point', 'drop', '#A33B86', 'PD'),
+  def('ceiling-fans', 'lighting', 'Ceiling Fans', 'point', 'fan', '#4E7A3A', 'CF'),
   def('spotlights', 'lighting', 'Spotlights', 'point', 'star4', '#C7462C', 'SP'),
-  def('misc-lighting', 'lighting', 'Miscellaneous Lighting Accessories', 'point', 'smallHexagon', '#7D7A72', 'LX'),
+  def(
+    'misc-lighting',
+    'lighting',
+    'Miscellaneous Lighting Accessories',
+    'point',
+    'smallHexagon',
+    '#6F6C65',
+    'LX',
+  ),
 ];
 
 /** All categories in the fixed order required by the product specification. */

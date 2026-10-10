@@ -73,3 +73,53 @@ describe('defaultExportSettings', () => {
     assert.equal(s.productDescription.showCustomerName, true);
   });
 });
+
+describe('curtainIconsToTracks', () => {
+  it('turns curtain icons into dotted tracks centred where they were, turned the same way', async () => {
+    const { curtainIconsToTracks } = await import('../src/plan-document.ts');
+    const { computeTotals } = await import('../src/totals/compute-totals.ts');
+    const doc = {
+      schemaVersion: 1 as const,
+      view: { hiddenCategories: [], legendVisible: true },
+      elements: [
+        {
+          kind: 'marker' as const,
+          id: 'a',
+          z: 0,
+          variantId: 'cb',
+          x: 200,
+          y: 100,
+          rotation: 90,
+          label: '',
+        },
+        {
+          kind: 'marker' as const,
+          id: 'b',
+          z: 1,
+          variantId: 'sw',
+          x: 50,
+          y: 50,
+          rotation: 0,
+          label: '',
+        },
+      ],
+    };
+    const next = curtainIconsToTracks(doc, new Set(['cb']));
+    assert.deepEqual(next.elements[0], {
+      kind: 'curtain',
+      id: 'a',
+      z: 0,
+      variantId: 'cb',
+      points: [
+        { x: 200, y: 50 },
+        { x: 200, y: 150 },
+      ],
+    });
+    assert.equal(next.elements[1], doc.elements[1]);
+    // Nothing to change: the same document back.
+    assert.equal(curtainIconsToTracks(next, new Set(['cb'])), next);
+    // Each curtain track counts as one piece.
+    const lines = computeTotals([next], () => undefined);
+    assert.equal(lines.find((l) => l.variantId === 'cb')?.calculated, 1);
+  });
+});
