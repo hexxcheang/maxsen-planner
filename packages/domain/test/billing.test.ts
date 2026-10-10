@@ -1,6 +1,12 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { DEFAULT_PRICING, exportFilename, stageAmounts, withFullPayment } from '../src/index.ts';
+import {
+  DEFAULT_PRICING,
+  exportFilename,
+  forStage,
+  stageAmounts,
+  withFullPayment,
+} from '../src/index.ts';
 
 const pricing = { depositPercent: 60, secondPercent: 30 };
 
@@ -58,5 +64,16 @@ describe('invoice payment stages', () => {
     assert.match(terms, /commence after receiving full payment \(100%\)\./);
     assert.doesNotMatch(terms, /Next,|Last,|Then,|deposit/i);
     assert.match(terms, /Payment Terms: Grant Total in the final invoice/);
+  });
+
+  it('prints the final payment terms (warranty and handover) on the final invoice', () => {
+    assert.equal(forStage(DEFAULT_PRICING, 'deposit').terms, DEFAULT_PRICING.terms);
+    const final = forStage(DEFAULT_PRICING, 'final').terms;
+    assert.doesNotMatch(final, /deposit/i);
+    assert.match(
+      final,
+      /Warranty: The warranty stated in this invoice starts from the date of handover/,
+    );
+    assert.match(final, /transfer ownership of the home in the smartlife application/);
   });
 });

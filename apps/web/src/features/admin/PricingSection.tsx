@@ -417,6 +417,17 @@ export function PricingSection() {
         <Field label="Delivery and payment terms" className={wide}>
           <Textarea rows={4} value={draft.terms} onChange={(e) => set('terms', e.target.value)} />
         </Field>
+        <Field
+          label="Final payment terms"
+          hint="Printed on the final payment invoice instead of the terms above: the balance, the warranty and handing over the smartlife home."
+          className={wide}
+        >
+          <Textarea
+            rows={5}
+            value={draft.finalTerms}
+            onChange={(e) => set('finalTerms', e.target.value)}
+          />
+        </Field>
         <Field label="Bank details and contact" className={wide}>
           <Textarea
             rows={5}

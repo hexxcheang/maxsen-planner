@@ -154,6 +154,30 @@ test.describe('exports', () => {
     await panel.getByRole('radio', { name: 'Final' }).click();
     await expect(paid).toHaveValue(String(Math.round((deposit + second) * 100) / 100));
     await expect(panel.getByText(/\(balance\)/)).toBeVisible();
+
+    // Its terms: the balance, the warranty and handing over the smartlife home, not a deposit.
+    await panel.getByRole('button', { name: /Generate/ }).click();
+    const [finalDownload] = await Promise.all([
+      page.waitForEvent('download'),
+      panel.getByRole('link', { name: 'Download Excel' }).click(),
+    ]);
+    expect(finalDownload.suggestedFilename()).toMatch(/Final Invoice\.xlsx$/);
+    const finalPath = testInfo.outputPath(finalDownload.suggestedFilename());
+    await finalDownload.saveAs(finalPath);
+    const fwb = new ExcelJS.Workbook();
+    await fwb.xlsx.load(
+      (await readFile(finalPath)) as unknown as Parameters<typeof fwb.xlsx.load>[0],
+    );
+    const texts: string[] = [];
+    fwb.worksheets[0]!.eachRow((row) =>
+      row.eachCell((c) => {
+        if (typeof c.value === 'string') texts.push(c.value);
+      }),
+    );
+    const terms = texts.join('\n');
+    expect(terms).toContain('Final Payment Terms:');
+    expect(terms).toContain('transfer ownership of the home in the smartlife application');
+    expect(terms).not.toContain('after receiving 60% deposit');
   });
 
   test('prices and discounts set on the project carry into the invoice', async ({

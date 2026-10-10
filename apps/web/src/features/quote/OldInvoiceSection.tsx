@@ -11,7 +11,7 @@ import {
   pdfInvoiceGrid,
   resolvePricing,
   withDeposit,
-  withFullPayment,
+  forStage,
   stageAmounts,
   STAGE_LABEL,
   type Cell,
@@ -153,9 +153,9 @@ export function OldInvoiceSection() {
       ? Math.round((asked.due / asked.total) * 100)
       : resolvePricing(settings).depositPercent;
   const plan = withDeposit(resolvePricing(settings), draft?.depositPercent ?? askedPercent);
-  // Paid in full: the whole total at once, with the terms asking for it.
+  // Paid in full: the whole total at once. The final and full payments print their own terms.
   const full = draft?.stage === 'full';
-  const pricing = full ? withFullPayment(plan) : plan;
+  const pricing = draft ? forStage(plan, draft.stage) : plan;
   const quoteCatalogue = useQuoteCatalogue();
   const [addingWorks, setAddingWorks] = useState(false);
   const [pasted, setPasted] = useState('');

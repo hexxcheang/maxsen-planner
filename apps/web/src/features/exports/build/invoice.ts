@@ -12,7 +12,7 @@ import {
   invoiceNumber,
   resolvePricing,
   stageAmounts,
-  withFullPayment,
+  forStage,
   type Invoice,
   type InvoiceStage,
   type PricingSettings,
@@ -431,8 +431,8 @@ export function projectPayment(
   const { pricing: plan, base, invoice } = projectInvoice(ctx);
   const billing = ctx.project.exportSettings.billing;
   const amounts = stageAmounts(invoice.total, plan, billing);
-  // Paid in full: the terms ask for the whole amount instead of a deposit.
-  const pricing = amounts.stage === 'full' ? withFullPayment(plan) : plan;
+  // The final and full payments print their own terms (the final's: warranty and handover).
+  const pricing = forStage(plan, amounts.stage);
   return {
     pricing,
     base,

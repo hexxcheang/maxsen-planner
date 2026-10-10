@@ -3,7 +3,7 @@
  * add-on rates beyond a package, and the company details printed on the invoice. Everything here is
  * editable in Admin › Pricing; these defaults come from the current catalogue and invoice template.
  */
-import type { Settings } from '../types.ts';
+import type { InvoiceStage, Settings } from '../types.ts';
 
 /** A switch series' package: its switches, the devices it includes, and the add-on rate. */
 export interface SwitchPackage {
@@ -36,6 +36,11 @@ export interface PricingSettings {
   bankDetails: string;
   /** Delivery and payment terms paragraph. */
   terms: string;
+  /**
+   * The terms on the final payment invoice instead: the balance, when the warranty starts, and
+   * handing the smartlife home over to the client.
+   */
+  finalTerms: string;
   /** Warranty line printed (in blue) under the items. */
   warranty: string;
   /** Share of the total asked as deposit, in percent. */
@@ -93,6 +98,8 @@ export const DEFAULT_PRICING: PricingSettings = {
     'Bank details as follow:\n  - Beneficiary: Maxsen Smart Home Pte. Ltd.\n  - Bank: Oversea-Chinese Banking Corporation (OCBC)\n  - UEN.: 202433824M\nWe accept both cheque payment, bank transfer, PayNow. If you have any questions about this invoice, please contact Cheang He Xiang, 89881882, hexiang@maxsen.sg.',
   terms:
     'Delivery Terms: The services/items will commence after receiving 60% deposit.\nPayment Terms: Next, 30% to be paid on the starting date of installation of the proposed devices in the above statement. Last, 10% to be paid before the integration of all stated smart home devices into the smartlife application. Grant Total in the final invoice is subjected to changes made during the Installation process. ',
+  finalTerms:
+    "Final Payment Terms: This invoice is for the final payment, the balance of the Grant Total for the devices and works stated above as installed. It is to be paid before the integration of all stated smart home devices into the smartlife application is handed over.\nWarranty: The warranty stated in this invoice starts from the date of handover and covers all devices and installation works stated above. For any warranty claim, contact Maxsen Smart Home with this invoice number.\nHandover: Upon receipt of the final payment, Maxsen Smart Home will transfer ownership of the home in the smartlife application, with all devices, rooms and scenes as set up, to the client's own account. The client may keep Maxsen Smart Home as a member of the home for after-sales support.",
   warranty: '2 Years On-Site Warranty for All Devices Stated in the Invoice.',
   depositPercent: 60,
   secondPercent: 30,
@@ -221,6 +228,16 @@ export function withDeposit(pricing: PricingSettings, depositPercent: number): P
     secondPercent: second,
     terms: paymentTerms(pricing.terms, dep, second, last),
   };
+}
+
+/**
+ * The terms an invoice for this payment prints: the final payment's own (warranty and handover),
+ * full payment's, or the usual delivery and payment terms.
+ */
+export function forStage(pricing: PricingSettings, stage: InvoiceStage): PricingSettings {
+  if (stage === 'final') return { ...pricing, terms: pricing.finalTerms };
+  if (stage === 'full') return withFullPayment(pricing);
+  return pricing;
 }
 
 /**
