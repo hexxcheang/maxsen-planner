@@ -24,7 +24,9 @@ describe('export content', () => {
     expect(sections.map((x) => x.title)).toEqual(['Smart Home Products', 'Lighting Products']);
     const lighting = sections[1]!.rows;
     expect(lighting.some((r) => r.product === 'Smart LED Driver')).toBe(true);
-    const cove = lighting.find((r) => r.product === 'Lumi Cove Strip' && r.variant === '3000K')!;
+    const cove = lighting.find(
+      (r) => r.product === 'Lumi Cove Strip' && r.variant === 'Smart CCT',
+    )!;
     expect(cove).toMatchObject({ quantity: 5, unit: 'm' });
     const switches = sections[0]!.rows.find((r) => r.variant === '2-gang, Black')!;
     expect(switches.quantity).toBe(4);
@@ -39,7 +41,7 @@ describe('export content', () => {
     expect(all[0]?.categoryId).toBe('smart-switches');
     const cove = all
       .flatMap((c) => c.items)
-      .find((i) => i.productName === 'Lumi Cove Strip' && i.variantName === '3000K')!;
+      .find((i) => i.productName === 'Lumi Cove Strip' && i.variantName === 'Smart CCT')!;
     expect(cove.quantity).toBe('5 m');
     expect(cove.description.length).toBeGreaterThan(10);
   });

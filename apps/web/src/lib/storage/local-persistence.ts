@@ -1,5 +1,6 @@
 import { migratePlanDocument } from '@maxsen/domain';
 import { addNewSampleCategories, type Persistence, type SampleState } from '../data/sample-store';
+import { rebaseWorkspace, workspaceFingerprint } from '../shared/api';
 
 const KEY = 'maxsen.mvp.state.v1';
 
@@ -14,7 +15,9 @@ export const localPersistence: Persistence = {
         return null;
       // Validate every plan document; a corrupt save falls back to fresh sample data.
       for (const plan of state.plans) plan.document = migratePlanDocument(plan.document);
-      return addNewSampleCategories(state);
+      const updated = addNewSampleCategories(state);
+      rebaseWorkspace(workspaceFingerprint(state), workspaceFingerprint(updated));
+      return updated;
     } catch (e) {
       console.warn('Saved data could not be read; starting from sample data.', e);
       return null;

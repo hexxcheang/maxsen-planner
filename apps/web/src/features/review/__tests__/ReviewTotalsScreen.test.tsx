@@ -20,7 +20,7 @@ describe('ReviewTotalsScreen', () => {
     const store = createSampleStore();
     render(<TestApp path={TAN} signedIn store={store} />);
     const input = await screen.findByRole('textbox', {
-      name: 'Export quantity for Luna Downlight, 3000K',
+      name: 'Export quantity for Luna Downlight, Smart CCT',
     });
     const row = input.closest('tr')!;
     expect(row).not.toHaveAttribute('data-adjusted');
@@ -35,7 +35,7 @@ describe('ReviewTotalsScreen', () => {
   it('warning shows when calculated differs from calculatedAtAdjustment', async () => {
     render(<TestApp path={TAN} signedIn />);
     const input = await screen.findByRole('textbox', {
-      name: 'Export quantity for Lumi Cove Strip, 3000K',
+      name: 'Export quantity for Lumi Cove Strip, Smart CCT',
     });
     const row = input.closest('tr')!;
     expect(

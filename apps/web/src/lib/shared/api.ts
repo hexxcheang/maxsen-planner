@@ -246,6 +246,24 @@ export async function loadWorkspace(store: SampleStore): Promise<WorkspaceMeta> 
   return meta;
 }
 
+/**
+ * After the app brought this device's saved catalogue up to date on opening (new wording, new
+ * sample products), it still counts as the team's version it was, if it was: so the update is
+ * neither pushed to the team as this device's change nor met with "which do you keep?".
+ */
+export function rebaseWorkspace(before: string, after: string) {
+  const synced = syncedWorkspace();
+  if (!synced || before === after || synced.fingerprint !== before) return;
+  try {
+    window.localStorage.setItem(
+      WORKSPACE_KEY,
+      JSON.stringify({ version: synced.version, fingerprint: after }),
+    );
+  } catch {
+    // Compared afresh next time.
+  }
+}
+
 /** Records that this device's catalogue and settings match the team's version as they are. */
 export const acceptWorkspace = (store: SampleStore, version: number) =>
   markWorkspace(version, store);

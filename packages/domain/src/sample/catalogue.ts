@@ -397,14 +397,8 @@ const SPECS: ProductSpec[] = [
     variants: [
       [
         'var_luna_dl_3000',
-        '3000K',
-        'Recessed downlight in warm white (3000K) for living areas and bedrooms.',
-        IMG('downlight'),
-      ],
-      [
-        'var_luna_dl_4000',
-        '4000K',
-        'Recessed downlight in neutral white (4000K) for kitchens and work areas.',
+        'Smart CCT',
+        'Smart recessed downlight with tunable white 2700K–6000K: brightness and colour temperature control, CRI 98, app control.',
         IMG('downlight'),
       ],
     ],
@@ -416,8 +410,8 @@ const SPECS: ProductSpec[] = [
     variants: [
       [
         'var_luna_antiglare',
-        'Standard',
-        'Deep-recessed anti-glare downlight for bathrooms and corridors.',
+        'Smart CCT',
+        'Smart deep-recessed anti-glare downlight for bathrooms and corridors, with tunable white 2700K–6000K: brightness and colour temperature control, CRI 98, app control.',
         IMG('downlight'),
       ],
     ],
@@ -431,13 +425,13 @@ const SPECS: ProductSpec[] = [
       [
         'var_lumi_surface_round',
         'Round',
-        'Slim surface-mounted round light for yards, shelters and false-ceiling-free areas.',
+        'Smart slim surface-mounted round light for yards, shelters and false-ceiling-free areas, with tunable white 2700K–6000K: brightness and colour temperature control, CRI 98, app control.',
         IMG('surface'),
       ],
       [
         'var_lumi_surface_square',
         'Square',
-        'Slim surface-mounted square light for yards, shelters and false-ceiling-free areas.',
+        'Smart slim surface-mounted square light for yards, shelters and false-ceiling-free areas, with tunable white 2700K–6000K: brightness and colour temperature control, CRI 98, app control.',
         IMG('surface'),
       ],
     ],
@@ -451,13 +445,13 @@ const SPECS: ProductSpec[] = [
       [
         'var_luna_track_black',
         'Black',
-        'Surface track in matte black with adjustable spot heads for feature walls and dining.',
+        'Smart surface track in matte black with adjustable spot heads for feature walls and dining, with tunable white 2700K–6000K: brightness and colour temperature control, CRI 98, app control.',
         IMG('track'),
       ],
       [
         'var_luna_track_white',
         'White',
-        'Surface track in matte white with adjustable spot heads for feature walls and dining.',
+        'Smart surface track in matte white with adjustable spot heads for feature walls and dining, with tunable white 2700K–6000K: brightness and colour temperature control, CRI 98, app control.',
         IMG('track'),
       ],
     ],
@@ -470,20 +464,14 @@ const SPECS: ProductSpec[] = [
     variants: [
       [
         'var_lumi_cove_3000',
-        '3000K',
-        'Dimmable cove LED strip in warm white (3000K) for ceiling and cabinet coves.',
-        IMG('strip'),
-      ],
-      [
-        'var_lumi_cove_4000',
-        '4000K',
-        'Dimmable cove LED strip in neutral white (4000K) for ceiling and cabinet coves.',
+        'Smart CCT',
+        'Smart cove LED strip with tunable white 2700K–6000K: brightness and colour temperature control, CRI 98, app control, for ceiling and cabinet coves.',
         IMG('strip'),
       ],
       [
         'var_lumi_cove_rgbcct',
         'RGBCCT',
-        'Cove LED strip in any colour plus tunable white (2700–6500K), upgraded from the CCT strip in the package.',
+        'Smart cove LED strip in any colour plus tunable white 2700K–6000K: brightness, colour and colour temperature control, app control. Upgraded from the CCT strip in the package.',
         IMG('strip'),
       ],
     ],
@@ -495,8 +483,8 @@ const SPECS: ProductSpec[] = [
     variants: [
       [
         'var_lumi_cob_3000',
-        '3000K',
-        'Dot-free COB LED strip in warm white (3000K) for exposed profiles and shelves.',
+        'Smart CCT',
+        'Smart dot-free COB LED strip with tunable white 2700K–6000K: brightness and colour temperature control, CRI 98, app control, for exposed profiles and shelves.',
         IMG('strip'),
       ],
     ],
@@ -649,14 +637,12 @@ const PRICES: Record<string, number> = {
   var_curtain_double: 380,
   var_temp_sensor: 48,
   var_luna_dl_3000: 78,
-  var_luna_dl_4000: 78,
   var_luna_antiglare: 78,
   var_lumi_surface_round: 78,
   var_lumi_surface_square: 78,
   var_luna_track_black: 78,
   var_luna_track_white: 78,
   var_lumi_cove_3000: 18,
-  var_lumi_cove_4000: 18,
   var_lumi_cove_rgbcct: 18,
   var_lumi_cob_3000: 18,
   [SYSTEM_VARIANT_IDS.smartLedDriver]: 78,

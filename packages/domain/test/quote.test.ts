@@ -39,8 +39,9 @@ Thanks!`);
     const r = read(
       'can quote 12 downlight cool white, 2 track lights black, 30 metres cob strip and 1 digital lock pro? also 2 cctv',
     );
+    // Every downlight is smart CCT (2700K–6000K), so "cool white" is the same light.
     assert.deepEqual(qty(r), {
-      var_luna_dl_4000: 12,
+      var_luna_dl_3000: 12,
       var_luna_track_black: 2,
       var_lumi_cob_3000: 30,
       var_lenovo_lock_pro: 1,
@@ -52,7 +53,7 @@ Thanks!`);
     const r = read('a ceiling fan 52 inch; 4000K downlights x 6; nova pro 3 gang black');
     assert.deepEqual(qty(r), {
       var_breeze_fan_52: 1,
-      var_luna_dl_4000: 6,
+      var_luna_dl_3000: 6,
       var_nova_pro_3g_black: 1,
     });
   });

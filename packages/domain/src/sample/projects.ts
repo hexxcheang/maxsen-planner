@@ -211,7 +211,7 @@ const tanLighting = new DocBuilder('tan_lt')
     ],
     4.5,
   )
-  .loop('var_lumi_cove_4000', 1010, 300, 110, 6.2)
+  .loop('var_lumi_cove_3000', 1010, 300, 110, 6.2)
   .track(
     'var_luna_track_black',
     [
@@ -234,10 +234,10 @@ const tanLighting = new DocBuilder('tan_lt')
   .marker('var_luna_dl_3000', 620, 480)
   .marker('var_luna_dl_3000', 220, 760)
   .marker('var_luna_dl_3000', 620, 760)
-  .marker('var_luna_dl_4000', 380, 200)
-  .marker('var_luna_dl_4000', 480, 200)
-  .marker('var_luna_dl_4000', 380, 300)
-  .marker('var_luna_dl_4000', 480, 300)
+  .marker('var_luna_dl_3000', 380, 200)
+  .marker('var_luna_dl_3000', 480, 200)
+  .marker('var_luna_dl_3000', 380, 300)
+  .marker('var_luna_dl_3000', 480, 300)
   .marker('var_luna_dl_3000', 930, 150)
   .marker('var_luna_dl_3000', 1100, 150)
   .marker('var_luna_dl_3000', 930, 420)
@@ -255,7 +255,7 @@ const tanLighting = new DocBuilder('tan_lt')
   .marker('var_dining_pendant', 495, 610, { label: 'Dining' })
   .marker('var_luna_spot_black', 160, 560)
   .marker('var_luna_spot_black', 160, 690)
-  .note(118, 950, 'All downlights 3000K unless marked.')
+  .note(118, 950, 'All lights smart CCT, 2700K–6000K.')
   .build();
 
 // --- Lim Family Home (landed, 3 levels) -------------------------------------------------------
@@ -326,11 +326,11 @@ const limL1Lighting = new DocBuilder('lim1_lt')
   .marker('var_luna_dl_3000', 860, 540)
   .marker('var_luna_dl_3000', 1060, 560)
   .marker('var_luna_dl_3000', 1220, 560)
-  .marker('var_luna_dl_4000', 660, 800)
-  .marker('var_luna_dl_4000', 780, 800)
-  .marker('var_luna_dl_4000', 900, 800)
-  .marker('var_luna_dl_4000', 1040, 760)
-  .marker('var_luna_dl_4000', 1140, 760)
+  .marker('var_luna_dl_3000', 660, 800)
+  .marker('var_luna_dl_3000', 780, 800)
+  .marker('var_luna_dl_3000', 900, 800)
+  .marker('var_luna_dl_3000', 1040, 760)
+  .marker('var_luna_dl_3000', 1140, 760)
   .marker('var_luna_dl_3000', 200, 460)
   .marker('var_luna_dl_3000', 400, 460)
   .marker('var_luna_dl_3000', 200, 760)
@@ -756,7 +756,7 @@ export const SAMPLE_PROJECTS: Project[] = [
       'var_luna_spot_black',
       'var_dining_pendant',
       'var_luna_dl_3000',
-      'var_lumi_cove_4000',
+      'var_lumi_cove_3000',
       'var_nova_pro_2g_black',
     ],
   },

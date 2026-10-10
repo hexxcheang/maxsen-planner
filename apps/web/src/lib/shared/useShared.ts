@@ -13,7 +13,7 @@
  * Sample projects stay on each device. Where the app runs without the server, none of this runs.
  */
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import type { SampleStore } from '../data/sample-store';
+import { smartLighting, type SampleStore } from '../data/sample-store';
 import {
   acceptWorkspace,
   changedHere,
@@ -30,6 +30,7 @@ import {
   syncedWorkspace,
   workspaceFingerprint,
   type SharedMeta,
+  type Workspace,
   type WorkspaceMeta,
 } from './api';
 import { fingerprint } from './bundle';
@@ -228,10 +229,11 @@ async function bringIn(remote: SharedMeta[], workspace: WorkspaceMeta | null) {
     // This device hasn't joined the team's catalogue yet: the same is simply noted; different,
     // the person chooses which to keep, so a new tablet can't overwrite the team's.
     const theirs = await fetch('/api/shared/workspace', { credentials: 'same-origin' })
-      .then((r) => r.json() as Promise<{ workspace: unknown }>)
+      .then((r) => r.json() as Promise<{ workspace: Workspace }>)
       .catch(() => null);
     if (!theirs) return;
-    if (fingerprint(JSON.stringify(theirs.workspace)) === mine)
+    // Theirs as this device would show it, with the same wording updates.
+    if (fingerprint(JSON.stringify(smartLighting(theirs.workspace))) === mine)
       acceptWorkspace(s, workspace.version);
     else set({ workspaceConflict: { first: true, meta: workspace } });
   } else if (workspace.version > synced.version) {

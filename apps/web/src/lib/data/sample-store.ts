@@ -70,7 +70,88 @@ export interface SharedBundle {
  * saved as icons become dotted curtain tracks.
  */
 export function addNewSampleCategories(saved: SampleState): SampleState {
-  return addNewVariants(addNewCategories(curtainsAsTracks(realShowrooms(saved))));
+  return smartLighting(addNewVariants(addNewCategories(curtainsAsTracks(realShowrooms(saved)))));
+}
+
+/**
+ * The lights' and LED strips' wording before they were all smart CCT (tunable 2700K–6000K, CRI 98,
+ * app control): a saved variant still worded so takes the catalogue's new name and description.
+ * The 4000K downlight and cove strip, now the same as the 3000K ones, are hidden from the library
+ * (projects that used them still show them). Wording someone changed is left as it is.
+ */
+const OLD_LIGHTING: Record<string, { name: string; description: string; to?: string }> = {
+  var_luna_dl_3000: {
+    name: '3000K',
+    description: 'Recessed downlight in warm white (3000K) for living areas and bedrooms.',
+  },
+  var_luna_dl_4000: {
+    name: '4000K',
+    description: 'Recessed downlight in neutral white (4000K) for kitchens and work areas.',
+    to: 'var_luna_dl_3000',
+  },
+  var_luna_antiglare: {
+    name: 'Standard',
+    description: 'Deep-recessed anti-glare downlight for bathrooms and corridors.',
+  },
+  var_lumi_surface_round: {
+    name: 'Round',
+    description:
+      'Slim surface-mounted round light for yards, shelters and false-ceiling-free areas.',
+  },
+  var_lumi_surface_square: {
+    name: 'Square',
+    description:
+      'Slim surface-mounted square light for yards, shelters and false-ceiling-free areas.',
+  },
+  var_luna_track_black: {
+    name: 'Black',
+    description:
+      'Surface track in matte black with adjustable spot heads for feature walls and dining.',
+  },
+  var_luna_track_white: {
+    name: 'White',
+    description:
+      'Surface track in matte white with adjustable spot heads for feature walls and dining.',
+  },
+  var_lumi_cove_3000: {
+    name: '3000K',
+    description: 'Dimmable cove LED strip in warm white (3000K) for ceiling and cabinet coves.',
+  },
+  var_lumi_cove_4000: {
+    name: '4000K',
+    description: 'Dimmable cove LED strip in neutral white (4000K) for ceiling and cabinet coves.',
+    to: 'var_lumi_cove_3000',
+  },
+  var_lumi_cove_rgbcct: {
+    name: 'RGBCCT',
+    description:
+      'Cove LED strip in any colour plus tunable white (2700–6500K), upgraded from the CCT strip in the package.',
+  },
+  var_lumi_cob_3000: {
+    name: '3000K',
+    description: 'Dot-free COB LED strip in warm white (3000K) for exposed profiles and shelves.',
+  },
+};
+
+export function smartLighting<T extends { variants: Variant[] }>(saved: T): T {
+  const now = sample.SAMPLE_VARIANTS;
+  let changed = false;
+  const variants = saved.variants.map((v) => {
+    const old = OLD_LIGHTING[v.id];
+    const next = now.find((n) => n.id === (old?.to ?? v.id));
+    if (!old || !next) return v;
+    const rename = v.name === old.name && v.name !== next.name;
+    const reword = v.description === old.description && v.description !== next.description;
+    if (!rename && !reword) return v;
+    changed = true;
+    return {
+      ...v,
+      ...(rename ? { name: next.name } : {}),
+      ...(reword ? { description: next.description } : {}),
+      ...(old.to && rename ? { hidden: true } : {}),
+    };
+  });
+  return changed ? { ...saved, variants } : saved;
 }
 
 /** Sample variants added after launch, offered once to catalogues that have their product. */
@@ -445,7 +526,7 @@ export function createSampleStore(
     importWorkspace(w: Pick<SampleState, 'products' | 'variants' | 'settings' | 'templates'>) {
       update((d) => {
         d.products = structuredClone(w.products);
-        d.variants = structuredClone(w.variants);
+        d.variants = structuredClone(smartLighting(w).variants);
         d.settings = structuredClone(w.settings);
         d.templates = structuredClone(w.templates);
       });

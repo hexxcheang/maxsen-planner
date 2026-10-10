@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SYSTEM_VARIANT_IDS, createEmptyPlanDocument } from '@maxsen/domain';
+import { SYSTEM_VARIANT_IDS, createEmptyPlanDocument, type Variant } from '@maxsen/domain';
 import {
   addNewSampleCategories,
   createSampleStore,
@@ -150,6 +150,34 @@ describe('upgrading saved data', () => {
     expect(next.products.some((p) => p.categoryId === 'ceiling-fans')).toBe(true);
     expect(next.variants.filter((v) => v.productId === 'prod_breeze_fan')).toHaveLength(2);
     expect(next.products.some((p) => p.id === deleted.id)).toBe(false);
+    expect(addNewSampleCategories(next)).toBe(next);
+  });
+});
+
+describe('upgrading saved lighting wording', () => {
+  it('makes the lights and LED strips smart CCT, hiding the 4000K ones, keeping own wording', () => {
+    const state = createSampleStore('sample').getState();
+    const v = (id: string, name: string, description: string): Variant => ({
+      ...state.variants.find((x) => x.id === 'var_luna_dl_3000')!,
+      id,
+      name,
+      description,
+    });
+    const old: SampleState = {
+      ...state,
+      variants: [
+        ...state.variants.filter((x) => !['var_luna_dl_3000', 'var_lumi_cob_3000'].includes(x.id)),
+        v('var_luna_dl_3000', '3000K', 'Recessed downlight in warm white (3000K) for living areas and bedrooms.'),
+        v('var_luna_dl_4000', '4000K', 'Recessed downlight in neutral white (4000K) for kitchens and work areas.'),
+        v('var_lumi_cob_3000', 'Warm COB', 'Our own words.'),
+      ],
+    };
+    const next = addNewSampleCategories(old);
+    const get = (id: string) => next.variants.find((x) => x.id === id)!;
+    expect(get('var_luna_dl_3000')).toMatchObject({ name: 'Smart CCT', hidden: false });
+    expect(get('var_luna_dl_3000').description).toMatch(/2700K–6000K.*CRI 98, app control/);
+    expect(get('var_luna_dl_4000')).toMatchObject({ name: 'Smart CCT', hidden: true });
+    expect(get('var_lumi_cob_3000')).toMatchObject({ name: 'Warm COB', description: 'Our own words.' });
     expect(addNewSampleCategories(next)).toBe(next);
   });
 });
