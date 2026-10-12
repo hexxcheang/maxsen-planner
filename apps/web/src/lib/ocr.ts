@@ -45,6 +45,8 @@ export async function ocrPdf(
 
   const texts: PdfText[] = [];
   const rules: TableRule[] = [];
+  /** The item table, still running at the foot of the last page read. */
+  let carried: TableHead | null = null;
   try {
     for (let p = 1; p <= doc.numPages; p++) {
       onProgress?.(`Reading page ${p} of ${doc.numPages}…`);
@@ -66,8 +68,11 @@ export async function ocrPdf(
       let words = await recognise(worker, clean);
 
       // Tesseract drops lone digits ("1", "4") on a busy page, so the number columns are read
-      // again on their own, as digits only.
-      const head = tableHead(words);
+      // again on their own, as digits only. A page without the table's heading, while the table
+      // hasn't ended, carries it on in the same columns.
+      const head: TableHead | null =
+        tableHead(words) ?? (carried ? continued(carried, words) : null);
+      carried = head && !Number.isFinite(head.bottom) ? head : null;
       if (head) {
         await worker.setParameters({
           tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
@@ -189,6 +194,28 @@ function tableHead(words: Word[]) {
     strips,
     desc: { x0: descLeft + 0.25 * span, x1: descRight - 0.25 * span },
     top: top - 40,
+    bottom,
+  };
+}
+
+type TableHead = NonNullable<ReturnType<typeof tableHead>>;
+
+/**
+ * The item table carried on from the page before, on a page without its heading: the same
+ * columns, from the top of the page down to the total line if it's on this page.
+ */
+function continued(prev: TableHead, words: Word[]): TableHead {
+  const qtyLeft = prev.strips[0]!.x0;
+  const total = words.find((w) => /^total$/i.test(w.text) && w.bbox.x1 < qtyLeft);
+  const bottom = total ? total.bbox.y0 - 4 : Infinity;
+  return {
+    strips: prev.strips.map((s) => ({
+      ...s,
+      y0: 0,
+      y1: Number.isFinite(bottom) ? Math.round(bottom) : 0,
+    })),
+    desc: prev.desc,
+    top: 0,
     bottom,
   };
 }

@@ -11,6 +11,11 @@ export interface OldInvoiceLine {
   description: string;
   quantity: number;
   unitPrice: number;
+  /**
+   * The line's amount as printed, when its quantity × unit price as read doesn't come to it and
+   * it can't be told which was misread: the line to check.
+   */
+  printed?: number;
 }
 
 export type OldInvoiceRow =
@@ -89,10 +94,45 @@ function wholeDeposit(printed: number | null, total: number | null): number | nu
   return printed;
 }
 
+const near = (a: number, b: number) => Math.abs(a - b) < 0.011;
+
+/** The same number of digits, one of them different ("20" and "90"). */
+function oneOff(read: number, fixed: number): boolean {
+  const a = String(read);
+  const b = String(fixed);
+  return a.length === b.length && [...a].filter((c, i) => c !== b[i]).length === 1;
+}
+
+/**
+ * A line's quantity and unit price checked against its printed amount. When they don't come to it,
+ * one was misread (a scanned "90" read as "20"): if only one of them can be put right from the
+ * amount, it is; if either could, the line is marked to check rather than guessed.
+ */
+function checked(
+  quantity: number,
+  unitPrice: number,
+  amount: number | null,
+): Pick<OldInvoiceLine, 'quantity' | 'unitPrice' | 'printed'> {
+  if (amount === null || near(quantity * unitPrice, amount)) return { quantity, unitPrice };
+  const unit = quantity !== 0 ? Math.round((amount / quantity) * 100) / 100 : null;
+  const qty = unitPrice !== 0 ? amount / unitPrice : null;
+  // Only a one-character misread is put right ("20" for "90"): anything more, and the amount
+  // itself may be misread. Either one could be it, and the line is left to check.
+  const byUnit = unit !== null && near(unit * quantity, amount) && oneOff(unitPrice, unit);
+  const byQty =
+    qty !== null &&
+    qty > 0 &&
+    Math.abs(qty - Math.round(qty)) < 1e-6 &&
+    oneOff(quantity, Math.round(qty));
+  if (byUnit && !byQty) return { quantity, unitPrice: unit };
+  if (byQty && !byUnit) return { quantity: Math.round(qty), unitPrice };
+  return { quantity, unitPrice, printed: amount };
+}
+
 export function parseOldInvoice(grid: Cell[][]): OldInvoice {
   // The item table's heading row, and which columns hold what.
   let head = -1;
-  let col = { desc: -1, qty: -1, unit: -1 };
+  let col = { desc: -1, qty: -1, unit: -1, amount: -1 };
   for (let r = 0; r < grid.length && head < 0; r++) {
     const cells = grid[r]!.map((c) => text(c).toLowerCase());
     const qty = cells.findIndex((c) => /^(qty|quantity)\b/.test(c));
@@ -100,7 +140,11 @@ export function parseOldInvoice(grid: Cell[][]): OldInvoice {
     const desc = cells.findIndex((c) => /description|^item/.test(c));
     if (qty >= 0 && unit >= 0) {
       head = r;
-      col = { desc: desc >= 0 ? desc : Math.max(0, Math.min(qty, unit) - 1), qty, unit };
+      // The line's amount: "PRICE (S$)", "Amount", "Total" (not the unit price).
+      const amount = cells.findIndex(
+        (c, i) => i !== unit && /^(amount|price|total|line total)\b/.test(c),
+      );
+      col = { desc: desc >= 0 ? desc : Math.max(0, Math.min(qty, unit) - 1), qty, unit, amount };
     }
   }
 
@@ -130,7 +174,8 @@ export function parseOldInvoice(grid: Cell[][]): OldInvoice {
     if (head >= 0 && quantity === null && TOTAL.test(description)) break;
     if (!description && quantity === null) continue;
     if (quantity !== null && unitPrice !== null && description) {
-      rows.push({ kind: 'item', description, quantity, unitPrice });
+      const amount = head >= 0 && col.amount >= 0 ? num(row[col.amount]) : null;
+      rows.push({ kind: 'item', description, ...checked(quantity, unitPrice, amount) });
     } else if (description && quantity === null && unitPrice === null) {
       // A short heading (e.g. "Lighting") starts a section; longer text (warranty) is left out.
       if (description.length <= 40 && !/warranty|terms|deposit|payment/i.test(description))

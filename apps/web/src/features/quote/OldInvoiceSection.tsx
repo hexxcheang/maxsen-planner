@@ -46,7 +46,15 @@ import { readPdfText } from '@/lib/images';
 import { ocrPdf } from '@/lib/ocr';
 
 type Line =
-  | { id: string; kind: 'item'; description: string; quantity: number; unitPrice: number }
+  | {
+      id: string;
+      kind: 'item';
+      description: string;
+      quantity: number;
+      unitPrice: number;
+      /** The amount printed on the old invoice, when this line as read doesn't come to it. */
+      printed?: number;
+    }
   | { id: string; kind: 'section'; title: string };
 
 interface OldDraft {
@@ -656,6 +664,37 @@ export function OldInvoiceSection() {
             As invoiced, with anything added since. Change any line’s wording, quantity or unit
             price, give a discount (S$ or %), or take it off; the total and the payment due follow.
           </p>
+          {(() => {
+            // Lines whose quantity × unit price as read doesn't come to the amount on the PDF.
+            const check = draft.lines.flatMap((l) =>
+              l.kind === 'item' &&
+              l.printed !== undefined &&
+              Math.abs(l.quantity * l.unitPrice - l.printed) >= 0.01
+                ? [{ ...l, printed: l.printed }]
+                : [],
+            );
+            if (!check.length) return null;
+            return (
+              <div
+                role="alert"
+                className="border-l-[3px] border-warn bg-warn-tint px-3 py-2 text-control text-ink"
+              >
+                <p className="flex items-center gap-1.5 font-medium">
+                  <TriangleAlert aria-hidden className="size-4 text-warn" />
+                  Check {check.length === 1 ? 'this line' : `these ${check.length} lines`} against
+                  the old invoice
+                </p>
+                <ul className="mt-1 list-disc pl-5 text-meta text-ink-2">
+                  {check.map((l) => (
+                    <li key={l.id}>
+                      {l.description.split('\n')[0]}: read as {l.quantity} × {money(l.unitPrice)} ={' '}
+                      {money(l.quantity * l.unitPrice)}, but its amount is {money(l.printed)}.
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })()}
           <QuotationTable
             base={base}
             invoice={invoice}

@@ -98,11 +98,15 @@ export function pdfInvoiceGrid(texts: PdfText[], rules: TableRule[] = []): Cell[
         margin: t.y < 0.08 * h || t.y > 0.92 * h,
       };
     });
-  // Page furniture (running titles, footers, page numbers) repeats on every page: leave it out.
+  // Page furniture (running titles, footers, page numbers) repeats in the margin of every page, at
+  // the same height: leave it out. Items that read alike ("Extra item 12", "Extra item 13") at
+  // the foot of one page and the top of the next aren't furniture.
   const pages = new Map<string, Set<number>>();
-  const key = (l: Run[]) => l.map((c) => c.str.replace(/\d/g, '')).join('|');
   const page = (l: Run[]) => Math.floor(l[0]!.top / 10_000);
+  const key = (l: Run[]) =>
+    `${Math.round((l[0]!.top % 10_000) / 12)}:${l.map((c) => c.str.replace(/\d/g, '')).join('|')}`;
   for (const l of lines(runs)) {
+    if (!l.every((c) => c.margin)) continue;
     const k = key(l);
     pages.set(k, (pages.get(k) ?? new Set()).add(page(l)));
   }
@@ -132,7 +136,7 @@ export function pdfInvoiceGrid(texts: PdfText[], rules: TableRule[] = []): Cell[
       .filter(
         (c) => c !== qtyCol && c !== unitCol && (HEAD.amount.test(c.str) || HEAD.sn.test(c.str)),
       )
-      .map((c) => ({ key: 'other', at: centre(c) })),
+      .map((c) => ({ key: HEAD.amount.test(c.str) ? 'amount' : 'other', at: centre(c) })),
   ];
   const headText = head.map((c) => c.str.toLowerCase()).join('|');
 
@@ -164,15 +168,24 @@ export function pdfInvoiceGrid(texts: PdfText[], rules: TableRule[] = []): Cell[
     ).key;
   const qtys = body.filter((r) => isNumber(r.str) && nearest(r) === 'qty');
   const units = body.filter((r) => isNumber(r.str) && nearest(r) === 'unit');
+  // Each line's printed amount, to check its quantity and unit price against.
+  const amounts = body.filter((r) => isNumber(r.str) && nearest(r) === 'amount');
   const words = body
-    // Lone strokes are table borders read as letters.
-    .filter((r) => !isNumber(r.str) && /[a-z]/i.test(r.str) && !/^[|Il![\]]$/.test(r.str))
+    // Lone strokes are table borders read as letters; anything in the number columns (an amount
+    // misread as "BO.00") isn't description.
+    .filter(
+      (r) =>
+        !isNumber(r.str) &&
+        /[a-z]/i.test(r.str) &&
+        !/^[|Il![\]]$/.test(r.str) &&
+        centre(r) < qtyCol.x,
+    )
     .sort((a, b) => a.top - b.top);
 
   const assemble = (rows: Cell[][]) => [
     ...labelsAbove(all.slice(0, headAt)),
     ...asRows(all.slice(0, headAt)),
-    ['Description', 'Qty', 'Unit price'],
+    ['Description', 'Qty', 'Unit price', 'Amount'],
     ...rows,
     ['Total'],
     ...asRows(all.slice(end)),
@@ -190,7 +203,8 @@ export function pdfInvoiceGrid(texts: PdfText[], rules: TableRule[] = []): Cell[
       const text = joinLines(words.filter(inside));
       const qty = qtys.find(inside);
       const unit = units.find(inside);
-      if (qty) rows.push([describe(text), qty.str, unit?.str ?? null]);
+      const amount = amounts.find(inside);
+      if (qty) rows.push([describe(text), qty.str, unit?.str ?? null, amount?.str ?? null]);
       else if (text.length) rows.push([describe(text)]);
     }
     return assemble(rows);
@@ -223,12 +237,15 @@ export function pdfInvoiceGrid(texts: PdfText[], rules: TableRule[] = []): Cell[
       (best, u) => (!best || Math.abs(u.top - q.top) < Math.abs(best.top - q.top) ? u : best),
       null,
     );
+    // Only an amount on the quantity's own line: one further off may be the next row's.
+    const amount = amounts.find((a) => Math.abs(a.top - q.top) < 4);
     rows.push({
       top: block ? Math.min(block[0]!.top, q.top) : q.top,
       cells: [
         describe(block ?? []),
         q.str,
         unit && Math.abs(unit.top - q.top) < 20 ? unit.str : null,
+        amount?.str ?? null,
       ],
     });
   }

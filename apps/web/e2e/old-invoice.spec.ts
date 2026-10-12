@@ -210,6 +210,50 @@ test.describe('old invoices', () => {
     expect(quantities).toEqual([1, 2, 1, 1, 3, 15, 15, 1, 4]);
     await page.screenshot({ path: 'test-results/screens/old-invoice-scanned.png', fullPage: true });
   });
+
+  test('reads every page of a long invoice PDF, items at the page break included', async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'File handling is viewport-independent');
+    // 40 lines over two pages (the template's Excel saved as PDF); page 2 has no column headings.
+    await page.goto('/quote');
+    await page.getByRole('radio', { name: 'Old invoice: next payment' }).click();
+    await page
+      .getByLabel('Old invoice file')
+      .setInputFiles(path.join(import.meta.dirname, 'fixtures/multipage-invoice.pdf'));
+    await expect(page.getByText(/Read 40 lines/)).toBeVisible();
+    const lines = page.getByRole('region', { name: 'Invoice lines' });
+    for (const n of [11, 12, 13, 14, 28])
+      await expect(lines.getByText(`Extra item number ${n} for testing`)).toBeVisible();
+    await expect(lines.getByRole('row', { name: /^Total\s*S\$/ })).toContainText('S$15,764.00');
+  });
+
+  test('reads every page of a scanned long invoice, and points out a line to check', async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'File handling is viewport-independent');
+    test.setTimeout(180_000);
+    // The same invoice as pictures of its two pages.
+    await page.goto('/quote');
+    await page.getByRole('radio', { name: 'Old invoice: next payment' }).click();
+    await page
+      .getByLabel('Old invoice file')
+      .setInputFiles(path.join(import.meta.dirname, 'fixtures/multipage-invoice-scanned.pdf'));
+    await expect(page.getByText(/Read 40 lines/)).toBeVisible({ timeout: 150_000 });
+    const lines = page.getByRole('region', { name: 'Invoice lines' });
+    await expect(lines.getByLabel('Quantity of Nova Package')).toBeVisible();
+    // Page 2's lines too.
+    for (const n of [13, 20, 28])
+      await expect(lines.getByText(`Extra item number ${n} for testing`)).toBeVisible();
+    // A misread number doesn't pass silently: the total is right, or the line is pointed out.
+    const total = await lines.getByRole('row', { name: /^Total\s*S\$/ }).innerText();
+    if (!total.includes('S$15,764.00'))
+      await expect(page.getByRole('alert').filter({ hasText: /^Check/ })).toBeVisible();
+    await page.screenshot({
+      path: 'test-results/screens/old-invoice-multipage.png',
+      fullPage: true,
+    });
+  });
 });
 
 test.describe('electrical', () => {

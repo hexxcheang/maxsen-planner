@@ -76,6 +76,32 @@ describe('reading an old invoice', () => {
     assert.equal(cut(2415), 2415);
   });
 
+  it('puts a misread quantity or price right from the line’s amount, or marks it to check', () => {
+    const rows = (lines: Cell[][]) =>
+      parseOldInvoice([
+        ['S/N', 'ITEM/DESCRIPTION', 'QUANTITY', 'UNIT PRICE (S$)', 'PRICE (S$)'],
+        ...lines,
+      ]).rows.map((r) => (r.kind === 'item' ? [r.quantity, r.unitPrice, r.printed] : null));
+    assert.deepEqual(
+      rows([
+        [1, 'Matches', 2, 50, 100],
+        [2, 'Unit read 20 for 30', 3, 20, 90],
+        [3, 'Quantity read 1 for 7', 1, 33.33, 233.31],
+        [4, 'Either: 2 x 90 or 9 x 20', 2, 20, 180],
+        [5, 'Amount misread too', 3, 260, 70],
+        [6, 'No amount', 4, 15, null],
+      ]),
+      [
+        [2, 50, undefined],
+        [3, 30, undefined],
+        [7, 33.33, undefined],
+        [2, 20, 180],
+        [3, 260, 70],
+        [4, 15, undefined],
+      ],
+    );
+  });
+
   it('reads rows pasted from a spreadsheet without headings', () => {
     const old = parseOldInvoice([
       ['1', 'Nova Package', '1', '1,990.00'],
