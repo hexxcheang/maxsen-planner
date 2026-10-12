@@ -3,6 +3,10 @@ import path from 'node:path';
 import { z } from 'zod';
 
 const text = (max: number) => z.string().trim().max(max).optional();
+const day = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .optional();
 
 /** A lead's details as anyone saves them (notes are added on their own). */
 export const leadBody = z.object({
@@ -15,12 +19,22 @@ export const leadBody = z.object({
   source: text(60),
   interest: text(300),
   budget: text(60),
-  status: z.enum(['new', 'contacted', 'meeting', 'quoted', 'won', 'lost']),
+  status: z.enum([
+    'new',
+    'contacted',
+    'no-reply',
+    'meeting',
+    'visited',
+    'quoted',
+    'considering',
+    'on-hold',
+    'won',
+    'lost',
+  ]),
   assignedTo: text(60),
-  followUp: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional(),
+  followUp: day,
+  lastContacted: day,
+  renoDate: day,
   projectId: text(60),
   /** The lead's `updatedAt` this edit started from; a newer one on the server is a conflict. */
   baseUpdatedAt: z.string().optional(),

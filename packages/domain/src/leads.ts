@@ -3,14 +3,30 @@
  * who's following up and when, and a running log of notes.
  */
 
-export const LEAD_STATUSES = ['new', 'contacted', 'meeting', 'quoted', 'won', 'lost'] as const;
+/** Where a lead stands, in the order a sale usually goes. */
+export const LEAD_STATUSES = [
+  'new',
+  'contacted',
+  'no-reply',
+  'meeting',
+  'visited',
+  'quoted',
+  'considering',
+  'on-hold',
+  'won',
+  'lost',
+] as const;
 export type LeadStatus = (typeof LEAD_STATUSES)[number];
 
 export const LEAD_STATUS_LABEL: Record<LeadStatus, string> = {
   new: 'New',
   contacted: 'Contacted',
+  'no-reply': 'No reply yet',
   meeting: 'Meet-up set',
+  visited: 'Met / site visit done',
   quoted: 'Quoted',
+  considering: 'Considering quote',
+  'on-hold': 'On hold (reno later)',
   won: 'Won',
   lost: 'Lost',
 };
@@ -62,6 +78,10 @@ export interface Lead {
   assignedTo?: string;
   /** YYYY-MM-DD */
   followUp?: string;
+  /** When we last spoke to or messaged them, YYYY-MM-DD. */
+  lastContacted?: string;
+  /** When their renovation is expected to start, YYYY-MM-DD. */
+  renoDate?: string;
   /** The project made from this lead, once it's converted. */
   projectId?: string;
   notes: LeadNote[];
@@ -69,6 +89,29 @@ export interface Lead {
   createdBy: string;
   updatedAt: string;
   updatedBy: string;
+}
+
+/** Statuses that mean we've just been in touch with them. */
+const IN_TOUCH: readonly LeadStatus[] = [
+  'contacted',
+  'meeting',
+  'visited',
+  'quoted',
+  'considering',
+];
+
+/**
+ * The last-contacted day after moving a lead to `status` on `today`: moving it on to a stage that
+ * means we've been in touch makes it today; otherwise it stays as it was.
+ */
+export function contactedOn(
+  status: LeadStatus,
+  previous: LeadStatus,
+  lastContacted: string | undefined,
+  today: string,
+): string | undefined {
+  if (status === previous || !IN_TOUCH.includes(status)) return lastContacted;
+  return lastContacted && lastContacted > today ? lastContacted : today;
 }
 
 /** What's still being worked: not won or lost. */

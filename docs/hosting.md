@@ -103,6 +103,10 @@ without touching a lead someone has open.
 - Each lead is saved on its own, so two people working on different leads never overwrite each
   other. If someone else changed the same lead while you had it open, you're told who and can load
   their version or keep yours.
+- Statuses run from New, Contacted, No reply yet, Meet-up set, Met / site visit done, Quoted and
+  Considering quote to On hold (reno later), Won and Lost. Moving a lead to a stage that means you
+  spoke (Contacted to Considering) sets **Last contacted** to today; change it if it was another
+  day. **Expected reno date** shows on the list as the month.
 - Leads are split by where they came from: **MyDigitalLock** or **Maxsen leads**. The switch at the
   top shows one list or both (each device remembers its choice); a new lead starts in the list
   being shown. Leads added before the split count as Maxsen leads.
@@ -112,6 +116,18 @@ without touching a lead someone has open.
 - **Notes** are only ever added, never replaced, so everyone's notes are kept.
 - **Convert to project** starts a project from the lead's details.
 - Only the admin can delete a lead; everyone else marks it **Lost**.
+
+## Security
+
+- **Set your own passcodes** in Render › Environment: `PLANNER_PASSCODE` for the team and
+  `ADMIN_PASSCODE` for the admin. Until `ADMIN_PASSCODE` is set, the admin passcode is `admin`
+  (the server log warns about it).
+- **Other websites can't use the app.** The server sends no CORS permissions, so a page on another
+  site can't read anything from it; changes (saving, deleting) are refused when the browser says
+  they come from another site; and the sign-in cookies only travel with the app's own requests.
+- **Passcode guessing is slowed:** after 10 wrong passcodes from one place, it waits 15 minutes.
+- **Security headers:** the app can't be shown inside another site's frame, and uploaded files are
+  never run as web pages.
 
 ## Good to know
 

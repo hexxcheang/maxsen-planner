@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   byPriority,
   channelOf,
+  contactedOn,
   isOverdue,
   matchLead,
   whatsappLink,
@@ -57,5 +58,15 @@ describe('leads', () => {
   it('counts leads from before the split as our own', () => {
     assert.equal(channelOf(lead('old')), 'own');
     assert.equal(channelOf(lead('mdl', { channel: 'mydigitallock' })), 'mydigitallock');
+  });
+
+  it('makes today the last contact when a lead moves on to a stage that means we spoke', () => {
+    const today = '2026-10-12';
+    assert.equal(contactedOn('contacted', 'new', undefined, today), today);
+    assert.equal(contactedOn('quoted', 'visited', '2026-09-01', today), today);
+    // Not in touch (no reply, on hold, won, lost), or no change: as it was.
+    assert.equal(contactedOn('no-reply', 'new', undefined, today), undefined);
+    assert.equal(contactedOn('on-hold', 'quoted', '2026-09-01', today), '2026-09-01');
+    assert.equal(contactedOn('quoted', 'quoted', '2026-09-01', today), '2026-09-01');
   });
 });

@@ -3,6 +3,7 @@ import { CloudOff, MessageCircle, Phone, Plus, Search, TriangleAlert } from 'luc
 import {
   byPriority,
   channelOf,
+  contactedOn,
   isOpen,
   isOverdue,
   LEAD_CHANNEL_LABEL,
@@ -19,7 +20,7 @@ import { Button, Input, PageHeader, SegmentedControl, Select, useToast } from '@
 import { Page } from '@/components/Page';
 import { useAdmin } from '@/app/auth/useAdmin';
 import { cn } from '@/lib/cn';
-import { formatDay, relativeDay, today } from '@/lib/dates';
+import { formatDay, monthTitle, parseDay, relativeDay, today } from '@/lib/dates';
 import { useEnsureName } from '@/lib/shared/useEnsureName';
 import { useTimetable } from '@/features/timetable/timetable-api';
 import { LeadDialog } from './LeadDialog';
@@ -28,6 +29,12 @@ import { LeadError, saveLead, useLeads } from './leads-api';
 type Filter = 'open' | 'all' | LeadStatus;
 type Channel = 'all' | LeadChannel;
 const EVERYONE = '__all__';
+
+/** "March 2027", for a renovation's expected start. */
+const formatMonth = (date: string) => {
+  const d = parseDay(date);
+  return d ? monthTitle(d.y, d.m) : date;
+};
 const CHANNEL_KEY = 'maxsen.leads.channel';
 
 function savedChannel(): Channel {
@@ -42,8 +49,12 @@ function savedChannel(): Channel {
 const STATUS_TONE: Record<LeadStatus, string> = {
   new: 'bg-sales-tint text-sales',
   contacted: 'bg-paper text-ink-2',
+  'no-reply': 'bg-warn-tint text-warn',
   meeting: 'bg-brass-tint text-brass-2',
+  visited: 'bg-brass-tint text-brass-2',
   quoted: 'bg-brass-tint text-brass-2',
+  considering: 'bg-brass-tint text-brass-2',
+  'on-hold': 'bg-paper text-ink-3',
   won: 'bg-ok/10 text-ok',
   lost: 'bg-paper text-ink-3',
 };
@@ -109,7 +120,14 @@ export function LeadsScreen() {
         updatedBy: _u,
         ...rest
       } = l;
-      put(await saveLead(l.id, { ...rest, status, baseUpdatedAt: updatedAt }));
+      put(
+        await saveLead(l.id, {
+          ...rest,
+          status,
+          lastContacted: contactedOn(status, l.status, l.lastContacted, day),
+          baseUpdatedAt: updatedAt,
+        }),
+      );
     } catch (e) {
       toast({
         title:
@@ -313,6 +331,14 @@ export function LeadsScreen() {
                     </span>
                   ) : (
                     <span className="text-ink-3">No follow-up set</span>
+                  )}
+                  {l.lastContacted && (
+                    <span className="block text-ink-3" title={formatDay(l.lastContacted)}>
+                      Last contacted {relativeDay(l.lastContacted, day).toLowerCase()}
+                    </span>
+                  )}
+                  {l.renoDate && (
+                    <span className="block text-ink-3">Reno {formatMonth(l.renoDate)}</span>
                   )}
                   {l.assignedTo && <span className="block text-ink-3">{l.assignedTo}</span>}
                 </div>

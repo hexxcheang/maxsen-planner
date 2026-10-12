@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 import { FolderPlus, MessageCircle, Phone, Trash2, TriangleAlert } from 'lucide-react';
 import {
   channelOf,
+  contactedOn,
   LEAD_CHANNEL_LABEL,
   LEAD_CHANNELS,
   LEAD_SOURCES,
@@ -28,6 +29,7 @@ import {
 } from '@/components/ui';
 import { useActions } from '@/lib/data/hooks';
 import { formatUpdated, PROPERTY_TYPES } from '@/lib/format';
+import { today } from '@/lib/dates';
 import { addLeadNote, deleteLead, LeadError, saveLead, type LeadInput } from './leads-api';
 
 type Form = Omit<LeadInput, 'baseUpdatedAt'>;
@@ -45,6 +47,8 @@ const formOf = (l: Lead | null, channel: LeadChannel = 'own'): Form => ({
   status: l?.status ?? 'new',
   assignedTo: l?.assignedTo ?? '',
   followUp: l?.followUp ?? '',
+  lastContacted: l?.lastContacted ?? '',
+  renoDate: l?.renoDate ?? '',
   projectId: l?.projectId,
 });
 
@@ -364,7 +368,17 @@ export function LeadDialog({
                 <Select
                   value={form.status}
                   options={LEAD_STATUSES.map((s) => ({ value: s, label: LEAD_STATUS_LABEL[s] }))}
-                  onChange={(v) => set({ status: v as LeadStatus })}
+                  onChange={(v) =>
+                    set({
+                      status: v as LeadStatus,
+                      lastContacted: contactedOn(
+                        v as LeadStatus,
+                        form.status,
+                        form.lastContacted || undefined,
+                        today(),
+                      ),
+                    })
+                  }
                 />
               </Field>
               <Field label="Next follow-up">
@@ -372,6 +386,25 @@ export function LeadDialog({
                   type="date"
                   value={form.followUp ?? ''}
                   onChange={(e) => set({ followUp: e.target.value })}
+                />
+              </Field>
+              <Field label="Last contacted">
+                <div className="flex items-center gap-1">
+                  <Input
+                    type="date"
+                    value={form.lastContacted ?? ''}
+                    onChange={(e) => set({ lastContacted: e.target.value })}
+                  />
+                  <Button size="sm" onClick={() => set({ lastContacted: today() })}>
+                    Today
+                  </Button>
+                </div>
+              </Field>
+              <Field label="Expected reno date">
+                <Input
+                  type="date"
+                  value={form.renoDate ?? ''}
+                  onChange={(e) => set({ renoDate: e.target.value })}
                 />
               </Field>
               <Field label="Assigned to">

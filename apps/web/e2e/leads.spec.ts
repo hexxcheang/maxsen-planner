@@ -48,7 +48,14 @@ async function device(context: BrowserContext) {
       const url = new URL(route.request().url());
       url.host = `127.0.0.1:${PORT}`;
       // Pages left polling after the test (and its server) has ended just stop.
-      const response = await route.fetch({ url: url.toString() }).catch(() => null);
+      const response = await route
+        // Like the dev server's proxy: the page's own host goes along, so the request is
+        // the app's own, not another site's.
+        .fetch({
+          url: url.toString(),
+          headers: { ...route.request().headers(), host: new URL(route.request().url()).host },
+        })
+        .catch(() => null);
       await (response ? route.fulfill({ response }) : route.abort().catch(() => undefined));
     });
   const page = await context.newPage();
@@ -115,6 +122,11 @@ test('everyone adds and works leads; edits never overwrite each other', async ({
   await sam.getByRole('button', { name: 'Mr Tan' }).click();
   const samLead = sam.getByRole('dialog', { name: 'Mr Tan' });
   await samLead.getByLabel('Status').selectOption('contacted');
+  // Contacting them makes today the last contact; the reno is expected next March.
+  await expect(samLead.getByLabel('Last contacted')).toHaveValue(
+    await sam.evaluate(() => new Date().toLocaleDateString('en-CA')),
+  );
+  await samLead.getByLabel('Expected reno date').fill('2027-03-15');
   await samLead.getByRole('button', { name: 'Save changes' }).click();
   const samName = sam.getByRole('dialog', { name: 'Your name' });
   await samName.getByLabel('Name').fill('Sam');
@@ -139,6 +151,11 @@ test('everyone adds and works leads; edits never overwrite each other', async ({
   await jo.reload();
   const list = jo.getByRole('list', { name: 'Leads' });
   await expect(list.getByLabel('Status of Mr Tan')).toHaveValue('contacted');
+  await expect(list).toContainText('Last contacted today');
+  await expect(list).toContainText('Reno March 2027');
+  // More stages to choose from, right in the list.
+  await list.getByLabel('Status of Mr Tan').selectOption('considering');
+  await expect(list.getByLabel('Status of Mr Tan')).toHaveValue('considering');
   await jo.screenshot({ path: 'test-results/screens/leads.png', fullPage: true });
 
   // Won: it becomes a project.
