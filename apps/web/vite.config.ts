@@ -1,4 +1,5 @@
 import { defineConfig, type Plugin } from 'vite';
+import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -48,8 +49,21 @@ function ocrAssets(): Plugin {
   };
 }
 
+/** Which version of the app this is: the commit it was built from (Render names it). */
+function appVersion(): string {
+  let commit = process.env.RENDER_GIT_COMMIT ?? '';
+  if (!commit)
+    try {
+      commit = execSync('git rev-parse HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString();
+    } catch {
+      commit = 'dev';
+    }
+  return `${commit.trim().slice(0, 7)} (${new Date().toISOString().slice(0, 10)})`;
+}
+
 export default defineConfig({
   plugins: [react(), tailwindcss(), ocrAssets()],
+  define: { __APP_VERSION__: JSON.stringify(appVersion()) },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

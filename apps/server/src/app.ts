@@ -9,6 +9,7 @@ import { eventBody, type TimetableStore } from './timetable.ts';
 import { MANAGER_KINDS, movementBody, verifyBody, type InventoryStore } from './inventory.ts';
 import { leadBody, noteBody, type LeadStore } from './leads.ts';
 import { createAttemptLimit, fileHeaders, headers, sameSiteOnly } from './security.ts';
+import { MAX_PDF_BYTES, pdfText } from './pdf-text.ts';
 
 const analyseBody = z.object({
   image: z.string().min(100).max(15_000_000),
@@ -137,6 +138,20 @@ export function buildApp({
   app.post('/api/auth/sign-out', (c) => {
     auth.signOut(c);
     return c.json({ ok: true });
+  });
+
+  /** An old invoice's text, read here when the browser can't read the PDF itself. */
+  app.post('/api/pdf/text', async (c) => {
+    const data = new Uint8Array(await c.req.arrayBuffer());
+    if (data.byteLength > MAX_PDF_BYTES) return c.json({ error: 'too-large' }, 413);
+    if (String.fromCharCode(...data.subarray(0, 5)) !== '%PDF-')
+      return c.json({ error: 'bad-request', message: 'That isn’t a PDF.' }, 400);
+    try {
+      return c.json({ texts: await pdfText(data) });
+    } catch (e) {
+      console.error('PDF text failed', e);
+      return c.json({ error: 'unreadable', message: 'The PDF couldn’t be opened.' }, 422);
+    }
   });
 
   app.get('/api/product-sample/status', (c) =>

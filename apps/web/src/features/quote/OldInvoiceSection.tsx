@@ -42,7 +42,8 @@ import { useQuoteCatalogue } from './useQuoteCatalogue';
 import { ElectricalWorksDialog } from '@/features/electrical/ElectricalWorksDialog';
 import { money, quotationText, withRowEdit } from './quotation';
 import { copyText } from '@/lib/clipboard';
-import { readPdfText } from '@/lib/images';
+import { pdfTextAnywhere } from '@/lib/pdf-text';
+import { APP_VERSION } from '@/lib/version';
 import { isStaleApp, reloadForUpdate } from '@/lib/stale';
 import { ocrPdf } from '@/lib/ocr';
 
@@ -224,7 +225,7 @@ export function OldInvoiceSection() {
     if (!file) return;
     try {
       if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) {
-        const text = await readPdfText(file);
+        const text = await pdfTextAnywhere(file);
         if (text.length) open(pdfInvoiceGrid(text), file.name);
         else {
           // No text in it (a scan, or letters drawn as shapes): read the words off the pages.
@@ -246,7 +247,7 @@ export function OldInvoiceSection() {
         title: 'That file couldn’t be read',
         body: `Use the invoice’s PDF or Excel file (.xlsx), or paste its rows instead.${
           e instanceof Error && e.message ? ` (${e.message.slice(0, 160)})` : ''
-        }`,
+        } App version ${APP_VERSION}.`,
         tone: 'danger',
       });
     } finally {

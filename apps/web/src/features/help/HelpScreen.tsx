@@ -1,4 +1,5 @@
 import { PageHeader } from '@/components/ui';
+import { APP_VERSION } from '@/lib/version';
 
 const STEPS: { title: string; body: string }[] = [
   {
@@ -59,6 +60,7 @@ export function HelpScreen() {
             </li>
           ))}
         </ol>
+        <p className="mt-6 text-meta text-ink-3">App version {APP_VERSION}</p>
       </div>
     </div>
   );

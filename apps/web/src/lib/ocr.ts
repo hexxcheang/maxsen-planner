@@ -6,7 +6,7 @@
  */
 import type { PdfText, TableRule } from '@maxsen/domain';
 import type { Worker as TesseractWorker } from 'tesseract.js';
-import { loadPdfjs } from './pdfjs';
+import { openPdf } from './pdfjs';
 
 /** Pixels per PDF point: about 250 dpi, where Tesseract reads invoice print best. */
 const SCALE = 250 / 72;
@@ -30,8 +30,7 @@ export async function ocrPdf(
   file: File,
   onProgress?: (message: string) => void,
 ): Promise<{ texts: PdfText[]; rules: TableRule[] }> {
-  const pdfjs = await loadPdfjs();
-  const doc = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  const doc = await openPdf(file);
 
   onProgress?.('Getting the text reader ready…');
   const { createWorker, PSM } = await import('tesseract.js');

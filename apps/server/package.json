@@ -15,8 +15,9 @@
     "@hono/node-server": "^1.14.0",
     "@maxsen/domain": "workspace:*",
     "hono": "^4.8.0",
-    "zod": "^4.6.5",
-    "tsx": "^4.21.0"
+    "pdfjs-dist": "^5.7.284",
+    "tsx": "^4.21.0",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",

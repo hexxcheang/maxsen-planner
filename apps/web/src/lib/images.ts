@@ -3,7 +3,7 @@
  * and rotating a page into a plan background. Long edges are capped to keep iPad memory in check.
  */
 import { suggestCrop, toGray, type CropRect, type PdfText, type Rotation } from '@maxsen/domain';
-import { loadPdfjs } from './pdfjs';
+import { openPdf } from './pdfjs';
 
 const PAGE_LONG_EDGE = 3000;
 const THUMB_LONG_EDGE = 360;
@@ -80,8 +80,7 @@ export async function rasterizeImage(file: File): Promise<RasterPage> {
  * scanned PDF, which is only pictures of pages.
  */
 export async function readPdfText(file: File): Promise<PdfText[]> {
-  const pdfjs = await loadPdfjs();
-  const doc = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  const doc = await openPdf(file);
   const out: PdfText[] = [];
   for (let p = 1; p <= doc.numPages; p++) {
     const page = await doc.getPage(p);
@@ -107,8 +106,7 @@ export async function rasterizePdf(
   file: File,
   onPage?: (done: number, total: number) => void,
 ): Promise<RasterPage[]> {
-  const pdfjs = await loadPdfjs();
-  const doc = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  const doc = await openPdf(file);
   const pages: RasterPage[] = [];
   for (let i = 1; i <= doc.numPages; i++) {
     const page = await doc.getPage(i);
