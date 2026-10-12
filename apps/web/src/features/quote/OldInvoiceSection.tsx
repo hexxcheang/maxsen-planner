@@ -43,6 +43,7 @@ import { ElectricalWorksDialog } from '@/features/electrical/ElectricalWorksDial
 import { money, quotationText, withRowEdit } from './quotation';
 import { copyText } from '@/lib/clipboard';
 import { readPdfText } from '@/lib/images';
+import { isStaleApp, reloadForUpdate } from '@/lib/stale';
 import { ocrPdf } from '@/lib/ocr';
 
 type Line =
@@ -234,9 +235,18 @@ export function OldInvoiceSection() {
       } else open(await readSheet(file), file.name);
     } catch (e) {
       console.error(e);
+      if (isStaleApp(e) && reloadForUpdate()) {
+        toast({
+          title: 'The app was just updated',
+          body: 'Reloading it; then open the file again.',
+        });
+        return;
+      }
       toast({
         title: 'That file couldn’t be read',
-        body: 'Use the invoice’s PDF or Excel file (.xlsx), or paste its rows instead.',
+        body: `Use the invoice’s PDF or Excel file (.xlsx), or paste its rows instead.${
+          e instanceof Error && e.message ? ` (${e.message.slice(0, 160)})` : ''
+        }`,
         tone: 'danger',
       });
     } finally {

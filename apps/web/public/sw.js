@@ -4,7 +4,8 @@
  * kept here; built files (named by their content) and icons, templates and samples are kept once
  * fetched. The API (Claude, Gemini, sign-in) always goes to the network.
  */
-const CACHE = 'maxsen-v1';
+// v2: drops copies kept by v1 where a page had come back in place of a missing built file.
+const CACHE = 'maxsen-v2';
 const PAGE_WAIT_MS = 4000;
 
 self.addEventListener('install', (event) => {
@@ -25,8 +26,11 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-const keep = async (request, response) => {
-  if (response && response.ok && response.type === 'basic') {
+/** Keeps a copy. `asPage`: the app's page itself; otherwise a file, never a page in its place. */
+const keep = async (request, response, asPage = false) => {
+  // A page sent back for a missing file (an older version's) isn't kept as that file.
+  const page = (response?.headers.get('content-type') ?? '').includes('text/html');
+  if (response && response.ok && response.type === 'basic' && (asPage || !page)) {
     const cache = await caches.open(CACHE);
     await cache.put(request, response.clone());
   }
@@ -45,7 +49,7 @@ self.addEventListener('fetch', (event) => {
       (async () => {
         const cached = caches.match('/');
         const network = fetch(request)
-          .then((r) => (r.ok ? keep('/', r.clone()).then(() => r) : r))
+          .then((r) => (r.ok ? keep('/', r.clone(), true).then(() => r) : r))
           .catch(() => null);
         const timeout = new Promise((resolve) => setTimeout(() => resolve(null), PAGE_WAIT_MS));
         const first = await Promise.race([network, timeout]);

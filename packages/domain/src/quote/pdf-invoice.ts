@@ -37,6 +37,8 @@ const unspace = (s: string) =>
 
 const NUMBER = /^\(?-?\s*(S\$|\$)?\s*-?[\d,]+(\.\d+)?\)?$/i;
 const isNumber = (s: string) => NUMBER.test(s.replace(/\s/g, ''));
+/** "-" in the amount column: nothing to pay. */
+const DASH = /^[-–—]$/;
 
 /** Runs on (about) the same baseline, left to right, with close neighbours joined into cells. */
 function lines(runs: Run[]): Run[][] {
@@ -169,7 +171,10 @@ export function pdfInvoiceGrid(texts: PdfText[], rules: TableRule[] = []): Cell[
   const qtys = body.filter((r) => isNumber(r.str) && nearest(r) === 'qty');
   const units = body.filter((r) => isNumber(r.str) && nearest(r) === 'unit');
   // Each line's printed amount, to check its quantity and unit price against.
-  const amounts = body.filter((r) => isNumber(r.str) && nearest(r) === 'amount');
+  // A dash there means nothing to pay (a free gift).
+  const amounts = body.filter(
+    (r) => (isNumber(r.str) || DASH.test(r.str)) && nearest(r) === 'amount',
+  );
   const words = body
     // Lone strokes are table borders read as letters; anything in the number columns (an amount
     // misread as "BO.00") isn't description.
@@ -205,7 +210,8 @@ export function pdfInvoiceGrid(texts: PdfText[], rules: TableRule[] = []): Cell[
       const unit = units.find(inside);
       const amount = amounts.find(inside);
       if (qty) rows.push([describe(text), qty.str, unit?.str ?? null, amount?.str ?? null]);
-      else if (text.length) rows.push([describe(text)]);
+      // A line with an amount and no quantity: a discount ("Discount 5%: …  -S$99.50").
+      else if (text.length) rows.push([describe(text), null, null, amount?.str ?? null]);
     }
     return assemble(rows);
   }
@@ -221,6 +227,7 @@ export function pdfInvoiceGrid(texts: PdfText[], rules: TableRule[] = []): Cell[
 
   const rows: { top: number; cells: Cell[] }[] = [];
   const used = new Set<Run[]>();
+  const claimed = new Set<Run>();
   const span = (b: Run[]) => ({ from: b[0]!.top - b[0]!.height, to: b.at(-1)!.top + 2 });
   const distance = (b: Run[], top: number) => {
     const s = span(b);
@@ -239,6 +246,7 @@ export function pdfInvoiceGrid(texts: PdfText[], rules: TableRule[] = []): Cell[
     );
     // Only an amount on the quantity's own line: one further off may be the next row's.
     const amount = amounts.find((a) => Math.abs(a.top - q.top) < 4);
+    if (amount) claimed.add(amount);
     rows.push({
       top: block ? Math.min(block[0]!.top, q.top) : q.top,
       cells: [
@@ -250,7 +258,14 @@ export function pdfInvoiceGrid(texts: PdfText[], rules: TableRule[] = []): Cell[
     });
   }
   // Blocks without a quantity are headings ("Lighting") or notes; parseOldInvoice sorts them.
-  for (const b of blocks) if (!used.has(b)) rows.push({ top: b[0]!.top, cells: [describe(b)] });
+  // Blocks without a quantity: a discount line has its amount beside it; otherwise a heading.
+  for (const b of blocks) {
+    if (used.has(b)) continue;
+    const s = span(b);
+    const amount = amounts.find((a) => !claimed.has(a) && a.top >= s.from && a.top <= s.to);
+    if (amount) claimed.add(amount);
+    rows.push({ top: b[0]!.top, cells: [describe(b), null, null, amount?.str ?? null] });
+  }
   rows.sort((a, b) => a.top - b.top);
 
   return assemble(rows.map((r) => r.cells));

@@ -125,6 +125,8 @@ test.describe('old invoices', () => {
     await page.getByLabel('Client’s message').fill('- 12 switches\n- 15 downlights warm white');
     await page.getByLabel('Client’s name').fill('Mr Tan');
     await page.getByRole('button', { name: 'Read message' }).click();
+    // A discount, printed as its own line with an amount and no quantity.
+    await page.getByLabel(/^Discount on Nova Package/).fill('10%');
     const total = page
       .getByRole('region', { name: 'Quotation' })
       .getByRole('row')
@@ -151,6 +153,11 @@ test.describe('old invoices', () => {
     const lines = page.getByRole('region', { name: 'Invoice lines' });
     await expect(lines.getByText('Nova Package').first()).toBeVisible();
     await expect(lines.getByLabel(/^Quantity of Add-On Per Nova\+ Pro/)).toHaveValue('2');
+    // The discount line is read too: the same total.
+    await expect(lines.getByText(/^Discount 10%: Nova Package/)).toBeVisible();
+    await expect(lines.getByRole('row', { name: /^Total\s*S\$/ })).toContainText(
+      quoted.toLocaleString('en-SG', { minimumFractionDigits: 2 }),
+    );
 
     // Its 2nd payment invoice, read back in, is for the final payment.
     const due = Number(

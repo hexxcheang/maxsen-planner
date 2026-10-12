@@ -62,11 +62,12 @@ export const app = buildApp({
   persistent,
 });
 
-if (existsSync(webDist)) {
-  const root = path.relative(process.cwd(), webDist);
-  app.use('/*', serveStatic({ root }));
-  app.get('*', serveStatic({ root, path: 'index.html' }));
-}
+const root = existsSync(webDist) ? path.relative(process.cwd(), webDist) : null;
+if (root) app.use('/*', serveStatic({ root }));
+// A built file that isn't there (from an older version of the app) is "not found", never the
+// app's page in its place, which a browser would keep trying to run as code.
+app.get('/assets/*', (c) => c.text('Not found', 404));
+if (root) app.get('*', serveStatic({ root, path: 'index.html' }));
 
 if (process.env.NODE_ENV !== 'test') {
   serve({ fetch: app.fetch, port }, (info) => {

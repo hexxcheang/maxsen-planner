@@ -102,6 +102,27 @@ describe('reading an old invoice', () => {
     );
   });
 
+  it('keeps free gifts (amount "-") at no charge, and lines with only an amount', () => {
+    const old = parseOldInvoice([
+      ['S/N', 'ITEM/DESCRIPTION', 'QUANTITY', 'UNIT PRICE (S$)', 'PRICE (S$)'],
+      [1, 'Core Package', 1, 1788, 1788],
+      [2, 'Free Gift: Nova S8 Centralised Control Panel', 1, 680, '-'],
+      [null, 'Discount 5%: Core Package', null, null, '-S$89.40'],
+      [null, 'Lighting', null, null, null],
+      [3, 'Luna Premier Light Package', 1, 988, 988],
+    ]);
+    assert.deepEqual(
+      old.rows.map((r) => (r.kind === 'item' ? [r.description, r.quantity, r.unitPrice] : r.title)),
+      [
+        ['Core Package', 1, 1788],
+        ['Free Gift: Nova S8 Centralised Control Panel', 1, 0],
+        ['Discount 5%: Core Package', 1, -89.4],
+        'Lighting',
+        ['Luna Premier Light Package', 1, 988],
+      ],
+    );
+  });
+
   it('reads rows pasted from a spreadsheet without headings', () => {
     const old = parseOldInvoice([
       ['1', 'Nova Package', '1', '1,990.00'],

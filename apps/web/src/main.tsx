@@ -5,9 +5,15 @@ import { createBrowserRouter, RouterProvider } from 'react-router';
 import { appRoutes } from './app/router';
 import { Providers } from './app/providers';
 import { initFileStore } from './lib/storage/file-store';
+import { reloadForUpdate } from './lib/stale';
 import './styles/globals.css';
 
 const router = createBrowserRouter(appRoutes);
+
+// A piece of an older version that's no longer on the server: load the new version.
+window.addEventListener('vite:preloadError', (e) => {
+  if (reloadForUpdate()) e.preventDefault();
+});
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Missing #root element');

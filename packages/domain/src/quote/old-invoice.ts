@@ -114,6 +114,8 @@ function checked(
   amount: number | null,
 ): Pick<OldInvoiceLine, 'quantity' | 'unitPrice' | 'printed'> {
   if (amount === null || near(quantity * unitPrice, amount)) return { quantity, unitPrice };
+  // Nothing to pay on it: a free gift, kept at no charge.
+  if (amount === 0) return { quantity, unitPrice: 0 };
   const unit = quantity !== 0 ? Math.round((amount / quantity) * 100) / 100 : null;
   const qty = unitPrice !== 0 ? amount / unitPrice : null;
   // Only a one-character misread is put right ("20" for "90"): anything more, and the amount
@@ -150,6 +152,11 @@ export function parseOldInvoice(grid: Cell[][]): OldInvoice {
 
   const rows: OldInvoiceRow[] = [];
   const start = head >= 0 ? head + 1 : 0;
+  /** The line's printed amount: "-" (as for a free gift) is nothing. */
+  const amountOf = (row: Cell[]): number | null => {
+    if (head < 0 || col.amount < 0) return null;
+    return /^[-–—]$/.test(text(row[col.amount])) ? 0 : num(row[col.amount]);
+  };
   for (let r = start; r < grid.length; r++) {
     const row = grid[r]!;
     let description: string;
@@ -174,8 +181,10 @@ export function parseOldInvoice(grid: Cell[][]): OldInvoice {
     if (head >= 0 && quantity === null && TOTAL.test(description)) break;
     if (!description && quantity === null) continue;
     if (quantity !== null && unitPrice !== null && description) {
-      const amount = head >= 0 && col.amount >= 0 ? num(row[col.amount]) : null;
-      rows.push({ kind: 'item', description, ...checked(quantity, unitPrice, amount) });
+      rows.push({ kind: 'item', description, ...checked(quantity, unitPrice, amountOf(row)) });
+    } else if (description && quantity === null && unitPrice === null && amountOf(row)) {
+      // An amount with no quantity: a discount or charge line ("Discount 5%: …  -S$99.50").
+      rows.push({ kind: 'item', description, quantity: 1, unitPrice: amountOf(row)! });
     } else if (description && quantity === null && unitPrice === null) {
       // A short heading (e.g. "Lighting") starts a section; longer text (warranty) is left out.
       if (description.length <= 40 && !/warranty|terms|deposit|payment/i.test(description))
