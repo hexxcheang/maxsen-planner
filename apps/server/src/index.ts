@@ -80,6 +80,10 @@ if (process.env.NODE_ENV !== 'test') {
         'WARNING: team saves are not on a persistent disk and will be lost on the next deploy. Add a Render disk at /var/data and set DATA_DIR=/var/data.',
       );
     if (auth.required) console.log('Sign-in: checked on the server (PLANNER_PASSCODE)');
+    if (auth.required && !process.env.ADMIN_PASSCODE?.trim())
+      console.warn(
+        'WARNING: ADMIN_PASSCODE is not set, so the admin passcode is "admin". Set your own in Render › Environment.',
+      );
     console.log(
       render
         ? `Product samples: ready (${render.provider === 'gemini' ? 'Gemini' : 'OpenAI'})`

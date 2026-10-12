@@ -31,12 +31,18 @@ function write(storage: () => Storage, key: string, on: boolean) {
  * computer), `unavailable` when there's no server.
  */
 async function serverSignIn(passcode: string): Promise<'ok' | 'wrong' | 'open' | 'unavailable'> {
+  let res: Response;
   try {
-    const res = await fetch('/api/auth/sign-in', {
+    res = await fetch('/api/auth/sign-in', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ passcode }),
     });
+  } catch {
+    return 'unavailable';
+  }
+  await throwIfPaused(res);
+  try {
     if (res.status === 401) return 'wrong';
     if (!res.ok) return 'unavailable';
     const body = (await res.json()) as { required?: boolean };
@@ -44,6 +50,18 @@ async function serverSignIn(passcode: string): Promise<'ok' | 'wrong' | 'open' |
   } catch {
     return 'unavailable';
   }
+}
+
+/**
+ * Too many wrong passcodes from here: the server pauses tries for a while. The app says so (and
+ * doesn't fall back to the offline passcode).
+ */
+export class PausedError extends Error {}
+
+async function throwIfPaused(res: Response) {
+  if (res.status !== 429) return;
+  const body = (await res.json().catch(() => null)) as { message?: string } | null;
+  throw new PausedError(body?.message ?? 'Too many wrong passcodes. Try again in a while.');
 }
 
 const local = () => window.localStorage;
@@ -101,13 +119,19 @@ export function AuthProvider({
   const unlock = useCallback(async (passcode: string) => {
     // The server checks it where there is one (so the admin's changes to shared things, like
     // the timetable, are accepted); without a server, the local passcode.
-    const server = await fetch('/api/auth/admin', {
+    const res = await fetch('/api/auth/admin', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ passcode }),
-    })
-      .then((r) => (r.ok ? 'ok' : r.status === 401 ? 'wrong' : 'unavailable'))
-      .catch(() => 'unavailable' as const);
+    }).catch(() => null);
+    if (res) await throwIfPaused(res);
+    const server = !res
+      ? 'unavailable'
+      : res.ok
+        ? 'ok'
+        : res.status === 401
+          ? 'wrong'
+          : 'unavailable';
     const ok = server === 'ok' || (server === 'unavailable' && passcode.trim() === ADMIN_PASSCODE);
     if (ok) {
       write(session, ADMIN_KEY, true);

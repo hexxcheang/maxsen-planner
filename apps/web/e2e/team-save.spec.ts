@@ -47,7 +47,14 @@ async function device(context: BrowserContext) {
     const url = new URL(route.request().url());
     url.host = `127.0.0.1:${PORT}`;
     // Pages left polling after the test (and its server) has ended just stop.
-    const response = await route.fetch({ url: url.toString() }).catch(() => null);
+    const response = await route
+      // Like the dev server's proxy: the page's own host goes along, so the request is
+      // the app's own, not another site's.
+      .fetch({
+        url: url.toString(),
+        headers: { ...route.request().headers(), host: new URL(route.request().url()).host },
+      })
+      .catch(() => null);
     await (response ? route.fulfill({ response }) : route.abort().catch(() => undefined));
   });
   const page = await context.newPage();

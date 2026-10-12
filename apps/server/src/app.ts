@@ -8,6 +8,7 @@ import { ID, type SharedStore } from './shared/store.ts';
 import { eventBody, type TimetableStore } from './timetable.ts';
 import { MANAGER_KINDS, movementBody, verifyBody, type InventoryStore } from './inventory.ts';
 import { leadBody, noteBody, type LeadStore } from './leads.ts';
+import { createAttemptLimit, fileHeaders, headers, sameSiteOnly } from './security.ts';
 
 const analyseBody = z.object({
   image: z.string().min(100).max(15_000_000),
@@ -84,8 +85,26 @@ export function buildApp({
   persistent?: boolean;
 } = {}) {
   const app = new Hono();
+  const attempts = createAttemptLimit();
 
+  app.use('*', headers());
+  app.use('/api/*', sameSiteOnly());
   app.use('/api/*', auth.guard());
+
+  /** Too many wrong passcodes from one place: a pause before the next try. */
+  const tooMany = (c: Parameters<typeof auth.signIn>[0]) => {
+    const wait = attempts.blocked(c);
+    return wait
+      ? c.json(
+          {
+            ok: false,
+            error: 'too-many',
+            message: `Too many wrong passcodes. Try again in ${wait} minute${wait === 1 ? '' : 's'}.`,
+          },
+          429,
+        )
+      : null;
+  };
 
   /** Whether the server checks the passcode (online), and whether this browser is signed in. */
   app.get('/api/auth/status', (c) =>
@@ -94,8 +113,12 @@ export function buildApp({
   /** Admin is unlocked on the server, so only the admin can change what everyone shares. */
   app.post('/api/auth/admin', async (c) => {
     if (!auth.signedIn(c)) return c.json({ ok: false }, 401);
+    const blocked = tooMany(c);
+    if (blocked) return blocked;
     const body = (await c.req.json().catch(() => ({}))) as { passcode?: unknown };
     const ok = auth.unlockAdmin(c, typeof body.passcode === 'string' ? body.passcode : '');
+    if (ok) attempts.succeeded(c);
+    else attempts.failed(c);
     return c.json({ ok }, ok ? 200 : 401);
   });
   app.post('/api/auth/admin/lock', (c) => {
@@ -103,8 +126,12 @@ export function buildApp({
     return c.json({ ok: true });
   });
   app.post('/api/auth/sign-in', async (c) => {
+    const blocked = tooMany(c);
+    if (blocked) return blocked;
     const body = (await c.req.json().catch(() => ({}))) as { passcode?: unknown };
     const ok = auth.signIn(c, typeof body.passcode === 'string' ? body.passcode : '');
+    if (ok) attempts.succeeded(c);
+    else if (auth.required) attempts.failed(c);
     return c.json({ ok, required: auth.required }, ok ? 200 : 401);
   });
   app.post('/api/auth/sign-out', (c) => {
@@ -230,10 +257,7 @@ export function buildApp({
     const id = c.req.param('id');
     const file = ID.test(id) ? await shared!.getFile(id) : null;
     if (!file) return c.json({ error: 'not-found' }, 404);
-    return c.body(new Uint8Array(file.data), 200, {
-      'content-type': file.type,
-      'cache-control': 'private, max-age=31536000, immutable',
-    });
+    return c.body(new Uint8Array(file.data), 200, fileHeaders(file.type));
   });
 
   // --- the team timetable: everyone reads it, the admin schedules it ----------------------------

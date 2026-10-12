@@ -23,10 +23,16 @@ export function AdminUnlockDialog({ open, action, onUnlock, onDone }: AdminUnloc
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setBusy(true);
-    const ok = await onUnlock(passcode);
-    setBusy(false);
-    if (ok) close(true);
-    else setError("That admin passcode isn't right. Try again.");
+    try {
+      const ok = await onUnlock(passcode);
+      if (ok) close(true);
+      else setError("That admin passcode isn't right. Try again.");
+    } catch (e) {
+      // Paused after too many wrong tries.
+      setError(e instanceof Error ? e.message : "That admin passcode isn't right. Try again.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (

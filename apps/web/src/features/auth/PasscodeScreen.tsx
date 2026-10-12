@@ -17,10 +17,16 @@ export function PasscodeScreen() {
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setBusy(true);
-    const ok = await signIn(passcode);
-    setBusy(false);
-    if (ok) void navigate(from, { replace: true });
-    else setError("That passcode isn't right. Try again.");
+    try {
+      const ok = await signIn(passcode);
+      if (ok) void navigate(from, { replace: true });
+      else setError("That passcode isn't right. Try again.");
+    } catch (e) {
+      // Paused after too many wrong tries.
+      setError(e instanceof Error ? e.message : "That passcode isn't right. Try again.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
