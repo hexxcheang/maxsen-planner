@@ -184,7 +184,7 @@ const TOPICS: Topic[] = [
     steps: [
       {
         title: 'Unlock the exclusive admin',
-        body: 'Use any Unlock admin button and enter the exclusive admin’s passcode. Team then shows in the menu. The admin’s passcode doesn’t open it.',
+        body: 'Open Team in the menu and press Unlock exclusive admin (or use any Unlock admin button with the exclusive admin’s passcode). The admin’s passcode doesn’t open it.',
       },
       {
         title: 'Add or edit someone',

@@ -16,6 +16,7 @@ describe('sign-in on the server', () => {
       signedIn: true,
       admin: false,
       exclusive: false,
+      exclusiveReady: false,
     });
     expect((await app.request('/api/product-sample/status')).status).toBe(200);
   });

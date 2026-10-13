@@ -137,6 +137,8 @@ export function buildApp({
       signedIn: auth.signedIn(c),
       admin: auth.isAdmin(c),
       exclusive: auth.isExclusive(c),
+      // Whether EXCLUSIVE_PASSCODE is set: until it is, nobody can open the Team tab.
+      exclusiveReady: auth.exclusiveSet,
     }),
   );
   /** Admin is unlocked on the server, so only the admin can change what everyone shares. */

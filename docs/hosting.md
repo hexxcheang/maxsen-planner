@@ -105,8 +105,9 @@ passcode, and save (it redeploys). On your Mac, add `EXCLUSIVE_PASSCODE=` with i
 file in the project folder and restart `pnpm dev`. Until it's set, nobody can open the Team tab.
 It's never written in the code, which anyone can read on GitHub.
 
-To unlock it, use any **Unlock admin** button (or open **Team**) and enter the exclusive admin's
-passcode instead of the admin's. **Team** then shows in the menu. Locking admin, signing out, or 12
+To unlock it, open **Team** in the menu and press **Unlock exclusive admin** (any **Unlock admin**
+button also takes the exclusive admin's passcode). If the passcode isn't set on the server yet, the
+Team page says so and how to set it. Locking admin, signing out, or 12
 hours passing locks it again, and the team's details are removed from that device.
 
 - **WhatsApp numbers are checked as they're typed.** A Singapore mobile (8 digits starting 8 or 9)

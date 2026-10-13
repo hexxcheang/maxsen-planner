@@ -14,7 +14,7 @@ import { useTeam } from './team-api';
  * people from here. Only the exclusive admin (the owner) sees and keeps it.
  */
 export function TeamScreen() {
-  const { exclusive, requireExclusive } = useAdmin();
+  const { exclusive, exclusiveReady, requireExclusive } = useAdmin();
   const { members, state, put, drop } = useTeam(exclusive);
   const { ensureName, dialog: nameDialog } = useEnsureName();
   const [opened, setOpened] = useState<TeamMember | 'new' | null>(null);
@@ -25,15 +25,41 @@ export function TeamScreen() {
     return (
       <Page>
         <PageHeader title="Team" />
-        <div className="flex flex-col items-start gap-3 border-t border-rule py-10">
-          <p className="flex items-center gap-2 text-body text-ink-2">
-            <ShieldCheck aria-hidden className="size-5" />
-            Only the exclusive admin can see the team and their details.
-          </p>
-          <Button variant="primary" onClick={() => void requireExclusive('open the team')}>
-            Unlock exclusive admin
-          </Button>
-        </div>
+        {exclusiveReady === false ? (
+          <div
+            role="status"
+            className="flex flex-col gap-2 border-t border-rule py-8 text-body text-ink-2"
+          >
+            <p className="flex items-center gap-2 font-medium text-ink">
+              <TriangleAlert aria-hidden className="size-5 text-warn" />
+              The exclusive admin passcode isn’t set up on this server yet.
+            </p>
+            <p>Until it is, nobody can open the team. To set it up (once):</p>
+            <ul className="list-disc pl-5">
+              <li>
+                <strong className="text-ink">Online:</strong> Render › your service › Environment ›
+                add <code>EXCLUSIVE_PASSCODE</code> with your passcode, and save. It redeploys by
+                itself.
+              </li>
+              <li>
+                <strong className="text-ink">On your Mac:</strong> add the line{' '}
+                <code>EXCLUSIVE_PASSCODE=</code> followed by your passcode to the <code>.env</code>{' '}
+                file in the <code>maxsen-planner</code> folder, then stop <code>pnpm dev</code>{' '}
+                (Control + C) and start it again.
+              </li>
+            </ul>
+          </div>
+        ) : (
+          <div className="flex flex-col items-start gap-3 border-t border-rule py-10">
+            <p className="flex items-center gap-2 text-body text-ink-2">
+              <ShieldCheck aria-hidden className="size-5" />
+              Only the exclusive admin can see the team and their details.
+            </p>
+            <Button variant="primary" onClick={() => void requireExclusive('open the team')}>
+              Unlock exclusive admin
+            </Button>
+          </div>
+        )}
       </Page>
     );
 

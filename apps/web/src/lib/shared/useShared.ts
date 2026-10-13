@@ -115,8 +115,12 @@ export async function startTeamSync(s: SampleStore) {
     else void refreshShared();
   });
   window.addEventListener('pagehide', () => void saveNow());
-  // A project saved or deleted by someone else shows at once.
-  onLive('projects', () => void refreshShared());
+  // A project saved or deleted by someone else shows at once. Not while this device is saving:
+  // the news may be its own save, heard before the save has finished here (it would look like
+  // someone else's); the save looks at the team's list itself when it's done.
+  onLive('projects', () => {
+    if (!running) void refreshShared();
+  });
   await refreshShared();
   schedule(1000);
 }

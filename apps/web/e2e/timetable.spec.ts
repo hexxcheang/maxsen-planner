@@ -132,10 +132,9 @@ test('the admin schedules the timetable; everyone sees it', async ({ browser }, 
   // Jo's WhatsApp number on the team; messages on: changing an appointment offers to tell them.
   // Jo joined the team when first assigned; their profile takes a checked WhatsApp number.
   // The admin doesn't see the team: only the exclusive admin does.
-  const nav = admin.getByRole('navigation', { name: 'Main' });
-  await expect(nav.getByRole('link', { name: 'Team' })).toHaveCount(0);
   await expect(admin.getByRole('button', { name: 'Team' })).toHaveCount(0);
-  await admin.goto('/team');
+  // Team is in the menu for everyone, but opens only for the exclusive admin.
+  await admin.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Team' }).click();
   await expect(admin.getByText('Only the exclusive admin can see the team')).toBeVisible();
   await expect(admin.getByRole('list', { name: 'Team' })).toHaveCount(0);
   await admin.getByRole('button', { name: 'Unlock exclusive admin' }).click();
@@ -146,7 +145,7 @@ test('the admin schedules the timetable; everyone sees it', async ({ browser }, 
   await owner.getByLabel('Exclusive admin passcode').fill('owner-only');
   await owner.getByRole('button', { name: /Unlock/ }).click();
   await expect(owner).toBeHidden();
-  await expect(nav.getByRole('link', { name: 'Team' })).toBeVisible();
+  await expect(admin.getByRole('heading', { name: 'Team' })).toBeVisible();
   await admin.getByRole('list', { name: 'Team' }).getByRole('button', { name: 'Jo' }).click();
   const profile = admin.getByRole('dialog', { name: 'Jo' });
   await profile.getByLabel('WhatsApp number').fill('6123 4567');
@@ -200,10 +199,10 @@ test('the admin schedules the timetable; everyone sees it', async ({ browser }, 
   await expect(details).toContainText('Scheduled by Hexiang');
   await details.press('Escape');
 
-  // No Team for it, and the server keeps the team and their numbers from it.
-  await expect(
-    worker.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Team' }),
-  ).toHaveCount(0);
+  // The team stays locked for it, and the server keeps the team and their numbers from it.
+  await worker.goto('/team');
+  await expect(worker.getByText('Only the exclusive admin can see the team')).toBeVisible();
+  await expect(worker.getByRole('list', { name: 'Team' })).toHaveCount(0);
   const seen = await worker.evaluate(async () => ({
     team: (await fetch('/api/team')).status,
     phones: ((await (await fetch('/api/timetable')).json()) as { phones: object }).phones,

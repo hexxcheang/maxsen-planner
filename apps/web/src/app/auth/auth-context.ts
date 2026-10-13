@@ -10,6 +10,8 @@ export interface AdminApi {
   unlocked: boolean;
   /** The exclusive admin (the owner): admin, plus the Team tab. Checked on the server. */
   exclusive: boolean;
+  /** False when the server has no exclusive admin passcode set; null until known. */
+  exclusiveReady: boolean | null;
   /** Which admin a passcode unlocked, or null if it's wrong. */
   unlock: (passcode: string) => Promise<'exclusive' | 'admin' | null>;
   lock: () => void;

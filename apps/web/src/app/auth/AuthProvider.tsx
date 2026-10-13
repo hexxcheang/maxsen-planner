@@ -89,6 +89,7 @@ export function AuthProvider({
   const [signedIn, setSignedIn] = useState(() => initialSignedIn ?? read(local, SESSION_KEY));
   const [unlocked, setUnlocked] = useState(() => read(session, ADMIN_KEY));
   const [exclusive, setExclusive] = useState(() => read(session, EXCLUSIVE_KEY));
+  const [exclusiveReady, setExclusiveReady] = useState<boolean | null>(null);
   const [prompt, setPrompt] = useState<{ action?: string; exclusive?: boolean } | null>(null);
   const pending = useRef<((ok: boolean) => void) | null>(null);
 
@@ -110,7 +111,12 @@ export function AuthProvider({
     fetch('/api/auth/status')
       .then((r) =>
         r.ok
-          ? (r.json() as Promise<{ required: boolean; signedIn: boolean; exclusive?: boolean }>)
+          ? (r.json() as Promise<{
+              required: boolean;
+              signedIn: boolean;
+              exclusive?: boolean;
+              exclusiveReady?: boolean;
+            }>)
           : null,
       )
       .then((s) => {
@@ -118,6 +124,7 @@ export function AuthProvider({
           write(local, SESSION_KEY, false);
           setSignedIn(false);
         }
+        if (live && typeof s?.exclusiveReady === 'boolean') setExclusiveReady(s.exclusiveReady);
         // The exclusive admin's unlock ran out (or was locked elsewhere): the team goes too.
         if (live && s && s.exclusive === false && read(session, EXCLUSIVE_KEY)) {
           write(session, EXCLUSIVE_KEY, false);
@@ -213,8 +220,8 @@ export function AuthProvider({
 
   const auth = useMemo<AuthApi>(() => ({ signedIn, signIn, signOut }), [signedIn, signIn, signOut]);
   const admin = useMemo<AdminApi>(
-    () => ({ unlocked, exclusive, unlock, lock, requireAdmin, requireExclusive }),
-    [unlocked, exclusive, unlock, lock, requireAdmin, requireExclusive],
+    () => ({ unlocked, exclusive, exclusiveReady, unlock, lock, requireAdmin, requireExclusive }),
+    [unlocked, exclusive, exclusiveReady, unlock, lock, requireAdmin, requireExclusive],
   );
 
   return (
