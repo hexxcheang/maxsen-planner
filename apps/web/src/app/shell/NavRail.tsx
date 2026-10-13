@@ -18,6 +18,7 @@ import {
   Boxes,
   Contact,
   ReceiptText,
+  UsersRound,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { Tooltip } from '@/components/ui';
@@ -36,6 +37,7 @@ const GLOBAL: RailItem[] = [
   { to: '/timetable', label: 'Timetable', icon: <CalendarDays /> },
   { to: '/inventory', label: 'Inventory', icon: <Boxes /> },
   { to: '/claims', label: 'Claims', icon: <ReceiptText /> },
+  { to: '/team', label: 'Team', icon: <UsersRound /> },
   { to: '/quote', label: 'Quote', icon: <MessageSquareText /> },
   { to: '/electrical', label: 'Electrical', icon: <Zap /> },
   { to: '/product-sample', label: 'Sample', icon: <ImagePlus /> },

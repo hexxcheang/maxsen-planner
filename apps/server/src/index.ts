@@ -12,6 +12,7 @@ import { createTimetableStore } from './timetable.ts';
 import { createInventoryStore } from './inventory.ts';
 import { createLeadStore } from './leads.ts';
 import { createClaimStore } from './claims.ts';
+import { createTeamStore } from './team.ts';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -61,6 +62,7 @@ export const app = buildApp({
   inventory: createInventoryStore(dataDir),
   leads: createLeadStore(dataDir),
   claims: createClaimStore(dataDir),
+  team: createTeamStore(dataDir),
   persistent,
 });
 

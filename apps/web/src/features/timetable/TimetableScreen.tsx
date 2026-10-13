@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router';
 import {
   ChevronLeft,
   ChevronRight,
@@ -26,14 +27,12 @@ import { useAdmin } from '@/app/auth/useAdmin';
 import { cn } from '@/lib/cn';
 import { addDays, formatDay, today, weekdayIndex } from '@/lib/dates';
 import { EventDialog } from './EventDialog';
-import { TeamDialog } from './TeamDialog';
 import { NotifyDialog } from './NotifyDialog';
 import { KIND_TONE } from './kinds';
 import {
   deleteEvent,
   saveEvent,
   saveNotify,
-  savePeople,
   TimetableError,
   useTimetable,
   type EventInput,
@@ -55,7 +54,7 @@ export function TimetableScreen() {
   const [filter, setFilter] = useState<Filter>('all');
   const [person, setPerson] = useState(ALL_PEOPLE);
   const [editing, setEditing] = useState<TimetableEvent | { date: string } | null>(null);
-  const [team, setTeam] = useState(false);
+  const navigate = useNavigate();
   /** An appointment just saved, to tell the people assigned about on WhatsApp. */
   const [notifying, setNotifying] = useState<{ event: TimetableEvent; changed: boolean } | null>(
     null,
@@ -125,7 +124,7 @@ export function TimetableScreen() {
         actions={
           unlocked ? (
             <>
-              <Button icon={<Users className="size-4" />} onClick={() => setTeam(true)}>
+              <Button icon={<Users className="size-4" />} onClick={() => void navigate('/team')}>
                 Team
               </Button>
               <Button
@@ -359,19 +358,6 @@ export function TimetableScreen() {
         onClose={() => setNotifying(null)}
       />
       {nameDialog}
-      <TeamDialog
-        open={team}
-        people={timetable.people}
-        phones={timetable.phones ?? {}}
-        onClose={() => setTeam(false)}
-        onSave={async (people, phones) => {
-          const saved = await asAdmin(() => savePeople(people, phones));
-          if (saved) {
-            setData((d) => d && { ...d, people: saved.people, phones: saved.phones });
-            setTeam(false);
-          }
-        }}
-      />
     </Page>
   );
 }

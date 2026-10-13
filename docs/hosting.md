@@ -74,9 +74,24 @@ the same for everyone signed in; it refreshes every minute. Only the admin sched
 Environment › `ADMIN_PASSCODE` (until then it is `admin`). Appointments that book the same person
 twice at once are marked with a warning triangle. With **WhatsApp the people assigned** switched on (on the
 Timetable's toolbar; only the admin can change it), saving an appointment offers a message for each person assigned (what, when, where with a
-map link, who else, notes), opened in WhatsApp to send; numbers are kept under **Team**. A new appointment needs only the day and time;
+map link, who else, notes), opened in WhatsApp to send; numbers are kept on the **Team** tab. A new appointment needs only the day and time;
 what it is, who's going and the rest (project, client, address, notes under **More details**) can
-be added later. **Team** keeps the list of names to assign.
+be added later. The Timetable's **Team** button opens the Team tab.
+
+## Team
+
+The **Team** tab keeps everyone's profile: name, role (Sales, Installer, Electrician, Integrator,
+Delivery, Manager, Office), WhatsApp number, email, joined date and notes. Everyone signed in sees
+it; only the admin (`ADMIN_PASSCODE`) adds, changes or removes people.
+
+- **WhatsApp numbers are checked as they're typed.** A Singapore mobile (8 digits starting 8 or 9)
+  gets +65 added; a number from elsewhere needs its country code (+60…). A good number shows
+  **Saved as +65 9123 4567** and a **Test it** link that opens their WhatsApp chat, so you can
+  check it's the right person. A warning at the top lists anyone active without a number.
+- **Active** people are the ones offered and messaged on the timetable. Switch someone to inactive
+  to keep their profile without assigning them.
+- The names and numbers already on the timetable were carried over the first time the tab opened.
+  Anyone assigned on the timetable who isn't on the team yet is added to it.
 
 ## Inventory
 

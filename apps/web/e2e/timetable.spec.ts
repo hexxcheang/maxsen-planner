@@ -43,7 +43,7 @@ test.afterAll(() => {
 
 async function device(context: BrowserContext) {
   contexts.push(context);
-  for (const pattern of ['**/api/timetable**', '**/api/auth/admin**'])
+  for (const pattern of ['**/api/timetable**', '**/api/team**', '**/api/auth/admin**'])
     await context.route(pattern, async (route) => {
       const url = new URL(route.request().url());
       url.host = `127.0.0.1:${PORT}`;
@@ -129,11 +129,31 @@ test('the admin schedules the timetable; everyone sees it', async ({ browser }, 
   await admin.screenshot({ path: 'test-results/screens/timetable-admin.png', fullPage: true });
 
   // Jo's WhatsApp number on the team; messages on: changing an appointment offers to tell them.
+  // Jo joined the team when first assigned; their profile takes a checked WhatsApp number.
   await admin.getByRole('button', { name: 'Team' }).click();
-  const teamDialog = admin.getByRole('dialog', { name: 'Team' });
-  await teamDialog.getByLabel('WhatsApp number of Jo').fill('9123 4567');
-  await teamDialog.getByRole('button', { name: 'Save team' }).click();
-  await expect(teamDialog).toBeHidden();
+  await expect(admin.getByRole('heading', { name: 'Team' })).toBeVisible();
+  await admin.getByRole('list', { name: 'Team' }).getByRole('button', { name: 'Jo' }).click();
+  const profile = admin.getByRole('dialog', { name: 'Jo' });
+  await profile.getByLabel('WhatsApp number').fill('6123 4567');
+  await expect(profile.getByText('Singapore mobiles start with 8 or 9')).toBeVisible();
+  await expect(profile.getByRole('button', { name: 'Save' })).toBeDisabled();
+  await profile.getByLabel('WhatsApp number').fill('9123 4567');
+  await expect(profile.getByText('Saved as +65 9123 4567.')).toBeVisible();
+  await expect(profile.getByRole('link', { name: /Test it/ })).toHaveAttribute(
+    'href',
+    'https://wa.me/6591234567',
+  );
+  await profile.getByLabel('Role').selectOption('Installer');
+  await profile.getByRole('button', { name: 'Save' }).click();
+  await expect(profile).toBeHidden();
+  const card = admin
+    .getByRole('list', { name: 'Team' })
+    .getByRole('listitem')
+    .filter({ hasText: 'Jo' });
+  await expect(card).toContainText('Installer');
+  await expect(card.getByRole('link', { name: 'WhatsApp Jo' })).toContainText('+65 9123 4567');
+  await admin.screenshot({ path: 'test-results/screens/team.png' });
+  await admin.goto('/timetable');
   await admin.getByRole('switch', { name: 'WhatsApp the people assigned' }).click();
   await expect(admin.getByRole('switch', { name: 'WhatsApp the people assigned' })).toBeChecked();
   await grid.getByRole('button', { name: /^Installation: Install switches/ }).click();

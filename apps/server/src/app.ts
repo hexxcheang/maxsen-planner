@@ -8,6 +8,7 @@ import { ID, type SharedStore } from './shared/store.ts';
 import { eventBody, type TimetableStore } from './timetable.ts';
 import { MANAGER_KINDS, movementBody, verifyBody, type InventoryStore } from './inventory.ts';
 import { leadBody, noteBody, type LeadStore } from './leads.ts';
+import { memberBody, type TeamStore } from './team.ts';
 import {
   claimBody,
   decisionBody,
@@ -82,10 +83,12 @@ export function buildApp({
   inventory,
   leads,
   claims,
+  team,
   persistent = true,
 }: {
   leads?: LeadStore;
   claims?: ClaimStore;
+  team?: TeamStore;
   timetable?: TimetableStore;
   inventory?: InventoryStore;
   analyse?: Analyser;
@@ -298,9 +301,18 @@ export function buildApp({
     error: 'admin',
     message: 'Only the admin can change the timetable. Unlock admin first.',
   };
-  app.get('/api/timetable', async (c) =>
-    timetable ? c.json(await timetable.read()) : c.json({ error: 'not-configured' }, 503),
-  );
+  app.get('/api/timetable', async (c) => {
+    if (!timetable) return c.json({ error: 'not-configured' }, 503);
+    const data = await timetable.read();
+    if (!team) return c.json(data);
+    // The people to assign, and their numbers, come from the Team tab: active members only.
+    const members = (await team.read()).filter((m) => m.active);
+    return c.json({
+      ...data,
+      people: members.map((m) => m.name).sort((a, b) => a.localeCompare(b)),
+      phones: Object.fromEntries(members.flatMap((m) => (m.phone ? [[m.name, m.phone]] : []))),
+    });
+  });
   app.put('/api/timetable/events/:id', async (c) => {
     if (!auth.isAdmin(c)) return c.json(notAdmin, 403);
     const id = c.req.param('id');
@@ -316,7 +328,10 @@ export function buildApp({
     } catch {
       // A garbled name: shown as "Admin".
     }
-    return c.json({ event: await timetable!.put(id, body.data, by) });
+    const event = await timetable!.put(id, body.data, by);
+    // Someone assigned who isn't on the team yet joins it.
+    await team?.ensure(body.data.people, by);
+    return c.json({ event });
   });
   app.delete('/api/timetable/events/:id', async (c) =>
     auth.isAdmin(c)
@@ -524,6 +539,31 @@ export function buildApp({
     const file = RECEIPT_ID.test(id) ? await claims.getReceipt(id) : null;
     if (!file) return c.json({ error: 'not-found' }, 404);
     return c.body(new Uint8Array(file.data), 200, fileHeaders(file.type));
+  });
+
+  // --- the team: everyone signed in sees it; the admin keeps it ----------------------------------
+  const noTeam = { error: 'not-configured', message: 'The team list needs the team server.' };
+  app.get('/api/team', async (c) =>
+    team ? c.json({ members: await team.read() }) : c.json(noTeam, 503),
+  );
+  app.put('/api/team/:id', async (c) => {
+    if (!team) return c.json(noTeam, 503);
+    if (!auth.isAdmin(c))
+      return c.json({ error: 'admin', message: 'Only the admin can change the team.' }, 403);
+    const id = c.req.param('id');
+    const body = memberBody.safeParse(await c.req.json().catch(() => null));
+    if (!ID.test(id) || !body.success)
+      return c.json({ error: 'bad-request', message: 'Check the name and details.' }, 400);
+    const result = await team.save(id, body.data, nameOf(c));
+    return result.ok
+      ? c.json({ member: result.member })
+      : c.json({ error: 'duplicate', message: result.message }, 409);
+  });
+  app.delete('/api/team/:id', async (c) => {
+    if (!team) return c.json(noTeam, 503);
+    if (!auth.isAdmin(c))
+      return c.json({ error: 'admin', message: 'Only the admin can change the team.' }, 403);
+    return c.json({ removed: await team.remove(c.req.param('id')) });
   });
 
   app.get('/api/health', (c) => c.json({ ok: true }));

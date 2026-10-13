@@ -1,3 +1,5 @@
+import { whatsappNumber } from './team.ts';
+
 /**
  * The team timetable: sales meet-ups and installation duties, shared by everyone signed in and
  * scheduled by the admin.
@@ -105,9 +107,8 @@ export function appointmentMessage(
  * get +65), or for choosing the contact when there's no number.
  */
 export function whatsappMessageLink(phone: string | undefined, text: string): string {
-  const digits = (phone ?? '').replace(/\D/g, '');
-  const to = digits.length === 8 ? `65${digits}` : digits.length >= 8 ? digits : '';
-  return `https://wa.me/${to}?text=${encodeURIComponent(text)}`;
+  const number = phone ? whatsappNumber(phone) : null;
+  return `https://wa.me/${number?.ok ? number.digits : ''}?text=${encodeURIComponent(text)}`;
 }
 
 /** Minutes since midnight of an HH:MM time. */

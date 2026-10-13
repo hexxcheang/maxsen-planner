@@ -19,6 +19,7 @@ import { HelpScreen } from '@/features/help/HelpScreen';
 import { TimetableScreen } from '@/features/timetable/TimetableScreen';
 import { InventoryScreen } from '@/features/inventory/InventoryScreen';
 import { ClaimsScreen } from '@/features/claims/ClaimsScreen';
+import { TeamScreen } from '@/features/team/TeamScreen';
 import { LeadsScreen } from '@/features/leads/LeadsScreen';
 import { StyleguideScreen } from '@/features/dev/StyleguideScreen';
 import { NotFoundScreen } from '@/features/NotFoundScreen';
@@ -50,6 +51,7 @@ export const appRoutes: RouteObject[] = [
       { path: 'timetable', element: <TimetableScreen /> },
       { path: 'inventory', element: <InventoryScreen /> },
       { path: 'claims', element: <ClaimsScreen /> },
+      { path: 'team', element: <TeamScreen /> },
       { path: 'quote', element: <QuoteScreen /> },
       { path: 'electrical', element: <ElectricalScreen /> },
       { path: 'product-sample', element: <ProductSampleScreen /> },
