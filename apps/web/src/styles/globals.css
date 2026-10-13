@@ -21,6 +21,12 @@
   --color-ok: var(--ok);
   --color-sales: var(--sales);
   --color-sales-tint: var(--sales-tint);
+  --color-integration: var(--integration);
+  --color-integration-tint: var(--integration-tint);
+  --color-delivery: var(--delivery);
+  --color-delivery-tint: var(--delivery-tint);
+  --color-visit: var(--visit);
+  --color-visit-tint: var(--visit-tint);
 
   --font-sans: var(--font-sans);
 

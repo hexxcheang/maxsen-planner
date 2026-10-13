@@ -5,6 +5,7 @@ import {
   CloudOff,
   Lock,
   MapPin,
+  MessageCircle,
   Plus,
   TriangleAlert,
   Users,
@@ -14,10 +15,11 @@ import {
   clashes,
   newId,
   TIMETABLE_KIND_LABEL,
+  TIMETABLE_KINDS,
   type TimetableEvent,
   type TimetableKind,
 } from '@maxsen/domain';
-import { Button, PageHeader, SegmentedControl, Select, Switch, useToast } from '@/components/ui';
+import { Button, PageHeader, Select, Switch, useToast } from '@/components/ui';
 import { Page } from '@/components/Page';
 import { useEnsureName } from '@/lib/shared/useEnsureName';
 import { useAdmin } from '@/app/auth/useAdmin';
@@ -26,6 +28,7 @@ import { addDays, formatDay, today, weekdayIndex } from '@/lib/dates';
 import { EventDialog } from './EventDialog';
 import { TeamDialog } from './TeamDialog';
 import { NotifyDialog } from './NotifyDialog';
+import { KIND_TONE } from './kinds';
 import {
   deleteEvent,
   saveEvent,
@@ -118,26 +121,10 @@ export function TimetableScreen() {
     <Page wide>
       <PageHeader
         title="Timetable"
-        description="Sales meet-ups and installation duties for the whole team. Everyone sees the same timetable; the admin schedules it."
+        description="Sales meet-ups, site visits, deliveries, installations and integration appointments for the whole team. Everyone sees the same timetable; the admin schedules it."
         actions={
           unlocked ? (
             <>
-              <Switch
-                checked={!!timetable.notify}
-                label="WhatsApp the people assigned"
-                onCheckedChange={async (on) => {
-                  const saved = await asAdmin(() => saveNotify(on));
-                  if (saved) {
-                    setData((d) => d && { ...d, notify: saved.notify });
-                    toast({
-                      title: saved.notify ? 'WhatsApp messages on' : 'WhatsApp messages off',
-                      body: saved.notify
-                        ? 'After you schedule someone, you’re offered a message for each of them.'
-                        : undefined,
-                    });
-                  }
-                }}
-              />
               <Button icon={<Users className="size-4" />} onClick={() => setTeam(true)}>
                 Team
               </Button>
@@ -194,17 +181,21 @@ export function TimetableScreen() {
             <h2 className="text-section text-ink" data-testid="timetable-week">
               {week}
             </h2>
-            <SegmentedControl<Filter>
-              size="sm"
-              label="Show"
-              value={filter}
-              onChange={setFilter}
-              options={[
-                { value: 'all', label: 'All' },
-                { value: 'sales', label: `Sales meet-ups (${count('sales')})` },
-                { value: 'installation', label: `Installations (${count('installation')})` },
-              ]}
-            />
+            <div className="w-52">
+              <Select
+                compact
+                aria-label="Appointment type"
+                value={filter}
+                onChange={(v) => setFilter(v as Filter)}
+                options={[
+                  { value: 'all', label: `All types (${inWeek.length})` },
+                  ...TIMETABLE_KINDS.map((k) => ({
+                    value: k,
+                    label: `${TIMETABLE_KIND_LABEL[k]} (${count(k)})`,
+                  })),
+                ]}
+              />
+            </div>
             <div className="w-48">
               <Select
                 compact
@@ -223,6 +214,26 @@ export function TimetableScreen() {
                 Offline: showing the last copy
               </span>
             )}
+            {/* Shown to everyone; only the admin can turn it on or off. */}
+            <div className="ml-auto flex items-center gap-2 rounded-control border border-rule-2 bg-surface px-2.5 py-1">
+              <MessageCircle aria-hidden className="size-4 text-[#25D366]" />
+              <Switch
+                checked={!!timetable.notify}
+                label="WhatsApp the people assigned"
+                onCheckedChange={async (on) => {
+                  const saved = await asAdmin(() => saveNotify(on));
+                  if (saved) {
+                    setData((d) => d && { ...d, notify: saved.notify });
+                    toast({
+                      title: saved.notify ? 'WhatsApp messages on' : 'WhatsApp messages off',
+                      body: saved.notify
+                        ? 'After you schedule someone, you’re offered a message for each of them.'
+                        : undefined,
+                    });
+                  }
+                }}
+              />
+            </div>
           </div>
 
           <div
@@ -271,9 +282,7 @@ export function TimetableScreen() {
                       aria-label={`${TIMETABLE_KIND_LABEL[e.kind]}: ${e.title}, ${e.start} to ${e.end}`}
                       className={cn(
                         'flex flex-col gap-0.5 rounded-control border-l-[3px] px-2 py-1.5 text-left',
-                        e.kind === 'sales'
-                          ? 'border-sales bg-sales-tint'
-                          : 'border-brass bg-brass-tint',
+                        KIND_TONE[e.kind].card,
                       )}
                     >
                       <span className="tnum flex items-center gap-1 text-caption text-ink-2">
@@ -303,13 +312,13 @@ export function TimetableScreen() {
               );
             })}
           </div>
-          <p className="mt-3 flex items-center gap-4 text-meta text-ink-2">
-            <span className="flex items-center gap-1.5">
-              <span className="size-2.5 rounded-sm bg-sales" /> Sales meet-up
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="size-2.5 rounded-sm bg-brass" /> Installation
-            </span>
+          <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-meta text-ink-2">
+            {TIMETABLE_KINDS.map((k) => (
+              <span key={k} className="flex items-center gap-1.5">
+                <span className={cn('size-2.5 rounded-sm', KIND_TONE[k].dot)} />
+                {TIMETABLE_KIND_LABEL[k]}
+              </span>
+            ))}
             <span className="flex items-center gap-1.5">
               <TriangleAlert aria-hidden className="size-3.5 text-warn" /> Someone is double-booked
             </span>

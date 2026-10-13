@@ -7,7 +7,7 @@ const time = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
 /** An appointment as the admin saves it (who and when are added on the server). */
 export const eventBody = z
   .object({
-    kind: z.enum(['sales', 'installation']),
+    kind: z.enum(['sales', 'site-visit', 'delivery', 'installation', 'integration']),
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     start: time,
     end: time,

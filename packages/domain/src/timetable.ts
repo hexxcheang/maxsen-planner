@@ -3,12 +3,30 @@
  * scheduled by the admin.
  */
 
-export const TIMETABLE_KINDS = ['sales', 'installation'] as const;
+export const TIMETABLE_KINDS = [
+  'sales',
+  'site-visit',
+  'delivery',
+  'installation',
+  'integration',
+] as const;
 export type TimetableKind = (typeof TIMETABLE_KINDS)[number];
 
 export const TIMETABLE_KIND_LABEL: Record<TimetableKind, string> = {
   sales: 'Sales meet-up',
+  'site-visit': 'Site visit',
+  delivery: 'Delivery',
   installation: 'Installation',
+  integration: 'Integration',
+};
+
+/** The same, in a sentence ("a site visit", "an installation"). */
+const KIND_IN_TEXT: Record<TimetableKind, string> = {
+  sales: 'a sales meet-up',
+  'site-visit': 'a site visit',
+  delivery: 'a delivery',
+  installation: 'an installation',
+  integration: 'an integration appointment',
 };
 
 export interface TimetableEvent {
@@ -63,10 +81,10 @@ export function appointmentMessage(
   name: string,
   opts: { changed?: boolean; from?: string } = {},
 ): string {
-  const kind = e.kind === 'sales' ? 'sales meet-up' : 'installation';
+  const kind = KIND_IN_TEXT[e.kind];
   const others = e.people.filter((p) => p !== name);
   return [
-    `Hi ${name}, ${opts.changed ? `your ${kind} has been updated` : `you're scheduled for ${e.kind === 'sales' ? 'a' : 'an'} ${kind}`}:`,
+    `Hi ${name}, ${opts.changed ? `${kind.replace(/^an? /, 'your ')} has been updated` : `you're scheduled for ${kind}`}:`,
     `*${e.title}*`,
     `${longDay(e.date)}, ${e.start}–${e.end}`,
     ...(e.client ? [`Client: ${e.client}`] : []),

@@ -67,12 +67,13 @@ device also keeps its own copy in its browser.
 
 ## Timetable
 
-The **Timetable** tab shows sales meet-ups (blue) and installation duties (brass) week by week,
+The **Timetable** tab shows sales meet-ups, site visits, deliveries, installations and integration
+appointments (each in its own colour) week by week,
 the same for everyone signed in; it refreshes every minute. Only the admin schedules it:
 **Admin: schedule** asks for the admin passcode, which the server checks. Set your own in Render ›
 Environment › `ADMIN_PASSCODE` (until then it is `admin`). Appointments that book the same person
-twice at once are marked with a warning triangle. With **WhatsApp the people assigned** switched on (admin
-only), saving an appointment offers a message for each person assigned (what, when, where with a
+twice at once are marked with a warning triangle. With **WhatsApp the people assigned** switched on (on the
+Timetable's toolbar; only the admin can change it), saving an appointment offers a message for each person assigned (what, when, where with a
 map link, who else, notes), opened in WhatsApp to send; numbers are kept under **Team**. A new appointment needs only the day and time;
 what it is, who's going and the rest (project, client, address, notes under **More details**) can
 be added later. **Team** keeps the list of names to assign.

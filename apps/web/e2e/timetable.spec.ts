@@ -104,9 +104,13 @@ test('the admin schedules the timetable; everyone sees it', async ({ browser }, 
   await expect(grid.getByRole('button', { name: /^Sales meet-up: Showroom visit/ })).toBeVisible();
   await expect(grid.getByRole('button', { name: /^Installation: Install switches/ })).toBeVisible();
   await expect(grid.getByLabel('Double-booked: Jo')).toHaveCount(2);
-  await admin.getByRole('radio', { name: /^Installations/ }).click();
+  // Deliveries, site visits and integration appointments too, each in its own colour.
+  await book('Delivery', 'Deliver switches, Tan residence', '08:00', '09:00');
+  await expect(grid.getByRole('button', { name: /^Delivery: Deliver switches/ })).toBeVisible();
+  await admin.getByLabel('Appointment type').selectOption('installation');
   await expect(grid.getByRole('button', { name: /^Sales meet-up/ })).toHaveCount(0);
-  await admin.getByRole('radio', { name: 'All', exact: true }).click();
+  await expect(grid.getByRole('button', { name: /^Delivery/ })).toHaveCount(0);
+  await admin.getByLabel('Appointment type').selectOption('all');
 
   // A quick one: just the time, filled in later. It's named after its type until then.
   await admin.getByRole('button', { name: 'New appointment', exact: true }).click();
@@ -148,8 +152,9 @@ test('the admin schedules the timetable; everyone sees it', async ({ browser }, 
   await admin.screenshot({ path: 'test-results/screens/timetable-whatsapp.png' });
   await tell.getByRole('button', { name: 'Not now' }).click();
 
-  // Another device: sees both, can't change them.
+  // Another device: sees both, can't change them; the WhatsApp switch is there for everyone.
   await worker.goto('/timetable');
+  await expect(worker.getByRole('switch', { name: 'WhatsApp the people assigned' })).toBeChecked();
   const wgrid = worker.getByRole('grid');
   await expect(wgrid.getByRole('button', { name: /^Sales meet-up: Showroom visit/ })).toBeVisible();
   await expect(worker.getByRole('button', { name: 'New appointment', exact: true })).toHaveCount(0);

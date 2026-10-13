@@ -4,6 +4,7 @@ import { MapPin, MessageCircle, Trash2, TriangleAlert, X } from 'lucide-react';
 import {
   minutesOf,
   TIMETABLE_KIND_LABEL,
+  TIMETABLE_KINDS,
   type TimetableEvent,
   type TimetableKind,
 } from '@maxsen/domain';
@@ -21,6 +22,7 @@ import { useProjects } from '@/lib/data/hooks';
 import { formatDay } from '@/lib/dates';
 import { formatUpdated } from '@/lib/format';
 import type { EventInput } from './timetable-api';
+import { KIND_EXAMPLE } from './kinds';
 
 /** An hour later, for a new appointment's end. */
 const plusHours = (hhmm: string, h: number) => {
@@ -201,23 +203,16 @@ export function EventDialog({
         <div className="flex flex-col gap-3">
           <SegmentedControl<TimetableKind>
             label="Type"
-            className="self-start"
+            className="max-w-full flex-wrap self-start"
             value={kind}
             onChange={setKind}
-            options={[
-              { value: 'sales', label: 'Sales meet-up' },
-              { value: 'installation', label: 'Installation' },
-            ]}
+            options={TIMETABLE_KINDS.map((k) => ({ value: k, label: TIMETABLE_KIND_LABEL[k] }))}
           />
           <Field label="What" optional>
             <Input
               autoFocus
               value={title}
-              placeholder={
-                kind === 'sales'
-                  ? 'e.g. Showroom visit, site measurement'
-                  : 'e.g. Install switches and lights'
-              }
+              placeholder={KIND_EXAMPLE[kind]}
               onChange={(e) => setTitle(e.target.value)}
             />
           </Field>
