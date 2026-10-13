@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { newId, type Claim } from '@maxsen/domain';
+import { useLive } from '@/lib/live';
 import { savedByName } from '@/lib/shared/api';
 
 const CACHE = 'maxsen.claims.cache';
@@ -148,6 +149,7 @@ export function useClaims() {
       document.removeEventListener('visibilitychange', onShow);
     };
   }, [refresh]);
+  useLive(['claims'], refresh);
   /** Puts a saved claim in the list at once, without waiting for the next fetch. */
   const put = (claim: Claim) =>
     setClaims((cs) => [...(cs ?? []).filter((c) => c.id !== claim.id), claim]);

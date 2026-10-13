@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Timetable, TimetableEvent } from '@maxsen/domain';
+import { useLive } from '@/lib/live';
+import { putBack } from '@/lib/put-back';
 import { savedByName } from '@/lib/shared/api';
 
 const CACHE = 'maxsen.timetable.cache';
@@ -64,14 +66,14 @@ export const saveNotify = (notify: boolean) =>
   });
 
 /**
- * The shared timetable: fetched on opening, every minute while in view, and after each change.
+ * The shared timetable: fetched on opening, the moment anyone changes it, and every minute while in view as a fallback.
  * The last copy is kept on the device, so it still shows without a connection.
  */
 export function useTimetable() {
   const [data, setData] = useState<Timetable | null>(cached);
   const [state, setState] = useState<'loading' | 'live' | 'offline' | 'unavailable'>('loading');
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (): Promise<void> => {
     try {
       const res = await fetch('/api/timetable', { credentials: 'same-origin' });
       if (res.status === 503 || res.status === 404) {
@@ -79,7 +81,12 @@ export function useTimetable() {
         return;
       }
       if (!res.ok) throw new Error(String(res.status));
-      const next = (await res.json()) as Timetable;
+      const next = (await res.json()) as Timetable & { fresh?: boolean };
+      // The server lost the timetable: this device's last copy puts it back.
+      const copy = cached();
+      if (next.fresh && copy?.events.length && (await putBack('/api/timetable/restore', copy)))
+        return void (await refresh());
+      delete next.fresh;
       setData(next);
       setState('live');
       try {
@@ -106,6 +113,9 @@ export function useTimetable() {
       document.removeEventListener('visibilitychange', onShow);
     };
   }, [refresh]);
+
+  // Changes by anyone show at once; the team decides who can be assigned.
+  useLive(['timetable', 'team'], refresh);
 
   return { timetable: data ?? { events: [], people: [] }, state, refresh, setData };
 }

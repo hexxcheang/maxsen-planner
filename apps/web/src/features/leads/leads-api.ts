@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Lead } from '@maxsen/domain';
+import { useLive } from '@/lib/live';
+import { putBack } from '@/lib/put-back';
 import { savedByName } from '@/lib/shared/api';
 
 const CACHE = 'maxsen.leads.cache';
@@ -67,18 +69,22 @@ function cached(): Lead[] | null {
 }
 
 /**
- * The team's leads: fetched on opening, every 30 seconds in view, and after each change. The last
+ * The team's leads: fetched on opening, the moment anyone changes them, and every 30 seconds in view as a fallback. The last
  * copy stays on the device, to show without a connection.
  */
 export function useLeads() {
   const [leads, setLeads] = useState<Lead[] | null>(cached);
   const [state, setState] = useState<'loading' | 'live' | 'offline' | 'unavailable'>('loading');
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (): Promise<void> => {
     try {
       const res = await fetch('/api/leads', { credentials: 'same-origin' });
       if (res.status === 503 || res.status === 404) return setState('unavailable');
       if (!res.ok) throw new Error(String(res.status));
-      const next = ((await res.json()) as { leads: Lead[] }).leads;
+      const { leads: next, fresh } = (await res.json()) as { leads: Lead[]; fresh?: boolean };
+      // The server lost the leads: this device's last copy puts them back.
+      const copy = cached();
+      if (fresh && copy?.length && (await putBack('/api/leads/restore', { leads: copy })))
+        return void (await refresh());
       setLeads(next);
       setState('live');
       try {
@@ -104,6 +110,7 @@ export function useLeads() {
       document.removeEventListener('visibilitychange', onShow);
     };
   }, [refresh]);
+  useLive(['leads'], refresh);
   /** Puts a saved lead in the list at once, without waiting for the next fetch. */
   const put = (lead: Lead) =>
     setLeads((ls) => [...(ls ?? []).filter((l) => l.id !== lead.id), lead]);

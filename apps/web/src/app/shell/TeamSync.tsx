@@ -54,8 +54,9 @@ export function TeamSync() {
         >
           <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-warn" />
           <p className="flex-1">
-            Team saves on this server will be lost at its next update: it has no disk to keep them.
-            In Render, add a disk at <code>/var/data</code> and set <code>DATA_DIR</code> to{' '}
+            This server has no disk, so each update clears the team’s projects, timetable, leads,
+            claims and team list (devices put back their last copies, but recent changes can be
+            lost). In Render, add a disk at <code>/var/data</code> and set <code>DATA_DIR</code> to{' '}
             <code>/var/data</code>, then redeploy.
           </p>
           <button type="button" aria-label="Hide for now" onClick={() => setHideWarning(true)}>

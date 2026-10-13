@@ -44,7 +44,10 @@ templates. There's no Save button to remember:
   first time a device connects with a catalogue different from the team's, it asks which to use;
   normally choose **Use the team's**.
 - **Deleting a shared project** deletes it for everyone. The server keeps a copy in its `trash`
-  folder, so it can be recovered.
+  folder, so it can be recovered. With admin unlocked, each project under **Saved by the team**
+  also has **Delete**, so the admin can clear any of them without opening it first.
+- **Live:** projects, the timetable, leads, claims, inventory and the team update on every open
+  device the moment someone changes them, with no reload.
 - Each device asks once for a name, shown with each save. Sample projects stay on each device.
 
 Cost: saving adds next to nothing on Render. The plan is a flat monthly price; a project is a few
@@ -62,14 +65,19 @@ the disk is missing, the app shows a yellow warning at the top of every page. To
   add `DATA_DIR` = `/var/data`, and save (it redeploys). A disk needs a paid instance (Starter);
   with a disk, each deploy has a few seconds of downtime.
 
-After that, updates (every push to `main`) keep all projects, the catalogue and settings. Each
-device also keeps its own copy in its browser.
+After that, updates (every push to `main`) keep all projects, the catalogue, settings, timetable,
+leads, claims, inventory and team. Each device also keeps its own copy in its browser.
+
+**Safety net:** if the server ever comes back empty (no disk yet, or the disk was replaced), the
+first device to open the Timetable, Leads or Team puts back its last copy. The server only takes a
+copy while it has none, so it can never replace the team's current data. It is a fallback, not a
+backup: anything changed after that device last looked can be lost, so the disk is still needed.
 
 ## Timetable
 
 The **Timetable** tab shows sales meet-ups, site visits, deliveries, installations and integration
 appointments (each in its own colour) week by week,
-the same for everyone signed in; it refreshes every minute. Only the admin schedules it:
+the same for everyone signed in; changes show on every device at once. Only the admin schedules it:
 **Admin: schedule** asks for the admin passcode, which the server checks. Set your own in Render ›
 Environment › `ADMIN_PASSCODE` (until then it is `admin`). Appointments that book the same person
 twice at once are marked with a warning triangle. With **WhatsApp the people assigned** switched on (on the
@@ -115,8 +123,8 @@ shared catalogue.
 
 The **Leads** tab is the team's list of enquiries, kept on the server disk like the projects, so
 app updates never clear it. Anyone signed in can add a lead, change its status, assign it and set a
-follow-up day; overdue follow-ups come first and are counted in red. It refreshes every 30 seconds
-without touching a lead someone has open.
+follow-up day; overdue follow-ups come first and are counted in red. Changes show on every device
+at once, without touching a lead someone has open.
 
 - Each lead is saved on its own, so two people working on different leads never overwrite each
   other. If someone else changed the same lead while you had it open, you're told who and can load

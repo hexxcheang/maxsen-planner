@@ -1,4 +1,4 @@
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { access, mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
 
@@ -43,6 +43,30 @@ export const leadBody = z.object({
 export const noteBody = z.object({ text: z.string().trim().min(1).max(2000) });
 
 type LeadInput = z.infer<typeof leadBody>;
+
+/** A device's last copy of the leads, sent back after the server lost its own. */
+export const leadsCopy = z.object({
+  leads: z
+    .array(
+      leadBody.omit({ baseUpdatedAt: true }).extend({
+        id: z.string().max(60),
+        notes: z
+          .array(
+            z.object({
+              at: z.string().max(40),
+              by: z.string().max(80),
+              text: z.string().max(2000),
+            }),
+          )
+          .max(2000),
+        createdAt: z.string().max(40),
+        createdBy: z.string().max(80),
+        updatedAt: z.string().max(40),
+        updatedBy: z.string().max(80),
+      }),
+    )
+    .max(20000),
+});
 
 interface Note {
   at: string;
@@ -89,9 +113,26 @@ export function createLeadStore(dir: string) {
     await rename(tmp, file);
   };
   const now = () => new Date().toISOString();
+  const exists = () =>
+    ready
+      .then(() => access(file))
+      .then(
+        () => true,
+        () => false,
+      );
 
   return {
     read,
+    /** False until the first save: a new server, or one that lost its data. */
+    exists,
+
+    /** Puts back a device's last copy, only while the server has none, never over current leads. */
+    restore: (copy: z.infer<typeof leadsCopy>) =>
+      serial(async () => {
+        if (await exists()) return false;
+        await write(copy.leads);
+        return true;
+      }),
 
     save: (id: string, input: LeadInput, by: string): Promise<LeadSave> =>
       serial(async () => {

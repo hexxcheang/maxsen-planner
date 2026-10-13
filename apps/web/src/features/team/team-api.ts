@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { TeamMember } from '@maxsen/domain';
+import { useLive } from '@/lib/live';
+import { putBack } from '@/lib/put-back';
 import { savedByName } from '@/lib/shared/api';
 
 const CACHE = 'maxsen.team.cache';
@@ -57,12 +59,19 @@ function cached(): TeamMember[] | null {
 export function useTeam() {
   const [members, setMembers] = useState<TeamMember[] | null>(cached);
   const [state, setState] = useState<'loading' | 'live' | 'offline' | 'unavailable'>('loading');
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (): Promise<void> => {
     try {
       const res = await fetch('/api/team', { credentials: 'same-origin' });
       if (res.status === 503 || res.status === 404) return setState('unavailable');
       if (!res.ok) throw new Error(String(res.status));
-      const next = ((await res.json()) as { members: TeamMember[] }).members;
+      const { members: next, fresh } = (await res.json()) as {
+        members: TeamMember[];
+        fresh?: boolean;
+      };
+      // The server lost the team: this device's last copy puts it back.
+      const copy = cached();
+      if (fresh && copy?.length && (await putBack('/api/team/restore', { members: copy })))
+        return void (await refresh());
       setMembers(next);
       setState('live');
       try {
@@ -85,5 +94,7 @@ export function useTeam() {
   const put = (m: TeamMember) =>
     setMembers((ms) => [...(ms ?? []).filter((x) => x.id !== m.id), m]);
   const drop = (id: string) => setMembers((ms) => (ms ?? []).filter((x) => x.id !== id));
+  // Someone assigned on the timetable who wasn't on the team joins it.
+  useLive(['team', 'timetable'], refresh);
   return { members: members ?? [], state, refresh, put, drop };
 }

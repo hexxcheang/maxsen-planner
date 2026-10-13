@@ -14,6 +14,7 @@
  */
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { smartLighting, type SampleStore } from '../data/sample-store';
+import { onLive } from '../live';
 import {
   acceptWorkspace,
   changedHere,
@@ -114,6 +115,8 @@ export async function startTeamSync(s: SampleStore) {
     else void refreshShared();
   });
   window.addEventListener('pagehide', () => void saveNow());
+  // A project saved or deleted by someone else shows at once.
+  onLive('projects', () => void refreshShared());
   await refreshShared();
   schedule(1000);
 }

@@ -5,10 +5,11 @@ import { AnalysisError, type Analyser } from './magic/analyse.ts';
 import { RenderError, type Renderer } from './sample/render.ts';
 import { createAuth, type Auth } from './auth.ts';
 import { ID, type SharedStore } from './shared/store.ts';
-import { eventBody, type TimetableStore } from './timetable.ts';
+import { eventBody, timetableCopy, type TimetableStore } from './timetable.ts';
 import { MANAGER_KINDS, movementBody, verifyBody, type InventoryStore } from './inventory.ts';
-import { leadBody, noteBody, type LeadStore } from './leads.ts';
-import { memberBody, type TeamStore } from './team.ts';
+import { leadBody, leadsCopy, noteBody, type LeadStore } from './leads.ts';
+import { memberBody, teamCopy, type TeamStore } from './team.ts';
+import { createLive, topicOf } from './live.ts';
 import {
   claimBody,
   decisionBody,
@@ -104,6 +105,15 @@ export function buildApp({
   app.use('*', headers());
   app.use('/api/*', sameSiteOnly());
   app.use('/api/*', auth.guard());
+
+  // --- live: open copies of the app hear at once that something shared changed ----------------
+  const live = createLive();
+  app.use('/api/*', async (c, next) => {
+    await next();
+    const topic = c.req.method === 'GET' || !c.res.ok ? null : topicOf(c.req.path);
+    if (topic) live.publish(topic);
+  });
+  app.get('/api/live', (c) => live.stream(c));
 
   /** Too many wrong passcodes from one place: a pause before the next try. */
   const tooMany = (c: Parameters<typeof auth.signIn>[0]) => {
@@ -303,7 +313,8 @@ export function buildApp({
   };
   app.get('/api/timetable', async (c) => {
     if (!timetable) return c.json({ error: 'not-configured' }, 503);
-    const data = await timetable.read();
+    // `fresh`: the server has no timetable (new, or it lost its data); a device can put back its copy.
+    const data = { ...(await timetable.read()), fresh: !(await timetable.exists()) };
     if (!team) return c.json(data);
     // The people to assign, and their numbers, come from the Team tab: active members only.
     const members = (await team.read()).filter((m) => m.active);
@@ -312,6 +323,12 @@ export function buildApp({
       people: members.map((m) => m.name).sort((a, b) => a.localeCompare(b)),
       phones: Object.fromEntries(members.flatMap((m) => (m.phone ? [[m.name, m.phone]] : []))),
     });
+  });
+  /** After the server lost its data: a device's last copy, accepted only into an empty timetable. */
+  app.post('/api/timetable/restore', async (c) => {
+    const body = timetableCopy.safeParse(await c.req.json().catch(() => null));
+    if (!body.success) return c.json({ error: 'bad-request' }, 400);
+    return c.json({ restored: await timetable!.restore(body.data) });
   });
   app.put('/api/timetable/events/:id', async (c) => {
     if (!auth.isAdmin(c)) return c.json(notAdmin, 403);
@@ -415,8 +432,16 @@ export function buildApp({
   // --- leads: everyone adds and updates them; the admin deletes ---------------------------------
   const noLeads = { error: 'not-configured', message: 'Leads need the team server.' };
   app.get('/api/leads', async (c) =>
-    leads ? c.json({ leads: await leads.read() }) : c.json(noLeads, 503),
+    leads
+      ? c.json({ leads: await leads.read(), fresh: !(await leads.exists()) })
+      : c.json(noLeads, 503),
   );
+  app.post('/api/leads/restore', async (c) => {
+    if (!leads) return c.json(noLeads, 503);
+    const body = leadsCopy.safeParse(await c.req.json().catch(() => null));
+    if (!body.success) return c.json({ error: 'bad-request' }, 400);
+    return c.json({ restored: await leads.restore(body.data) });
+  });
   app.put('/api/leads/:id', async (c) => {
     if (!leads) return c.json(noLeads, 503);
     const id = c.req.param('id');
@@ -544,8 +569,14 @@ export function buildApp({
   // --- the team: everyone signed in sees it; the admin keeps it ----------------------------------
   const noTeam = { error: 'not-configured', message: 'The team list needs the team server.' };
   app.get('/api/team', async (c) =>
-    team ? c.json({ members: await team.read() }) : c.json(noTeam, 503),
+    team ? c.json({ members: await team.read(), fresh: await team.fresh() }) : c.json(noTeam, 503),
   );
+  app.post('/api/team/restore', async (c) => {
+    if (!team) return c.json(noTeam, 503);
+    const body = teamCopy.safeParse(await c.req.json().catch(() => null));
+    if (!body.success) return c.json({ error: 'bad-request' }, 400);
+    return c.json({ restored: await team.restore(body.data) });
+  });
   app.put('/api/team/:id', async (c) => {
     if (!team) return c.json(noTeam, 503);
     if (!auth.isAdmin(c))

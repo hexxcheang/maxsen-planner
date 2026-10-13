@@ -1,4 +1,4 @@
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { access, mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
 
@@ -21,6 +21,24 @@ export const eventBody = z
   .refine((e) => e.end > e.start, { message: 'Ends before it starts', path: ['end'] });
 
 export type EventInput = z.infer<typeof eventBody>;
+
+/** A device's last copy of the timetable, sent back after the server lost its own. */
+export const timetableCopy = z.object({
+  events: z
+    .array(
+      eventBody.and(
+        z.object({
+          id: z.string().regex(/^[a-z]+_[A-Za-z0-9]{4,40}$/),
+          updatedAt: z.string().max(40),
+          updatedBy: z.string().max(80),
+        }),
+      ),
+    )
+    .max(20000),
+  people: z.array(z.string().trim().min(1).max(60)).max(200).optional(),
+  phones: z.record(z.string(), z.string().max(30)).optional(),
+  notify: z.boolean().optional(),
+});
 
 export interface StoredEvent extends EventInput {
   id: string;
@@ -71,8 +89,34 @@ export function createTimetableStore(dir: string) {
     await rename(tmp, file);
   };
 
+  const exists = () =>
+    ready
+      .then(() => access(file))
+      .then(
+        () => true,
+        () => false,
+      );
+
   return {
     read,
+    /** False until the first save: a new server, or one that lost its data. */
+    exists,
+
+    /**
+     * Puts back a device's last copy, only while the server has none (it started without its
+     * disk, or the disk was replaced), so it can never overwrite the team's current timetable.
+     */
+    restore: (copy: z.infer<typeof timetableCopy>) =>
+      serial(async () => {
+        if (await exists()) return false;
+        await write({
+          events: copy.events,
+          people: copy.people ?? [],
+          phones: copy.phones ?? {},
+          notify: copy.notify ?? false,
+        });
+        return true;
+      }),
 
     /** Adds or replaces one appointment. */
     put: (id: string, input: EventInput, by: string) =>

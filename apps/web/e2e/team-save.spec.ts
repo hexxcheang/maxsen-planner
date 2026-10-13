@@ -2,7 +2,7 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { expect, test, type BrowserContext } from '@playwright/test';
+import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import { signIn } from './helpers';
 
 // A real API server with its own empty folder, reached only by this test's team calls.
@@ -209,4 +209,59 @@ test('the catalogue, prices and settings are shared too', async ({ browser }, te
   await expect(
     b.getByRole('form', { name: 'Pricing' }).getByLabel('Deposit requested (%)'),
   ).toHaveValue('45');
+});
+
+/** A new device, after the test above changed the team's settings: it takes the team's. */
+async function join(page: Page) {
+  await page.goto('/');
+  const choose = page.getByRole('dialog', { name: 'The team’s catalogue and settings' });
+  await choose.getByRole('button', { name: 'Use the team’s' }).click();
+  await expect(choose).toBeHidden();
+}
+
+test('the admin deletes a project saved by the team, for everyone', async ({
+  browser,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'One device size is enough');
+  test.setTimeout(90_000);
+  const a = await device(await browser.newContext());
+  await join(a);
+  await a.goto('/projects/new');
+  await a.getByRole('radio', { name: /Start from blank/ }).click();
+  await a.getByRole('button', { name: 'Continue' }).click();
+  await a.getByLabel('Project title').fill('Old enquiry to clear');
+  await a.getByRole('button', { name: 'Create project' }).click();
+  await expect(a.getByRole('heading', { name: 'Setup' })).toBeVisible();
+  await a.getByRole('button', { name: 'Save now' }).click();
+  // Asked once on the device's first save.
+  const name = a.getByRole('dialog', { name: 'Your name' });
+  await name.getByLabel('Name').fill('Jo');
+  await name.getByRole('button', { name: 'Continue' }).click();
+  await expect(a.getByRole('status').filter({ hasText: 'Saved for team' })).toBeVisible();
+
+  // Not admin: listed to open, with no Delete.
+  const b = await device(await browser.newContext());
+  await join(b);
+  const listed = b.getByRole('region', { name: 'Saved by the team' });
+  await expect(listed.getByText('Old enquiry to clear')).toBeVisible();
+  await expect(listed.getByRole('button', { name: /Delete/ })).toHaveCount(0);
+
+  // The admin, unlocked on this device.
+  const context = await browser.newContext();
+  await context.addInitScript(() => window.sessionStorage.setItem('maxsen.admin', '1'));
+  const c = await device(context);
+  await join(c);
+  const team = c.getByRole('region', { name: 'Saved by the team' });
+  await team.getByRole('button', { name: 'Delete Old enquiry to clear for everyone' }).click();
+  const confirm = c.getByRole('alertdialog').or(c.getByRole('dialog'));
+  await expect(confirm.getByText('Delete Old enquiry to clear for everyone?')).toBeVisible();
+  await c.screenshot({ path: 'test-results/screens/team-delete.png' });
+  await confirm.getByRole('button', { name: 'Delete for everyone' }).click();
+  await expect(c.getByText('Old enquiry to clear deleted for everyone')).toBeVisible();
+  await expect(team.getByText('Old enquiry to clear')).toHaveCount(0);
+
+  // Device A hadn't changed it since: it goes from there too.
+  await a.goto('/');
+  await expect(a.getByRole('heading', { name: 'Projects' })).toBeVisible();
+  await expect(a.getByText('Old enquiry to clear')).toHaveCount(0);
 });

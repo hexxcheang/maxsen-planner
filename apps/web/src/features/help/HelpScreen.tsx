@@ -55,7 +55,7 @@ const TOPICS: Topic[] = [
     ],
     notes: [
       'Projects are shared: they save for the team about 15 seconds after you stop editing. The top bar says Saved for team, or Save now while a save is waiting.',
-      'Projects someone else saved are under Saved by the team on the Projects page; Open brings one to your device.',
+      'Projects someone else saved are under Saved by the team on the Projects page; Open brings one to your device. With admin unlocked, Delete removes one for everyone.',
       'If two people change the same project, the app asks whose version to keep. Nothing is overwritten silently.',
       'Deleting a shared project deletes it for everyone (the server keeps a copy that can be recovered).',
     ],
@@ -91,7 +91,7 @@ const TOPICS: Topic[] = [
       'Statuses: New, Contacted, No reply yet, Meet-up set, Met / site visit done, Quoted, Considering quote, On hold (reno later), Won and Lost.',
       'Moving a lead to a stage where you spoke to them sets Last contacted to today. Change it if it was another day.',
       'Overdue follow-ups come first and are counted in red.',
-      'The list refreshes every 30 seconds without touching a lead someone has open. If someone else changed the lead you have open, you choose whose version to keep.',
+      'Changes by anyone show at once on every device, without touching a lead someone has open. If someone else changed the lead you have open, you choose whose version to keep.',
       'Only the admin can delete a lead; everyone else marks it Lost.',
     ],
   },
@@ -121,7 +121,7 @@ const TOPICS: Topic[] = [
     notes: [
       'A warning triangle marks a person booked twice at the same time.',
       'People and their WhatsApp numbers come from the Team tab; the Team button opens it.',
-      'The timetable refreshes every minute.',
+      'Changes show on every device at once, with no reload.',
     ],
   },
   {

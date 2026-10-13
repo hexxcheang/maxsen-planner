@@ -41,7 +41,7 @@ describe('the team timetable', () => {
     );
     expect(
       await (await app.request('/api/timetable', { headers: { cookie: team } })).json(),
-    ).toEqual({ events: [], people: [], phones: {}, notify: false });
+    ).toEqual({ events: [], people: [], phones: {}, notify: false, fresh: true });
 
     // Signed in but not admin: refused.
     const refused = await app.request(

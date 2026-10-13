@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { InventoryData, Movement, MovementKind, MovementLine } from '@maxsen/domain';
+import { useLive } from '@/lib/live';
 import { savedByName } from '@/lib/shared/api';
 
 const CACHE = 'maxsen.inventory.cache';
@@ -102,5 +103,6 @@ export function useInventory() {
     }, 60_000);
     return () => window.clearInterval(t);
   }, [refresh]);
+  useLive(['inventory'], refresh);
   return { data: data ?? { movements: [], minimums: {} }, state, refresh };
 }

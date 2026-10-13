@@ -20,6 +20,19 @@ export const memberBody = z.object({
 
 type MemberInput = z.infer<typeof memberBody>;
 
+/** A device's last copy of the team, sent back after the server lost its own. */
+export const teamCopy = z.object({
+  members: z
+    .array(
+      memberBody.extend({
+        id: z.string().max(60),
+        updatedAt: z.string().max(40),
+        updatedBy: z.string().max(80),
+      }),
+    )
+    .max(500),
+});
+
 export interface StoredMember extends MemberInput {
   id: string;
   updatedAt: string;
@@ -43,9 +56,10 @@ export function createTeamStore(dir: string) {
     queue = next.catch(() => undefined);
     return next;
   };
-  const write = async (members: StoredMember[]) => {
+  /** `onlySeeded`: only copied from the timetable so far, nobody has saved it. */
+  const write = async (members: StoredMember[], onlySeeded = false) => {
     const tmp = `${file}.${process.pid}.${Date.now()}.tmp`;
-    await writeFile(tmp, JSON.stringify({ members }));
+    await writeFile(tmp, JSON.stringify(onlySeeded ? { members, seeded: true } : { members }));
     await rename(tmp, file);
   };
   /** The timetable's team list from before there was a Team tab. */
@@ -68,7 +82,10 @@ export function createTeamStore(dir: string) {
       return [];
     }
   };
-  /** The first time, the timetable's list is written as the team, once, so ids stay put. */
+  /**
+   * The first time, the timetable's list is written as the team, once, so ids stay put. With no
+   * timetable yet (or one being put back after the server lost its data), nothing is written.
+   */
   let seeded: Promise<void> | null = null;
   const seed = () =>
     (seeded ??= (async () => {
@@ -76,7 +93,9 @@ export function createTeamStore(dir: string) {
       try {
         await readFile(file, 'utf8');
       } catch {
-        await write(await fromTimetable());
+        const members = await fromTimetable();
+        if (members.length) await write(members, true);
+        else seeded = null;
       }
     })());
   const read = async (): Promise<StoredMember[]> => {
@@ -90,8 +109,28 @@ export function createTeamStore(dir: string) {
     }
   };
 
+  /** Nobody has saved the team on this server: it's new, or lost its data. */
+  const fresh = async () => {
+    await ready;
+    try {
+      return (JSON.parse(await readFile(file, 'utf8')) as { seeded?: boolean }).seeded === true;
+    } catch {
+      return true;
+    }
+  };
+
   return {
     read,
+    fresh,
+
+    /** Puts back a device's last copy, only while nobody has saved the team on this server. */
+    restore: (copy: z.infer<typeof teamCopy>) =>
+      serial(async () => {
+        if (!(await fresh())) return false;
+        await write(copy.members);
+        seeded = Promise.resolve();
+        return true;
+      }),
 
     save: (id: string, input: MemberInput, by: string) =>
       serial(async () => {
