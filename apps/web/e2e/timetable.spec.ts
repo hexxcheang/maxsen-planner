@@ -124,6 +124,30 @@ test('the admin schedules the timetable; everyone sees it', async ({ browser }, 
   await expect(later).toBeHidden();
   await admin.screenshot({ path: 'test-results/screens/timetable-admin.png', fullPage: true });
 
+  // Jo's WhatsApp number on the team; messages on: changing an appointment offers to tell them.
+  await admin.getByRole('button', { name: 'Team' }).click();
+  const teamDialog = admin.getByRole('dialog', { name: 'Team' });
+  await teamDialog.getByLabel('WhatsApp number of Jo').fill('9123 4567');
+  await teamDialog.getByRole('button', { name: 'Save team' }).click();
+  await expect(teamDialog).toBeHidden();
+  await admin.getByRole('switch', { name: 'WhatsApp the people assigned' }).click();
+  await expect(admin.getByRole('switch', { name: 'WhatsApp the people assigned' })).toBeChecked();
+  await grid.getByRole('button', { name: /^Installation: Install switches/ }).click();
+  const appt = admin.getByRole('dialog', { name: 'Appointment' });
+  await appt.getByText('More details').click();
+  await appt.getByLabel('Notes').fill('Bring the ladder');
+  await appt.getByRole('button', { name: 'Save' }).click();
+  const tell = admin.getByRole('dialog', { name: 'Tell them on WhatsApp' });
+  const send = tell.getByRole('link', { name: 'Send on WhatsApp' });
+  const href = decodeURIComponent((await send.getAttribute('href')) ?? '');
+  expect(href).toMatch(
+    /^https:\/\/wa\.me\/6591234567\?text=Hi Jo, your installation has been updated:/,
+  );
+  expect(href).toContain('*Install switches, Tan residence*');
+  expect(href).toContain('Notes: Bring the ladder');
+  await admin.screenshot({ path: 'test-results/screens/timetable-whatsapp.png' });
+  await tell.getByRole('button', { name: 'Not now' }).click();
+
   // Another device: sees both, can't change them.
   await worker.goto('/timetable');
   const wgrid = worker.getByRole('grid');

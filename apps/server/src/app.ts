@@ -326,10 +326,19 @@ export function buildApp({
   app.put('/api/timetable/people', async (c) => {
     if (!auth.isAdmin(c)) return c.json(notAdmin, 403);
     const body = z
-      .object({ people: z.array(z.string().trim().min(1).max(60)).max(100) })
+      .object({
+        people: z.array(z.string().trim().min(1).max(60)).max(100),
+        phones: z.record(z.string(), z.string().trim().max(30)).optional(),
+      })
       .safeParse(await c.req.json().catch(() => null));
     if (!body.success) return c.json({ error: 'bad-request' }, 400);
-    return c.json({ people: await timetable!.setPeople(body.data.people) });
+    return c.json(await timetable!.setPeople(body.data.people, body.data.phones));
+  });
+  app.put('/api/timetable/settings', async (c) => {
+    if (!auth.isAdmin(c)) return c.json(notAdmin, 403);
+    const body = z.object({ notify: z.boolean() }).safeParse(await c.req.json().catch(() => null));
+    if (!body.success) return c.json({ error: 'bad-request' }, 400);
+    return c.json({ notify: await timetable!.setNotify(body.data.notify) });
   });
 
   // --- inventory: installers take out and return; the inventory manager (admin) restocks, -------

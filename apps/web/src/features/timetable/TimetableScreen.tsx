@@ -17,7 +17,7 @@ import {
   type TimetableEvent,
   type TimetableKind,
 } from '@maxsen/domain';
-import { Button, PageHeader, SegmentedControl, Select, useToast } from '@/components/ui';
+import { Button, PageHeader, SegmentedControl, Select, Switch, useToast } from '@/components/ui';
 import { Page } from '@/components/Page';
 import { useEnsureName } from '@/lib/shared/useEnsureName';
 import { useAdmin } from '@/app/auth/useAdmin';
@@ -25,9 +25,11 @@ import { cn } from '@/lib/cn';
 import { addDays, formatDay, today, weekdayIndex } from '@/lib/dates';
 import { EventDialog } from './EventDialog';
 import { TeamDialog } from './TeamDialog';
+import { NotifyDialog } from './NotifyDialog';
 import {
   deleteEvent,
   saveEvent,
+  saveNotify,
   savePeople,
   TimetableError,
   useTimetable,
@@ -51,6 +53,10 @@ export function TimetableScreen() {
   const [person, setPerson] = useState(ALL_PEOPLE);
   const [editing, setEditing] = useState<TimetableEvent | { date: string } | null>(null);
   const [team, setTeam] = useState(false);
+  /** An appointment just saved, to tell the people assigned about on WhatsApp. */
+  const [notifying, setNotifying] = useState<{ event: TimetableEvent; changed: boolean } | null>(
+    null,
+  );
 
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const shown = useMemo(
@@ -90,10 +96,13 @@ export function TimetableScreen() {
   };
 
   const onSave = async (id: string, input: EventInput) => {
+    const changed = timetable.events.some((e) => e.id === id);
     const saved = await asAdmin(() => saveEvent(id, input));
     if (!saved) return false;
     setData((d) => d && { ...d, events: [...d.events.filter((e) => e.id !== id), saved] });
     toast({ title: 'Timetable updated', body: 'Everyone sees it.' });
+    // With WhatsApp messages on, offer to tell the people assigned.
+    if (timetable.notify && saved.people.length) setNotifying({ event: saved, changed });
     return true;
   };
   const onDelete = async (id: string) => {
@@ -113,6 +122,22 @@ export function TimetableScreen() {
         actions={
           unlocked ? (
             <>
+              <Switch
+                checked={!!timetable.notify}
+                label="WhatsApp the people assigned"
+                onCheckedChange={async (on) => {
+                  const saved = await asAdmin(() => saveNotify(on));
+                  if (saved) {
+                    setData((d) => d && { ...d, notify: saved.notify });
+                    toast({
+                      title: saved.notify ? 'WhatsApp messages on' : 'WhatsApp messages off',
+                      body: saved.notify
+                        ? 'After you schedule someone, you’re offered a message for each of them.'
+                        : undefined,
+                    });
+                  }
+                }}
+              />
               <Button icon={<Users className="size-4" />} onClick={() => setTeam(true)}>
                 Team
               </Button>
@@ -308,16 +333,32 @@ export function TimetableScreen() {
         onDelete={async () => {
           if (editing && 'id' in editing && (await onDelete(editing.id))) setEditing(null);
         }}
+        onNotify={
+          timetable.notify && editing && 'id' in editing && editing.people.length
+            ? () => {
+                setNotifying({ event: editing, changed: true });
+                setEditing(null);
+              }
+            : undefined
+        }
+      />
+      <NotifyDialog
+        key={notifying?.event.id ?? 'none'}
+        event={notifying?.event ?? null}
+        changed={notifying?.changed ?? false}
+        phones={timetable.phones ?? {}}
+        onClose={() => setNotifying(null)}
       />
       {nameDialog}
       <TeamDialog
         open={team}
         people={timetable.people}
+        phones={timetable.phones ?? {}}
         onClose={() => setTeam(false)}
-        onSave={async (people) => {
-          const saved = await asAdmin(() => savePeople(people));
+        onSave={async (people, phones) => {
+          const saved = await asAdmin(() => savePeople(people, phones));
           if (saved) {
-            setData((d) => d && { ...d, people: saved.people });
+            setData((d) => d && { ...d, people: saved.people, phones: saved.phones });
             setTeam(false);
           }
         }}

@@ -31,6 +31,10 @@ export interface StoredEvent extends EventInput {
 interface TimetableFile {
   events: StoredEvent[];
   people: string[];
+  /** WhatsApp numbers, by name. */
+  phones: Record<string, string>;
+  /** Whether scheduling offers to tell the people assigned on WhatsApp. */
+  notify: boolean;
 }
 
 /**
@@ -51,9 +55,14 @@ export function createTimetableStore(dir: string) {
     await ready;
     try {
       const data = JSON.parse(await readFile(file, 'utf8')) as Partial<TimetableFile>;
-      return { events: data.events ?? [], people: data.people ?? [] };
+      return {
+        events: data.events ?? [],
+        people: data.people ?? [],
+        phones: data.phones ?? {},
+        notify: data.notify ?? false,
+      };
     } catch {
-      return { events: [], people: [] };
+      return { events: [], people: [], phones: {}, notify: false };
     }
   };
   const write = async (data: TimetableFile) => {
@@ -93,12 +102,24 @@ export function createTimetableStore(dir: string) {
         return true;
       }),
 
-    /** The team list, as the admin keeps it. */
-    setPeople: (people: string[]) =>
+    /** The team list and their WhatsApp numbers, as the admin keeps them. */
+    setPeople: (people: string[], phones?: Record<string, string>) =>
       serial(async () => {
         const data = await read();
-        await write({ ...data, people });
-        return people;
+        // Numbers of people no longer on the team go with them.
+        const kept = Object.fromEntries(
+          Object.entries(phones ?? data.phones).filter(([n, p]) => people.includes(n) && p),
+        );
+        await write({ ...data, people, phones: kept });
+        return { people, phones: kept };
+      }),
+
+    /** Turns the WhatsApp messages to the people assigned on or off. */
+    setNotify: (notify: boolean) =>
+      serial(async () => {
+        const data = await read();
+        await write({ ...data, notify });
+        return notify;
       }),
   };
 }

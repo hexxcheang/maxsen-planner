@@ -35,6 +35,61 @@ export interface Timetable {
   events: TimetableEvent[];
   /** The team, to assign appointments to. */
   people: string[];
+  /** Each person's WhatsApp number, by name. */
+  phones?: Record<string, string>;
+  /** Whether scheduling offers to tell the people assigned on WhatsApp (the admin's choice). */
+  notify?: boolean;
+}
+
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** "Tue 14 Oct 2026" for a YYYY-MM-DD day. */
+function longDay(day: string): string {
+  const [y, m, d] = day.split('-').map(Number) as [number, number, number];
+  const weekday = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+  return `${WEEKDAYS[weekday]} ${d} ${MONTHS[m - 1]} ${y}`;
+}
+
+/**
+ * The WhatsApp message telling someone about an appointment they're assigned to: what, when,
+ * where (with a map link), who else is going, and the notes.
+ */
+export function appointmentMessage(
+  e: Pick<
+    TimetableEvent,
+    'kind' | 'title' | 'date' | 'start' | 'end' | 'client' | 'address' | 'people' | 'notes'
+  >,
+  name: string,
+  opts: { changed?: boolean; from?: string } = {},
+): string {
+  const kind = e.kind === 'sales' ? 'sales meet-up' : 'installation';
+  const others = e.people.filter((p) => p !== name);
+  return [
+    `Hi ${name}, ${opts.changed ? `your ${kind} has been updated` : `you're scheduled for ${e.kind === 'sales' ? 'a' : 'an'} ${kind}`}:`,
+    `*${e.title}*`,
+    `${longDay(e.date)}, ${e.start}–${e.end}`,
+    ...(e.client ? [`Client: ${e.client}`] : []),
+    ...(e.address
+      ? [
+          `Address: ${e.address}`,
+          `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(e.address)}`,
+        ]
+      : []),
+    ...(others.length ? [`With: ${others.join(', ')}`] : []),
+    ...(e.notes ? [`Notes: ${e.notes}`] : []),
+    ...(opts.from ? ['', `– ${opts.from}, Maxsen`] : []),
+  ].join('\n');
+}
+
+/**
+ * A link that opens WhatsApp with the message written, to the number given (Singapore numbers
+ * get +65), or for choosing the contact when there's no number.
+ */
+export function whatsappMessageLink(phone: string | undefined, text: string): string {
+  const digits = (phone ?? '').replace(/\D/g, '');
+  const to = digits.length === 8 ? `65${digits}` : digits.length >= 8 ? digits : '';
+  return `https://wa.me/${to}?text=${encodeURIComponent(text)}`;
 }
 
 /** Minutes since midnight of an HH:MM time. */

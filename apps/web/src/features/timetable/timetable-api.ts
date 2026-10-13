@@ -56,10 +56,17 @@ export const saveEvent = (id: string, input: EventInput) =>
 export const deleteEvent = (id: string) =>
   call<{ removed: boolean }>(`/api/timetable/events/${id}`, { method: 'DELETE' });
 
-export const savePeople = (people: string[]) =>
-  call<{ people: string[] }>('/api/timetable/people', {
+export const savePeople = (people: string[], phones: Record<string, string>) =>
+  call<{ people: string[]; phones: Record<string, string> }>('/api/timetable/people', {
     method: 'PUT',
-    body: JSON.stringify({ people }),
+    body: JSON.stringify({ people, phones }),
+  });
+
+/** Turns the WhatsApp messages to the people assigned on or off, for everyone. */
+export const saveNotify = (notify: boolean) =>
+  call<{ notify: boolean }>('/api/timetable/settings', {
+    method: 'PUT',
+    body: JSON.stringify({ notify }),
   });
 
 /**

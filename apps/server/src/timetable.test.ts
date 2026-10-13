@@ -41,7 +41,7 @@ describe('the team timetable', () => {
     );
     expect(
       await (await app.request('/api/timetable', { headers: { cookie: team } })).json(),
-    ).toEqual({ events: [], people: [] });
+    ).toEqual({ events: [], people: [], phones: {}, notify: false });
 
     // Signed in but not admin: refused.
     const refused = await app.request(
@@ -95,5 +95,28 @@ describe('the team timetable', () => {
       send('PUT', { ...meetUp, start: '15:00', end: '14:00' }, admin),
     );
     expect(res.status).toBe(400);
+  });
+
+  it('keeps WhatsApp numbers and the notify switch, changed only by the admin', async () => {
+    const app = buildApp({
+      timetable: createTimetableStore(mkdtempSync(path.join(tmpdir(), 'tt-'))),
+    });
+    expect(
+      (await app.request('/api/timetable/settings', send('PUT', { notify: true }))).status,
+    ).toBe(403);
+    const admin = cookieOf(
+      await app.request('/api/auth/admin', send('POST', { passcode: 'admin' })),
+    );
+    await app.request('/api/timetable/settings', send('PUT', { notify: true }, admin));
+    const team = await app.request(
+      '/api/timetable/people',
+      send('PUT', { people: ['Jo', 'Sam'], phones: { Jo: '9123 4567', Ex: '8000 0000' } }, admin),
+    );
+    // A number for someone not on the team isn't kept.
+    expect(await team.json()).toEqual({ people: ['Jo', 'Sam'], phones: { Jo: '9123 4567' } });
+    expect(await (await app.request('/api/timetable')).json()).toMatchObject({
+      notify: true,
+      phones: { Jo: '9123 4567' },
+    });
   });
 });

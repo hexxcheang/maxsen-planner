@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { MapPin, Trash2, TriangleAlert, X } from 'lucide-react';
+import { MapPin, MessageCircle, Trash2, TriangleAlert, X } from 'lucide-react';
 import {
   minutesOf,
   TIMETABLE_KIND_LABEL,
@@ -41,6 +41,7 @@ export function EventDialog({
   onClose,
   onSave,
   onDelete,
+  onNotify,
 }: {
   open: boolean;
   event: TimetableEvent | null;
@@ -52,6 +53,8 @@ export function EventDialog({
   onClose: () => void;
   onSave: (input: EventInput) => Promise<void>;
   onDelete: () => Promise<void>;
+  /** Tells the people assigned on WhatsApp (when the admin has that on). */
+  onNotify?: () => void;
 }) {
   const { data: projects } = useProjects();
   const [kind, setKind] = useState<TimetableKind>(event?.kind ?? 'sales');
@@ -157,6 +160,11 @@ export function EventDialog({
                 onClick={() => setConfirming(true)}
               >
                 Delete
+              </Button>
+            )}
+            {onNotify && (
+              <Button icon={<MessageCircle className="size-4" />} onClick={onNotify}>
+                WhatsApp them
               </Button>
             )}
             <Button onClick={onClose}>Cancel</Button>
