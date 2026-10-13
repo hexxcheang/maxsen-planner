@@ -117,6 +117,15 @@ without touching a lead someone has open.
 - **Convert to project** starts a project from the lead's details.
 - Only the admin can delete a lead; everyone else marks it **Lost**.
 
+## Claims
+
+The **Claims** tab is for expenses paid for work. Anyone signed in adds a claim with the date,
+amount, what it was for (and optionally a category and the site) and a photo or PDF of each
+receipt; photos are made smaller before they're sent. Claims and receipts are kept on the server
+disk. A claim can be changed or withdrawn while it waits; the admin (`ADMIN_PASSCODE`) approves it,
+or rejects it with a reason, and everyone sees where theirs stands. **Download (Excel)** saves the
+claims shown, for paying them out.
+
 ## Security
 
 - **Set your own passcodes** in Render › Environment: `PLANNER_PASSCODE` for the team and

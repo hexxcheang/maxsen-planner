@@ -34,4 +34,5 @@ export * from './electrical/symbols.ts';
 export * from './timetable.ts';
 export * from './inventory.ts';
 export * from './leads.ts';
+export * from './claims.ts';
 export * from './sample-shot/prompt.ts';

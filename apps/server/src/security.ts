@@ -72,9 +72,29 @@ const fileHeadersOnly = secureHeaders({
   },
 });
 
+/**
+ * A receipt: only ever a picture or a PDF (anything else is sent as a plain download), opened in
+ * its own tab or shown in the app's own frame. Not sandboxed, or browsers won't show the PDF;
+ * a picture or PDF can't run as a page.
+ */
+const receiptHeaders = secureHeaders({
+  ...common,
+  xFrameOptions: 'SAMEORIGIN',
+  contentSecurityPolicy: {
+    defaultSrc: ["'none'"],
+    imgSrc: ["'self'"],
+    styleSrc: ["'unsafe-inline'"],
+    frameAncestors: ["'self'"],
+  },
+});
+
 /** Headers for every page, API answer and stored file. */
 export const headers = (): MiddlewareHandler => (c, next) =>
-  c.req.path.startsWith('/api/shared/files/') ? fileHeadersOnly(c, next) : pageHeaders(c, next);
+  c.req.path.startsWith('/api/shared/files/')
+    ? fileHeadersOnly(c, next)
+    : c.req.path.startsWith('/api/claims/receipts/')
+      ? receiptHeaders(c, next)
+      : pageHeaders(c, next);
 
 /** The visitor's address: Render puts the real one in front (behind Cloudflare). */
 function clientOf(c: Context): string {

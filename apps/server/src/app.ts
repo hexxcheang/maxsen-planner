@@ -8,6 +8,14 @@ import { ID, type SharedStore } from './shared/store.ts';
 import { eventBody, type TimetableStore } from './timetable.ts';
 import { MANAGER_KINDS, movementBody, verifyBody, type InventoryStore } from './inventory.ts';
 import { leadBody, noteBody, type LeadStore } from './leads.ts';
+import {
+  claimBody,
+  decisionBody,
+  MAX_RECEIPT_BYTES,
+  RECEIPT_ID,
+  RECEIPT_TYPES,
+  type ClaimStore,
+} from './claims.ts';
 import { createAttemptLimit, fileHeaders, headers, sameSiteOnly } from './security.ts';
 import { MAX_PDF_BYTES, pdfText } from './pdf-text.ts';
 
@@ -73,9 +81,11 @@ export function buildApp({
   timetable,
   inventory,
   leads,
+  claims,
   persistent = true,
 }: {
   leads?: LeadStore;
+  claims?: ClaimStore;
   timetable?: TimetableStore;
   inventory?: InventoryStore;
   analyse?: Analyser;
@@ -419,6 +429,92 @@ export function buildApp({
         403,
       );
     return c.json({ removed: await leads.remove(c.req.param('id')) });
+  });
+
+  // --- claims: everyone claims with receipts; the admin approves or rejects ----------------------
+  const noClaims = { error: 'not-configured', message: 'Claims need the team server.' };
+  app.get('/api/claims', async (c) =>
+    claims ? c.json({ claims: await claims.read() }) : c.json(noClaims, 503),
+  );
+  app.put('/api/claims/:id', async (c) => {
+    if (!claims) return c.json(noClaims, 503);
+    const id = c.req.param('id');
+    const body = claimBody.safeParse(await c.req.json().catch(() => null));
+    if (!ID.test(id) || !body.success)
+      return c.json(
+        {
+          error: 'bad-request',
+          message: body.success
+            ? 'Check the details.'
+            : body.error.issues[0]?.path[0] === 'receipts'
+              ? 'Add a picture or PDF of the receipt.'
+              : 'Fill in the date, amount and what it was for.',
+        },
+        400,
+      );
+    const result = await claims.save(id, body.data, nameOf(c));
+    if (result.ok) return c.json({ claim: result.claim });
+    return result.reason === 'decided'
+      ? c.json(
+          {
+            error: 'decided',
+            message: 'This claim has been decided already.',
+            claim: result.current,
+          },
+          409,
+        )
+      : c.json({ error: 'not-found' }, 404);
+  });
+  app.post('/api/claims/:id/decision', async (c) => {
+    if (!claims) return c.json(noClaims, 503);
+    if (!auth.isAdmin(c))
+      return c.json(
+        { error: 'admin', message: 'Only the admin can approve or reject a claim.' },
+        403,
+      );
+    const body = decisionBody.safeParse(await c.req.json().catch(() => null));
+    if (!body.success) return c.json({ error: 'bad-request' }, 400);
+    if (body.data.status === 'rejected' && !body.data.note)
+      return c.json({ error: 'bad-request', message: 'Say why it’s rejected.' }, 400);
+    const claim = await claims.decide(
+      c.req.param('id'),
+      body.data.status,
+      nameOf(c),
+      body.data.note,
+    );
+    return claim ? c.json({ claim }) : c.json({ error: 'not-found' }, 404);
+  });
+  app.delete('/api/claims/:id', async (c) => {
+    if (!claims) return c.json(noClaims, 503);
+    const result = await claims.remove(c.req.param('id'), auth.isAdmin(c));
+    if (result === 'decided')
+      return c.json(
+        { error: 'decided', message: 'Only the admin can remove a claim once it’s decided.' },
+        403,
+      );
+    return c.json({ removed: result === 'removed' });
+  });
+  app.put('/api/claims/receipts/:id', async (c) => {
+    if (!claims) return c.json(noClaims, 503);
+    const id = c.req.param('id');
+    const type = (c.req.header('content-type') ?? '').split(';')[0]!.trim();
+    if (!RECEIPT_ID.test(id) || !RECEIPT_TYPES.test(type))
+      return c.json({ error: 'bad-request', message: 'Receipts are photos or PDFs.' }, 400);
+    const data = new Uint8Array(await c.req.arrayBuffer());
+    if (data.byteLength > MAX_RECEIPT_BYTES)
+      return c.json(
+        { error: 'too-large', message: 'That receipt is too big (15 MB at most).' },
+        413,
+      );
+    await claims.putReceipt(id, data, type);
+    return c.json({ ok: true });
+  });
+  app.get('/api/claims/receipts/:id', async (c) => {
+    if (!claims) return c.json(noClaims, 503);
+    const id = c.req.param('id');
+    const file = RECEIPT_ID.test(id) ? await claims.getReceipt(id) : null;
+    if (!file) return c.json({ error: 'not-found' }, 404);
+    return c.body(new Uint8Array(file.data), 200, fileHeaders(file.type));
   });
 
   app.get('/api/health', (c) => c.json({ ok: true }));
