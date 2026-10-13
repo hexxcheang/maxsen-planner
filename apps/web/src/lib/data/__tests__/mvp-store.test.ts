@@ -167,8 +167,16 @@ describe('upgrading saved lighting wording', () => {
       ...state,
       variants: [
         ...state.variants.filter((x) => !['var_luna_dl_3000', 'var_lumi_cob_3000'].includes(x.id)),
-        v('var_luna_dl_3000', '3000K', 'Recessed downlight in warm white (3000K) for living areas and bedrooms.'),
-        v('var_luna_dl_4000', '4000K', 'Recessed downlight in neutral white (4000K) for kitchens and work areas.'),
+        v(
+          'var_luna_dl_3000',
+          '3000K',
+          'Recessed downlight in warm white (3000K) for living areas and bedrooms.',
+        ),
+        v(
+          'var_luna_dl_4000',
+          '4000K',
+          'Recessed downlight in neutral white (4000K) for kitchens and work areas.',
+        ),
         v('var_lumi_cob_3000', 'Warm COB', 'Our own words.'),
       ],
     };
@@ -177,7 +185,10 @@ describe('upgrading saved lighting wording', () => {
     expect(get('var_luna_dl_3000')).toMatchObject({ name: 'Smart CCT', hidden: false });
     expect(get('var_luna_dl_3000').description).toMatch(/2700K–6000K.*CRI 98, app control/);
     expect(get('var_luna_dl_4000')).toMatchObject({ name: 'Smart CCT', hidden: true });
-    expect(get('var_lumi_cob_3000')).toMatchObject({ name: 'Warm COB', description: 'Our own words.' });
+    expect(get('var_lumi_cob_3000')).toMatchObject({
+      name: 'Warm COB',
+      description: 'Our own words.',
+    });
     expect(addNewSampleCategories(next)).toBe(next);
   });
 });

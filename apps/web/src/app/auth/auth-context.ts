@@ -8,10 +8,15 @@ export interface AuthApi {
 
 export interface AdminApi {
   unlocked: boolean;
-  unlock: (passcode: string) => Promise<boolean>;
+  /** The exclusive admin (the owner): admin, plus the Team tab. Checked on the server. */
+  exclusive: boolean;
+  /** Which admin a passcode unlocked, or null if it's wrong. */
+  unlock: (passcode: string) => Promise<'exclusive' | 'admin' | null>;
   lock: () => void;
   /** Resolves true once admin is unlocked, opening the unlock dialog if needed. */
   requireAdmin: (action?: string) => Promise<boolean>;
+  /** Resolves true once the exclusive admin is unlocked, asking for its passcode if needed. */
+  requireExclusive: (action?: string) => Promise<boolean>;
 }
 
 export const AuthContext = createContext<AuthApi | null>(null);

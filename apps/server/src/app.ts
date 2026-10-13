@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { Hono } from 'hono';
+import { Hono, type MiddlewareHandler } from 'hono';
 import { z } from 'zod';
 import { AnalysisError, type Analyser } from './magic/analyse.ts';
 import { RenderError, type Renderer } from './sample/render.ts';
@@ -132,7 +132,12 @@ export function buildApp({
 
   /** Whether the server checks the passcode (online), and whether this browser is signed in. */
   app.get('/api/auth/status', (c) =>
-    c.json({ required: auth.required, signedIn: auth.signedIn(c), admin: auth.isAdmin(c) }),
+    c.json({
+      required: auth.required,
+      signedIn: auth.signedIn(c),
+      admin: auth.isAdmin(c),
+      exclusive: auth.isExclusive(c),
+    }),
   );
   /** Admin is unlocked on the server, so only the admin can change what everyone shares. */
   app.post('/api/auth/admin', async (c) => {
@@ -140,10 +145,10 @@ export function buildApp({
     const blocked = tooMany(c);
     if (blocked) return blocked;
     const body = (await c.req.json().catch(() => ({}))) as { passcode?: unknown };
-    const ok = auth.unlockAdmin(c, typeof body.passcode === 'string' ? body.passcode : '');
-    if (ok) attempts.succeeded(c);
+    const level = auth.unlockAdmin(c, typeof body.passcode === 'string' ? body.passcode : '');
+    if (level) attempts.succeeded(c);
     else attempts.failed(c);
-    return c.json({ ok }, ok ? 200 : 401);
+    return c.json({ ok: Boolean(level), exclusive: level === 'exclusive' }, level ? 200 : 401);
   });
   app.post('/api/auth/admin/lock', (c) => {
     auth.lockAdmin(c);
@@ -316,12 +321,15 @@ export function buildApp({
     // `fresh`: the server has no timetable (new, or it lost its data); a device can put back its copy.
     const data = { ...(await timetable.read()), fresh: !(await timetable.exists()) };
     if (!team) return c.json(data);
-    // The people to assign, and their numbers, come from the Team tab: active members only.
+    // The people to assign come from the Team tab (active members only). Their numbers go only
+    // to the admin, who messages them; the rest of the team sees names.
     const members = (await team.read()).filter((m) => m.active);
     return c.json({
       ...data,
       people: members.map((m) => m.name).sort((a, b) => a.localeCompare(b)),
-      phones: Object.fromEntries(members.flatMap((m) => (m.phone ? [[m.name, m.phone]] : []))),
+      phones: auth.isAdmin(c)
+        ? Object.fromEntries(members.flatMap((m) => (m.phone ? [[m.name, m.phone]] : [])))
+        : {},
     });
   });
   /** After the server lost its data: a device's last copy, accepted only into an empty timetable. */
@@ -566,8 +574,18 @@ export function buildApp({
     return c.body(new Uint8Array(file.data), 200, fileHeaders(file.type));
   });
 
-  // --- the team: everyone signed in sees it; the admin keeps it ----------------------------------
+  // --- the team: only the exclusive admin sees and keeps it -------------------------------------
   const noTeam = { error: 'not-configured', message: 'The team list needs the team server.' };
+  const notExclusive = {
+    error: 'exclusive',
+    message: 'Only the exclusive admin can see and change the team.',
+  };
+  const exclusiveOnly: MiddlewareHandler = async (c, next) => {
+    if (!auth.isExclusive(c)) return c.json(notExclusive, 403);
+    await next();
+  };
+  app.use('/api/team', exclusiveOnly);
+  app.use('/api/team/*', exclusiveOnly);
   app.get('/api/team', async (c) =>
     team ? c.json({ members: await team.read(), fresh: await team.fresh() }) : c.json(noTeam, 503),
   );
@@ -579,8 +597,6 @@ export function buildApp({
   });
   app.put('/api/team/:id', async (c) => {
     if (!team) return c.json(noTeam, 503);
-    if (!auth.isAdmin(c))
-      return c.json({ error: 'admin', message: 'Only the admin can change the team.' }, 403);
     const id = c.req.param('id');
     const body = memberBody.safeParse(await c.req.json().catch(() => null));
     if (!ID.test(id) || !body.success)
@@ -592,8 +608,6 @@ export function buildApp({
   });
   app.delete('/api/team/:id', async (c) => {
     if (!team) return c.json(noTeam, 503);
-    if (!auth.isAdmin(c))
-      return c.json({ error: 'admin', message: 'Only the admin can change the team.' }, 403);
     return c.json({ removed: await team.remove(c.req.param('id')) });
   });
 

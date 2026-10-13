@@ -89,8 +89,25 @@ be added later. The Timetable's **Team** button opens the Team tab.
 ## Team
 
 The **Team** tab keeps everyone's profile: name, role (Sales, Installer, Electrician, Integrator,
-Delivery, Manager, Office), WhatsApp number, email, joined date and notes. Everyone signed in sees
-it; only the admin (`ADMIN_PASSCODE`) adds, changes or removes people.
+Delivery, Manager, Office), WhatsApp number, email, joined date and notes. Only the **exclusive
+admin** (the owner) sees it, adds, changes or removes people.
+
+**Three levels of access:**
+
+| Who             | Passcode             | Can                                                                                        |
+| --------------- | -------------------- | ------------------------------------------------------------------------------------------ |
+| Team            | `PLANNER_PASSCODE`   | Everything day to day; sees who's assigned on the timetable, not their numbers             |
+| Admin           | `ADMIN_PASSCODE`     | Also schedules, approves claims, pricing and settings; gets the numbers to WhatsApp people |
+| Exclusive admin | `EXCLUSIVE_PASSCODE` | Everything the admin can, plus the Team tab                                                |
+
+To set it up: Render › your service › **Environment** › add `EXCLUSIVE_PASSCODE` with your
+passcode, and save (it redeploys). On your Mac, add `EXCLUSIVE_PASSCODE=` with it to the `.env`
+file in the project folder and restart `pnpm dev`. Until it's set, nobody can open the Team tab.
+It's never written in the code, which anyone can read on GitHub.
+
+To unlock it, use any **Unlock admin** button (or open **Team**) and enter the exclusive admin's
+passcode instead of the admin's. **Team** then shows in the menu. Locking admin, signing out, or 12
+hours passing locks it again, and the team's details are removed from that device.
 
 - **WhatsApp numbers are checked as they're typed.** A Singapore mobile (8 digits starting 8 or 9)
   gets +65 added; a number from elsewhere needs its country code (+60…). A good number shows

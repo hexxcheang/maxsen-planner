@@ -47,7 +47,7 @@ const ALL_PEOPLE = '__all__';
  */
 export function TimetableScreen() {
   const { timetable, state, refresh, setData } = useTimetable();
-  const { unlocked, requireAdmin } = useAdmin();
+  const { unlocked, exclusive, requireAdmin } = useAdmin();
   const { toast } = useToast();
   const { ensureName, dialog: nameDialog } = useEnsureName();
   const [weekStart, setWeekStart] = useState(() => addDays(today(), -weekdayIndex(today())));
@@ -124,9 +124,11 @@ export function TimetableScreen() {
         actions={
           unlocked ? (
             <>
-              <Button icon={<Users className="size-4" />} onClick={() => void navigate('/team')}>
-                Team
-              </Button>
+              {exclusive && (
+                <Button icon={<Users className="size-4" />} onClick={() => void navigate('/team')}>
+                  Team
+                </Button>
+              )}
               <Button
                 variant="primary"
                 icon={<Plus className="size-4" />}

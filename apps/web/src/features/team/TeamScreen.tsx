@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CloudOff, Lock, Mail, MessageCircle, Plus, TriangleAlert } from 'lucide-react';
+import { CloudOff, Mail, MessageCircle, Plus, ShieldCheck, TriangleAlert } from 'lucide-react';
 import { byName, whatsappNumber, type TeamMember } from '@maxsen/domain';
 import { Button, PageHeader } from '@/components/ui';
 import { Page } from '@/components/Page';
@@ -11,15 +11,31 @@ import { useTeam } from './team-api';
 
 /**
  * Everyone on the team, with their role and WhatsApp number: the timetable assigns and messages
- * people from here. Everyone signed in sees it; the admin keeps it.
+ * people from here. Only the exclusive admin (the owner) sees and keeps it.
  */
 export function TeamScreen() {
-  const { members, state, put, drop } = useTeam();
-  const { unlocked, requireAdmin } = useAdmin();
+  const { exclusive, requireExclusive } = useAdmin();
+  const { members, state, put, drop } = useTeam(exclusive);
   const { ensureName, dialog: nameDialog } = useEnsureName();
   const [opened, setOpened] = useState<TeamMember | 'new' | null>(null);
   const sorted = [...members].sort(byName);
   const missing = members.filter((m) => m.active && !(m.phone && whatsappNumber(m.phone).ok));
+
+  if (!exclusive)
+    return (
+      <Page>
+        <PageHeader title="Team" />
+        <div className="flex flex-col items-start gap-3 border-t border-rule py-10">
+          <p className="flex items-center gap-2 text-body text-ink-2">
+            <ShieldCheck aria-hidden className="size-5" />
+            Only the exclusive admin can see the team and their details.
+          </p>
+          <Button variant="primary" onClick={() => void requireExclusive('open the team')}>
+            Unlock exclusive admin
+          </Button>
+        </div>
+      </Page>
+    );
 
   if (state === 'unavailable')
     return (
@@ -36,25 +52,15 @@ export function TeamScreen() {
     <Page wide>
       <PageHeader
         title="Team"
-        description="Everyone at Maxsen with their role and WhatsApp number. The timetable assigns appointments to the team and messages them on these numbers."
+        description="Everyone at Maxsen with their role and WhatsApp number, seen only by the exclusive admin. The timetable assigns appointments to the team and the admin messages them on these numbers."
         actions={
-          unlocked ? (
-            <Button
-              variant="primary"
-              icon={<Plus className="size-4" />}
-              onClick={() => setOpened('new')}
-            >
-              Add person
-            </Button>
-          ) : (
-            <Button
-              variant="ghost"
-              icon={<Lock className="size-4" />}
-              onClick={() => void requireAdmin('change the team')}
-            >
-              Admin: edit team
-            </Button>
-          )
+          <Button
+            variant="primary"
+            icon={<Plus className="size-4" />}
+            onClick={() => setOpened('new')}
+          >
+            Add person
+          </Button>
         }
       />
       {missing.length > 0 && (
@@ -75,7 +81,7 @@ export function TeamScreen() {
       )}
       {sorted.length === 0 ? (
         <p className="border-t border-rule py-10 text-body text-ink-2">
-          No one on the team yet. Unlock admin, then Add person.
+          No one on the team yet. Add person to start.
         </p>
       ) : (
         <ul
@@ -96,11 +102,7 @@ export function TeamScreen() {
                   <div className="min-w-0">
                     <button
                       type="button"
-                      onClick={() =>
-                        unlocked
-                          ? setOpened(m)
-                          : void requireAdmin('change the team').then((ok) => ok && setOpened(m))
-                      }
+                      onClick={() => setOpened(m)}
                       className="text-left text-body font-medium text-ink hover:underline"
                     >
                       {m.name}
@@ -149,7 +151,7 @@ export function TeamScreen() {
           key={opened === 'new' ? 'new' : opened.id}
           member={opened === 'new' ? null : opened}
           ensureName={ensureName}
-          requireAdmin={requireAdmin}
+          requireAdmin={requireExclusive}
           onClose={() => setOpened(null)}
           onSaved={put}
           onDeleted={drop}

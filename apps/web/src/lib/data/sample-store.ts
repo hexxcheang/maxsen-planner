@@ -516,9 +516,11 @@ export function createSampleStore(
         d.sourceFiles = [...others(d.sourceFiles), ...structuredClone(bundle.sourceFiles)];
         d.sourcePages = [...others(d.sourcePages), ...structuredClone(bundle.sourcePages)];
         const products = new Set(d.products.map((p) => p.id));
-        for (const p of bundle.products) if (!products.has(p.id)) d.products.push(structuredClone(p));
+        for (const p of bundle.products)
+          if (!products.has(p.id)) d.products.push(structuredClone(p));
         const variants = new Set(d.variants.map((v) => v.id));
-        for (const v of bundle.variants) if (!variants.has(v.id)) d.variants.push(structuredClone(v));
+        for (const v of bundle.variants)
+          if (!variants.has(v.id)) d.variants.push(structuredClone(v));
       });
     },
 

@@ -28,6 +28,10 @@ services:
       # server; "admin" until set, so set your own.
       - key: ADMIN_PASSCODE
         sync: false
+      # The exclusive admin (the owner): everything the admin can do, plus the Team tab with
+      # everyone's details and WhatsApp numbers. Until set, nobody can open the Team tab.
+      - key: EXCLUSIVE_PASSCODE
+        sync: false
       - key: SESSION_SECRET
         generateValue: true
       - key: DATA_DIR

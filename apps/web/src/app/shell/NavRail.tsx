@@ -22,13 +22,15 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { Tooltip } from '@/components/ui';
-import { useAuth } from '../auth/auth-context';
+import { useAdmin, useAuth } from '../auth/auth-context';
 
 interface RailItem {
   to: string;
   label: string;
   icon: ReactNode;
   end?: boolean;
+  /** Shown only with the exclusive admin unlocked. */
+  exclusive?: boolean;
 }
 
 const GLOBAL: RailItem[] = [
@@ -37,7 +39,7 @@ const GLOBAL: RailItem[] = [
   { to: '/timetable', label: 'Timetable', icon: <CalendarDays /> },
   { to: '/inventory', label: 'Inventory', icon: <Boxes /> },
   { to: '/claims', label: 'Claims', icon: <ReceiptText /> },
-  { to: '/team', label: 'Team', icon: <UsersRound /> },
+  { to: '/team', label: 'Team', icon: <UsersRound />, exclusive: true },
   { to: '/quote', label: 'Quote', icon: <MessageSquareText /> },
   { to: '/electrical', label: 'Electrical', icon: <Zap /> },
   { to: '/product-sample', label: 'Sample', icon: <ImagePlus /> },
@@ -77,6 +79,7 @@ function RailLink({ item }: { item: RailItem }) {
 
 export function NavRail() {
   const { signOut } = useAuth();
+  const { exclusive } = useAdmin();
   const inProject = useMatch('/projects/:projectId/*');
   const projectId = inProject?.params.projectId;
   const showProject = projectId !== undefined && projectId !== 'new';
@@ -88,7 +91,7 @@ export function NavRail() {
     >
       <NavLinkLogo />
       <ul className="flex w-full flex-col">
-        {GLOBAL.map((item) => (
+        {GLOBAL.filter((item) => exclusive || !item.exclusive).map((item) => (
           <li key={item.to}>
             <RailLink item={item} />
           </li>

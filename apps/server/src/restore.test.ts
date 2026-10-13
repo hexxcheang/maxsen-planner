@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { buildApp } from './app.ts';
+import { createAuth } from './auth.ts';
 import { createLeadStore } from './leads.ts';
 import { topicOf } from './live.ts';
 import { createTeamStore } from './team.ts';
@@ -40,6 +41,7 @@ describe('putting data back after the server lost it', () => {
   const setup = () => {
     const dir = mkdtempSync(path.join(tmpdir(), 'restore-'));
     return buildApp({
+      auth: createAuth({ exclusivePasscode: 'owner-pass' }),
       leads: createLeadStore(dir),
       timetable: createTimetableStore(dir),
       team: createTeamStore(dir),
@@ -65,29 +67,35 @@ describe('putting data back after the server lost it', () => {
 
   it('puts back the timetable and the team, with the team’s details', async () => {
     const app = setup();
-    expect(await (await app.request('/api/timetable')).json()).toMatchObject({ fresh: true });
-    expect(await (await app.request('/api/team')).json()).toMatchObject({ fresh: true });
+    const unlocked = await app.request('/api/auth/admin', post({ passcode: 'owner-pass' }));
+    const cookie = unlocked.headers
+      .getSetCookie()
+      .map((c) => c.split(';')[0])
+      .join('; ');
+    const get = async (url: string) => (await app.request(url, { headers: { cookie } })).json();
+    expect(await get('/api/timetable')).toMatchObject({ fresh: true });
+    expect(await get('/api/team')).toMatchObject({ fresh: true });
     const restored = await app.request(
       '/api/timetable/restore',
       post({ events: [event], people: ['Sam'], phones: { Sam: '+65 8123 4567' }, notify: true }),
     );
     expect(await restored.json()).toEqual({ restored: true });
     // The team is first copied from the timetable, but a device's team copy still replaces it.
-    expect(await (await app.request('/api/team')).json()).toMatchObject({
+    expect(await get('/api/team')).toMatchObject({
       members: [{ name: 'Sam' }],
       fresh: true,
     });
     const member = { id: 'tm_sam12345', name: 'Sam', role: 'Installer', phone: '+65 8123 4567' };
     const team = await app.request(
       '/api/team/restore',
-      post({ members: [{ ...member, active: true, updatedAt: at, updatedBy: 'Boss' }] }),
+      post({ members: [{ ...member, active: true, updatedAt: at, updatedBy: 'Boss' }] }, cookie),
     );
     expect(await team.json()).toEqual({ restored: true });
-    expect(await (await app.request('/api/team')).json()).toMatchObject({
+    expect(await get('/api/team')).toMatchObject({
       members: [{ role: 'Installer' }],
       fresh: false,
     });
-    expect(await (await app.request('/api/timetable')).json()).toMatchObject({
+    expect(await get('/api/timetable')).toMatchObject({
       events: [{ title: 'Install' }],
       people: ['Sam'],
       notify: true,

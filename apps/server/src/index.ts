@@ -30,6 +30,7 @@ const render = createRenderer();
 const auth = createAuth({
   passcode: process.env.PLANNER_PASSCODE,
   adminPasscode: process.env.ADMIN_PASSCODE,
+  exclusivePasscode: process.env.EXCLUSIVE_PASSCODE,
   secret: process.env.SESSION_SECRET,
 });
 
@@ -88,6 +89,10 @@ if (process.env.NODE_ENV !== 'test') {
     if (auth.required && !process.env.ADMIN_PASSCODE?.trim())
       console.warn(
         'WARNING: ADMIN_PASSCODE is not set, so the admin passcode is "admin". Set your own in Render › Environment.',
+      );
+    if (!auth.exclusiveSet)
+      console.warn(
+        'Note: EXCLUSIVE_PASSCODE is not set, so nobody can open the Team tab. Add it to .env (or Render › Environment).',
       );
     console.log(
       render

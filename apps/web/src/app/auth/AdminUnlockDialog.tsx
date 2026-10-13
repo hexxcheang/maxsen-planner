@@ -5,11 +5,20 @@ interface AdminUnlockDialogProps {
   open: boolean;
   /** What the user was trying to do, e.g. "edit the catalogue". */
   action?: string;
-  onUnlock: (passcode: string) => Promise<boolean>;
+  /** Asks for the exclusive admin's passcode: the admin's isn't enough. */
+  exclusive?: boolean;
+  onUnlock: (passcode: string) => Promise<'exclusive' | 'admin' | null>;
   onDone: (unlocked: boolean) => void;
 }
 
-export function AdminUnlockDialog({ open, action, onUnlock, onDone }: AdminUnlockDialogProps) {
+export function AdminUnlockDialog({
+  open,
+  action,
+  exclusive = false,
+  onUnlock,
+  onDone,
+}: AdminUnlockDialogProps) {
+  const who = exclusive ? 'exclusive admin' : 'admin';
   const [passcode, setPasscode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -24,12 +33,14 @@ export function AdminUnlockDialog({ open, action, onUnlock, onDone }: AdminUnloc
     e.preventDefault();
     setBusy(true);
     try {
-      const ok = await onUnlock(passcode);
-      if (ok) close(true);
-      else setError("That admin passcode isn't right. Try again.");
+      const level = await onUnlock(passcode);
+      if (level === 'exclusive' || (level === 'admin' && !exclusive)) close(true);
+      else if (level === 'admin')
+        setError('That’s the admin passcode. This needs the exclusive admin’s passcode.');
+      else setError(`That ${who} passcode isn't right. Try again.`);
     } catch (e) {
       // Paused after too many wrong tries.
-      setError(e instanceof Error ? e.message : "That admin passcode isn't right. Try again.");
+      setError(e instanceof Error ? e.message : `That ${who} passcode isn't right. Try again.`);
     } finally {
       setBusy(false);
     }
@@ -42,15 +53,15 @@ export function AdminUnlockDialog({ open, action, onUnlock, onDone }: AdminUnloc
         if (!o) close(false);
       }}
       width="sm"
-      title="Unlock admin"
+      title={exclusive ? 'Unlock exclusive admin' : 'Unlock admin'}
       description={
         action
-          ? `Enter the admin passcode to ${action}.`
+          ? `Enter the ${who} passcode to ${action}.`
           : 'Enter the admin passcode to change protected settings.'
       }
     >
       <form id="admin-unlock" onSubmit={submit} className="flex flex-col gap-4">
-        <Field label="Admin passcode" error={error}>
+        <Field label={exclusive ? 'Exclusive admin passcode' : 'Admin passcode'} error={error}>
           <Input
             type="password"
             autoComplete="off"

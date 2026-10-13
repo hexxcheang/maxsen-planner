@@ -18,6 +18,7 @@ test.beforeAll(async () => {
       DATA_DIR: mkdtempSync(path.join(tmpdir(), 'timetable-')),
       PLANNER_PASSCODE: '',
       ADMIN_PASSCODE: 'boss',
+      EXCLUSIVE_PASSCODE: 'owner-only',
     },
     stdio: 'ignore',
   });
@@ -130,8 +131,22 @@ test('the admin schedules the timetable; everyone sees it', async ({ browser }, 
 
   // Jo's WhatsApp number on the team; messages on: changing an appointment offers to tell them.
   // Jo joined the team when first assigned; their profile takes a checked WhatsApp number.
-  await admin.getByRole('button', { name: 'Team' }).click();
-  await expect(admin.getByRole('heading', { name: 'Team' })).toBeVisible();
+  // The admin doesn't see the team: only the exclusive admin does.
+  const nav = admin.getByRole('navigation', { name: 'Main' });
+  await expect(nav.getByRole('link', { name: 'Team' })).toHaveCount(0);
+  await expect(admin.getByRole('button', { name: 'Team' })).toHaveCount(0);
+  await admin.goto('/team');
+  await expect(admin.getByText('Only the exclusive admin can see the team')).toBeVisible();
+  await expect(admin.getByRole('list', { name: 'Team' })).toHaveCount(0);
+  await admin.getByRole('button', { name: 'Unlock exclusive admin' }).click();
+  const owner = admin.getByRole('dialog', { name: 'Unlock exclusive admin' });
+  await owner.getByLabel('Exclusive admin passcode').fill('boss');
+  await owner.getByRole('button', { name: /Unlock/ }).click();
+  await expect(owner.getByText('That’s the admin passcode.', { exact: false })).toBeVisible();
+  await owner.getByLabel('Exclusive admin passcode').fill('owner-only');
+  await owner.getByRole('button', { name: /Unlock/ }).click();
+  await expect(owner).toBeHidden();
+  await expect(nav.getByRole('link', { name: 'Team' })).toBeVisible();
   await admin.getByRole('list', { name: 'Team' }).getByRole('button', { name: 'Jo' }).click();
   const profile = admin.getByRole('dialog', { name: 'Jo' });
   await profile.getByLabel('WhatsApp number').fill('6123 4567');
@@ -183,6 +198,17 @@ test('the admin schedules the timetable; everyone sees it', async ({ browser }, 
   await expect(details).toContainText('Only the admin can change it');
   await expect(details).toContainText('Jo');
   await expect(details).toContainText('Scheduled by Hexiang');
+  await details.press('Escape');
+
+  // No Team for it, and the server keeps the team and their numbers from it.
+  await expect(
+    worker.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Team' }),
+  ).toHaveCount(0);
+  const seen = await worker.evaluate(async () => ({
+    team: (await fetch('/api/team')).status,
+    phones: ((await (await fetch('/api/timetable')).json()) as { phones: object }).phones,
+  }));
+  expect(seen).toEqual({ team: 403, phones: {} });
 
   // And the server refuses a change from it.
   const res = await worker.evaluate(() =>

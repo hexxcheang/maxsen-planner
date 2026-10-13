@@ -120,7 +120,7 @@ const TOPICS: Topic[] = [
     ],
     notes: [
       'A warning triangle marks a person booked twice at the same time.',
-      'People and their WhatsApp numbers come from the Team tab; the Team button opens it.',
+      'People and their WhatsApp numbers come from the Team tab, which only the exclusive admin sees. Everyone else sees names only.',
       'Changes show on every device at once, with no reload.',
     ],
   },
@@ -180,10 +180,14 @@ const TOPICS: Topic[] = [
     id: 'team',
     title: 'Team',
     summary:
-      'Everyone at Maxsen with their role and WhatsApp number. The timetable assigns and messages people from here.',
+      'Everyone at Maxsen with their role and WhatsApp number, seen only by the exclusive admin (the owner). The timetable assigns and messages people from here.',
     steps: [
       {
-        title: 'Add or edit someone (admin)',
+        title: 'Unlock the exclusive admin',
+        body: 'Use any Unlock admin button and enter the exclusive admin’s passcode. Team then shows in the menu. The admin’s passcode doesn’t open it.',
+      },
+      {
+        title: 'Add or edit someone',
         body: 'Add person, or tap a name. Set the role, WhatsApp number, email, joined date and notes.',
       },
       {
@@ -198,6 +202,8 @@ const TOPICS: Topic[] = [
     notes: [
       'A warning at the top lists anyone active with no WhatsApp number yet.',
       'Anyone assigned on the timetable who isn’t on the team yet is added to it.',
+      'Everyone else sees only names on the timetable. The admin also gets the WhatsApp numbers, to message the people assigned.',
+      'Locking admin or signing out removes the team’s details from that device.',
     ],
   },
   {
@@ -287,7 +293,8 @@ const TOPICS: Topic[] = [
       'Icon styles: how devices look on the exported plans.',
       'Favourites: variants the team uses most, offered first in the planner.',
       'Your data: restore the sample data or start with an empty workspace on this device.',
-      'Admin-only actions elsewhere: scheduling the timetable, the Team tab, approving claims, the inventory manager’s steps and deleting leads.',
+      'Admin-only actions elsewhere: scheduling the timetable, approving claims, the inventory manager’s steps and deleting leads.',
+      'The Team tab needs the exclusive admin (the owner), a separate passcode above the admin’s.',
     ],
   },
 ];

@@ -55,14 +55,28 @@ function cached(): TeamMember[] | null {
   }
 }
 
-/** The team: fetched on opening and when the app comes back into view; kept for offline. */
-export function useTeam() {
-  const [members, setMembers] = useState<TeamMember[] | null>(cached);
+/**
+ * The team, for the exclusive admin only (`enabled`): fetched on opening, when anyone changes it
+ * and when the app comes back into view; kept on the device for offline until they lock.
+ */
+export function useTeam(enabled = true) {
+  const [members, setMembers] = useState<TeamMember[] | null>(() => (enabled ? cached() : null));
   const [state, setState] = useState<'loading' | 'live' | 'offline' | 'unavailable'>('loading');
   const refresh = useCallback(async (): Promise<void> => {
+    if (!enabled) return;
     try {
       const res = await fetch('/api/team', { credentials: 'same-origin' });
       if (res.status === 503 || res.status === 404) return setState('unavailable');
+      if (res.status === 403) {
+        // No longer the exclusive admin here: the team's details go from this device.
+        try {
+          window.localStorage.removeItem(CACHE);
+        } catch {
+          // Nothing kept.
+        }
+        setMembers(null);
+        return setState('unavailable');
+      }
       if (!res.ok) throw new Error(String(res.status));
       const { members: next, fresh } = (await res.json()) as {
         members: TeamMember[];
@@ -82,7 +96,7 @@ export function useTeam() {
     } catch {
       setState(cached() ? 'offline' : 'unavailable');
     }
-  }, []);
+  }, [enabled]);
   useEffect(() => {
     void refresh();
     const onShow = () => {

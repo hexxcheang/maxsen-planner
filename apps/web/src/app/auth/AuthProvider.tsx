@@ -7,6 +7,18 @@ const TEAM_PASSCODE = 'maxsen';
 const ADMIN_PASSCODE = 'admin';
 const SESSION_KEY = 'maxsen.session';
 const ADMIN_KEY = 'maxsen.admin';
+const EXCLUSIVE_KEY = 'maxsen.exclusive';
+/** Kept on a device only while the exclusive admin is unlocked there. */
+const TEAM_CACHE = 'maxsen.team.cache';
+
+/** The team's details leave this device when the exclusive admin locks or signs out. */
+function forgetTeam() {
+  try {
+    window.localStorage.removeItem(TEAM_CACHE);
+  } catch {
+    // Nothing kept.
+  }
+}
 
 function read(storage: () => Storage, key: string): boolean {
   try {
@@ -76,7 +88,8 @@ export function AuthProvider({
 }) {
   const [signedIn, setSignedIn] = useState(() => initialSignedIn ?? read(local, SESSION_KEY));
   const [unlocked, setUnlocked] = useState(() => read(session, ADMIN_KEY));
-  const [prompt, setPrompt] = useState<{ action?: string } | null>(null);
+  const [exclusive, setExclusive] = useState(() => read(session, EXCLUSIVE_KEY));
+  const [prompt, setPrompt] = useState<{ action?: string; exclusive?: boolean } | null>(null);
   const pending = useRef<((ok: boolean) => void) | null>(null);
 
   const signIn = useCallback(async (passcode: string) => {
@@ -95,11 +108,21 @@ export function AuthProvider({
     if (!signedIn || initialSignedIn !== undefined) return;
     let live = true;
     fetch('/api/auth/status')
-      .then((r) => (r.ok ? (r.json() as Promise<{ required: boolean; signedIn: boolean }>) : null))
+      .then((r) =>
+        r.ok
+          ? (r.json() as Promise<{ required: boolean; signedIn: boolean; exclusive?: boolean }>)
+          : null,
+      )
       .then((s) => {
         if (live && s?.required && !s.signedIn) {
           write(local, SESSION_KEY, false);
           setSignedIn(false);
+        }
+        // The exclusive admin's unlock ran out (or was locked elsewhere): the team goes too.
+        if (live && s && s.exclusive === false && read(session, EXCLUSIVE_KEY)) {
+          write(session, EXCLUSIVE_KEY, false);
+          setExclusive(false);
+          forgetTeam();
         }
       })
       .catch(() => undefined);
@@ -112,8 +135,11 @@ export function AuthProvider({
     void fetch('/api/auth/sign-out', { method: 'POST' }).catch(() => undefined);
     write(local, SESSION_KEY, false);
     write(session, ADMIN_KEY, false);
+    write(session, EXCLUSIVE_KEY, false);
+    forgetTeam();
     setSignedIn(false);
     setUnlocked(false);
+    setExclusive(false);
   }, []);
 
   const unlock = useCallback(async (passcode: string) => {
@@ -133,17 +159,26 @@ export function AuthProvider({
           ? 'wrong'
           : 'unavailable';
     const ok = server === 'ok' || (server === 'unavailable' && passcode.trim() === ADMIN_PASSCODE);
-    if (ok) {
-      write(session, ADMIN_KEY, true);
-      setUnlocked(true);
-    }
-    return ok;
+    if (!ok) return null;
+    // Only the server unlocks the exclusive admin: its passcode never lives in the app.
+    const isExclusive =
+      server === 'ok' &&
+      ((await res!.json().catch(() => null)) as { exclusive?: boolean } | null)?.exclusive === true;
+    write(session, ADMIN_KEY, true);
+    write(session, EXCLUSIVE_KEY, isExclusive);
+    if (!isExclusive) forgetTeam();
+    setUnlocked(true);
+    setExclusive(isExclusive);
+    return isExclusive ? 'exclusive' : 'admin';
   }, []);
 
   const lock = useCallback(() => {
     void fetch('/api/auth/admin/lock', { method: 'POST' }).catch(() => undefined);
     write(session, ADMIN_KEY, false);
+    write(session, EXCLUSIVE_KEY, false);
+    forgetTeam();
     setUnlocked(false);
+    setExclusive(false);
   }, []);
 
   const requireAdmin = useCallback(
@@ -158,6 +193,18 @@ export function AuthProvider({
     [unlocked],
   );
 
+  const requireExclusive = useCallback(
+    (action?: string) => {
+      if (exclusive) return Promise.resolve(true);
+      pending.current?.(false);
+      setPrompt({ action, exclusive: true });
+      return new Promise<boolean>((resolve) => {
+        pending.current = resolve;
+      });
+    },
+    [exclusive],
+  );
+
   const settle = (ok: boolean) => {
     pending.current?.(ok);
     pending.current = null;
@@ -166,8 +213,8 @@ export function AuthProvider({
 
   const auth = useMemo<AuthApi>(() => ({ signedIn, signIn, signOut }), [signedIn, signIn, signOut]);
   const admin = useMemo<AdminApi>(
-    () => ({ unlocked, unlock, lock, requireAdmin }),
-    [unlocked, unlock, lock, requireAdmin],
+    () => ({ unlocked, exclusive, unlock, lock, requireAdmin, requireExclusive }),
+    [unlocked, exclusive, unlock, lock, requireAdmin, requireExclusive],
   );
 
   return (
@@ -177,6 +224,7 @@ export function AuthProvider({
         <AdminUnlockDialog
           open={prompt !== null}
           action={prompt?.action}
+          exclusive={prompt?.exclusive}
           onUnlock={unlock}
           onDone={settle}
         />
