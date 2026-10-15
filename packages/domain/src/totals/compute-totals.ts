@@ -5,6 +5,7 @@ import {
   type CategoryId,
 } from '../categories.ts';
 import type { PlanDocument, VariantSnapshot } from '../types.ts';
+import { ledMetres } from '../led-length.ts';
 import { compareLines } from './sort.ts';
 
 export type LineKey = `variant:${string}`;
@@ -21,8 +22,10 @@ export interface TotalLine {
   calculated: number;
   /** True for the Smart LED Driver and Track Driver lines (product spec §9.3). */
   autoAdded: boolean;
-  /** LED-strip runs of this variant whose metres have not been entered yet. */
+  /** LED-strip runs of this variant with no length: none typed, and the plan has no scale. */
   runsMissingMetres: number;
+  /** LED-strip runs of this variant counted at their length estimated from the plan's scale. */
+  runsEstimated: number;
 }
 
 export type VariantResolver = (variantId: string) => VariantSnapshot | undefined;
@@ -52,6 +55,7 @@ interface Accumulator {
   unit: 'pcs' | 'm';
   total: number;
   missing: number;
+  estimated: number;
   autoAdded: boolean;
 }
 
@@ -71,13 +75,15 @@ export function computeTotals(documents: PlanDocument[], resolve: VariantResolve
     amount: number,
     autoAdded = false,
     missing = 0,
+    estimated = 0,
   ) => {
     const existing = acc.get(variantId);
     if (existing) {
       existing.total += amount;
       existing.missing += missing;
+      existing.estimated += estimated;
     } else {
-      acc.set(variantId, { unit, total: amount, missing, autoAdded });
+      acc.set(variantId, { unit, total: amount, missing, estimated, autoAdded });
     }
   };
 
@@ -87,10 +93,20 @@ export function computeTotals(documents: PlanDocument[], resolve: VariantResolve
         case 'marker':
           bump(el.variantId, 'pcs', 1);
           break;
-        case 'led-strip':
-          bump(el.variantId, 'm', el.metres ?? 0, false, el.metres === null ? 1 : 0);
+        case 'led-strip': {
+          // Typed, else estimated from the plan's scale; with neither it's flagged as missing.
+          const length = ledMetres(el, doc.scale);
+          bump(
+            el.variantId,
+            'm',
+            length?.metres ?? 0,
+            false,
+            length ? 0 : 1,
+            length?.estimated ? 1 : 0,
+          );
           bump(SYSTEM_VARIANT_IDS.smartLedDriver, 'pcs', 1, true);
           break;
+        }
         case 'track':
           bump(el.variantId, 'pcs', el.headCount);
           bump(SYSTEM_VARIANT_IDS.trackDriver, 'pcs', 1, true);
@@ -119,6 +135,7 @@ export function computeTotals(documents: PlanDocument[], resolve: VariantResolve
       calculated: a.unit === 'm' ? round1(a.total) : a.total,
       autoAdded: a.autoAdded,
       runsMissingMetres: a.missing,
+      runsEstimated: a.estimated,
     });
   }
   return lines.sort(compareLines);

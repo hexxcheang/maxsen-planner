@@ -41,6 +41,7 @@ import { LevelSwitcher } from './LevelSwitcher';
 import { MagicPlanDialog, type MagicPlanOutcome } from './magic/MagicPlanDialog';
 import { mergeMagic } from './magic/apply';
 import { SaveState } from './SaveState';
+import { ScaleDialog } from './ScaleDialog';
 import { Toolbar } from './Toolbar';
 
 function SidePanel({
@@ -136,6 +137,8 @@ export function PlannerScreen() {
     lighting: plans.find((p) => p.levelId === levelId && p.type === 'lighting'),
   };
   const [magicOpen, setMagicOpen] = useState(false);
+  /** A line just marked to set the scale: its length in plan units, until its real length is given. */
+  const [measured, setMeasured] = useState<number | null>(null);
   const { toast } = useToast();
 
   const [store] = useState(createPlannerStore);
@@ -188,11 +191,20 @@ export function PlannerScreen() {
       const added = type === 'smart-home' ? result.smartHome : result.lighting;
       if (!target) continue;
       const current = target.id === plan?.id;
-      const merged = mergeMagic(current ? store.getState().document : target.document, added, {
-        replace,
-        categories,
-        resolve,
-      });
+      const mergedDevices = mergeMagic(
+        current ? store.getState().document : target.document,
+        added,
+        { replace, categories, resolve },
+      );
+      // Magic Plan's reading of the drawing's size estimates LED lengths, unless a scale was
+      // set by hand.
+      const kept = mergedDevices.scale && mergedDevices.scale.from !== 'magic';
+      const merged = kept
+        ? mergedDevices
+        : {
+            ...mergedDevices,
+            scale: { unitsPerMetre: result.unitsPerMetre, from: 'magic' as const },
+          };
       if (current) store.getState().applyDocument(merged);
       else actions.setPlanDocument(target.id, merged);
       if (added.length)
@@ -246,10 +258,11 @@ export function PlannerScreen() {
     return prefer.find((id) => visible.some((v) => v.id === id)) ?? visible[0]?.id;
   };
 
-  const armTool = (t: 'led' | 'track' | 'loop' | 'note') => {
+  const armTool = (t: 'led' | 'track' | 'loop' | 'note' | 'measure') => {
     const s = store.getState();
     let next: Armed | null = null;
     if (t === 'note') next = { kind: 'note' };
+    else if (t === 'measure') next = { kind: 'measure' };
     else {
       const variantId = pickVariant(t === 'track' ? 'track' : 'led-strip');
       if (!variantId) return;
@@ -273,6 +286,11 @@ export function PlannerScreen() {
       s.addNote(at);
       s.arm(null);
       s.select([s.document.elements.at(-1)!.id], 'replace');
+    } else if (a.kind === 'measure') {
+      s.addDraftPoint(at, shiftKey);
+      const [from, to] = store.getState().draft;
+      // Both ends marked: ask how long it really is.
+      if (from && to) setMeasured(Math.hypot(to.x - from.x, to.y - from.y));
     } else if (a.kind === 'loop') {
       recordUse(a.variantId);
       const id = s.addLoop(a.variantId, at, 40);
@@ -508,6 +526,24 @@ export function PlannerScreen() {
               </Button>
             </div>
           )}
+          {measured !== null && (
+            <ScaleDialog
+              onClose={() => {
+                setMeasured(null);
+                store.getState().arm(null);
+              }}
+              onSave={(metres) => {
+                const s = store.getState();
+                s.setScale({ unitsPerMetre: measured / metres, from: 'measured' });
+                s.arm(null);
+                setMeasured(null);
+                toast({
+                  title: 'Plan scale set',
+                  body: 'LED runs without a typed length are now estimated from the drawing.',
+                });
+              }}
+            />
+          )}
           {level && (
             <MagicPlanDialog
               open={magicOpen}
@@ -533,6 +569,7 @@ export function PlannerScreen() {
             disabled={!plan}
             armed={armed}
             onArmTool={armTool}
+            scaleSet={Boolean(document.scale)}
             canUndo={canUndo}
             canRedo={canRedo}
             onUndo={() => store.getState().undo()}
@@ -585,6 +622,15 @@ export function PlannerScreen() {
                   </>
                 )}
                 {armed.kind === 'note' && <>{click} where the note should go.</>}
+                {armed.kind === 'measure' &&
+                  (draft.length === 0 ? (
+                    <>
+                      {click} one end of something you know the length of, like a wall with its
+                      dimension on the drawing.
+                    </>
+                  ) : (
+                    <>{click} the other end.</>
+                  ))}
               </span>
               {armed.kind === 'path' && draft.length > 0 && (
                 <>

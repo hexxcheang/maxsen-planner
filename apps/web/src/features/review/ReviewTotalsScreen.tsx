@@ -37,6 +37,7 @@ export function ReviewTotalsScreen() {
   const lines = applyAdjustments(totals, project.quantityAdjustments);
   const warnings = lines.filter((l) => l.warning).length;
   const missing = lines.reduce((n, l) => n + l.runsMissingMetres, 0);
+  const estimated = lines.reduce((n, l) => n + l.runsEstimated, 0);
 
   const goToExports = (
     <Link to={`/projects/${project.id}/exports`} className={buttonClass('primary')}>
@@ -61,10 +62,17 @@ export function ReviewTotalsScreen() {
             {warnings > 0 &&
               `${warnings} adjusted ${warnings === 1 ? 'quantity needs' : 'quantities need'} a second look because the plans changed since. `}
             {missing > 0 &&
-              `${missing} LED strip ${missing === 1 ? 'run has' : 'runs have'} no length yet and ${missing === 1 ? 'counts' : 'count'} as 0 m. `}
+              `${missing} LED strip ${missing === 1 ? 'run has' : 'runs have'} no length yet and ${missing === 1 ? 'counts' : 'count'} as 0 m: set the plan's scale with the ruler on the Lighting Plan to estimate ${missing === 1 ? 'it' : 'them'}, or type the length on the run. `}
             Warnings never block exports.
           </p>
         </div>
+      )}
+      {estimated > 0 && (
+        <p role="note" className="mb-5 text-control text-ink-2">
+          {estimated} LED strip {estimated === 1 ? 'run is' : 'runs are'} estimated from the
+          drawing’s scale (rounded up to the half metre). Type a length on a run to use your own, or
+          change the export quantity below.
+        </p>
       )}
       {lines.length === 0 ? (
         <EmptyState
@@ -166,6 +174,11 @@ function Row({
           <span className="block text-meta text-warn">
             {line.runsMissingMetres} {line.runsMissingMetres === 1 ? 'run' : 'runs'} without a
             length
+          </span>
+        )}
+        {line.runsEstimated > 0 && (
+          <span className="block text-meta text-ink-2">
+            Includes {line.runsEstimated} estimated {line.runsEstimated === 1 ? 'run' : 'runs'}
           </span>
         )}
         {line.warning && line.adjustment && (

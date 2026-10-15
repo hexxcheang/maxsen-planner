@@ -37,10 +37,10 @@ describe('routing and access gate', () => {
     expect(await screen.findByRole('heading', { name: 'Page not found' })).toBeInTheDocument();
   });
 
-  it('help covers each tab, with the eight planning steps', async () => {
+  it('help covers each tab, with the planning steps', async () => {
     render(<TestApp path="/help" signedIn />);
     const list = await screen.findByRole('list', { name: 'Projects steps' });
-    expect(within(list).getAllByRole('listitem')).toHaveLength(8);
+    expect(within(list).getAllByRole('listitem')).toHaveLength(9);
     const topics = screen.getByRole('navigation', { name: 'Help topics' });
     for (const tab of ['Leads', 'Timetable', 'Inventory', 'Claims', 'Team', 'Quote', 'Admin'])
       expect(within(topics).getByRole('link', { name: tab })).toBeInTheDocument();

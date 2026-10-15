@@ -136,6 +136,53 @@ test.describe('MVP editing', () => {
     await expect(driver).toHaveValue('3');
   });
 
+  test('set the plan scale with the ruler; LED runs are estimated from it', async ({ page }) => {
+    await page.goto('/projects/proj_sample_tan/plan?level=lvl_tan_1&type=lighting');
+    await expect(page.getByTestId('plan-canvas')).toHaveAttribute('data-scale', '1.00');
+    const at = await viewport(page);
+    const click = async (x: number, y: number) => {
+      const p = at(x, y);
+      await page.mouse.click(p.x, p.y);
+    };
+
+    // A run drawn before the plan has a scale has no length.
+    await page.getByRole('button', { name: /Draw LED strip/ }).click();
+    await click(150, 600);
+    await click(350, 600);
+    await page.keyboard.press('Enter');
+    await openDetails(page);
+    const details = page.getByRole('complementary', { name: 'Details' });
+    await expect(details.getByText(/This plan has no scale yet/)).toBeVisible();
+
+    // The ruler: both ends of a 4 m wall, 200 plan units apart.
+    await page.getByRole('button', { name: /Set the plan scale/ }).click();
+    await expect(
+      page.getByRole('status').filter({ hasText: /one end of something/ }),
+    ).toBeVisible();
+    await click(150, 700);
+    await click(350, 700);
+    const ask = page.getByRole('dialog', { name: 'How long is that line?' });
+    await ask.getByLabel('Real length').fill('4');
+    await ask.getByRole('button', { name: 'Set scale' }).click();
+    await expect(ask).toBeHidden();
+    await expect(page.getByText('Plan scale set')).toBeVisible();
+
+    // The run is now about 4 m, and counted in the totals as an estimate.
+    await page.getByTestId('plan-canvas').click({ position: { x: 5, y: 5 } });
+    await page.getByRole('button', { name: /Draw LED strip/ }).click();
+    await click(150, 500);
+    await click(150, 575);
+    await page.keyboard.press('Enter');
+    await expect(details.getByText(/About 1.5 m, estimated from the plan's scale/)).toBeVisible();
+    await page.screenshot({ path: 'test-results/screens/led-estimate.png' });
+
+    await page.goto('/projects/proj_sample_tan/review');
+    await expect(
+      page.getByText(/2 LED strip runs are estimated from the drawing’s scale/),
+    ).toBeVisible();
+    await expect(page.getByText(/no length yet/)).toHaveCount(0);
+  });
+
   test('upload a drawing, assign it, and open the plan', async ({ page }) => {
     await page.goto('/projects/new');
     await page.getByRole('radio', { name: /Start from blank/ }).click();

@@ -77,6 +77,7 @@ export function LiveTotals({ projectId }: { projectId: string }) {
                     </span>
                     {l.autoAdded && <Badge tone="brass">Auto-added</Badge>}
                     {l.runsMissingMetres > 0 && <Badge tone="warn">Length missing</Badge>}
+                    {l.runsEstimated > 0 && l.runsMissingMetres === 0 && <Badge>Estimated</Badge>}
                     <span className="tnum text-meta text-ink">
                       {formatQuantity(l.calculated, l.unit)}
                     </span>

@@ -486,7 +486,7 @@ export function PlanStage({
           ))}
         </Layer>
       )}
-      {armed?.kind === 'path' && draft.length > 0 && (
+      {(armed?.kind === 'path' || armed?.kind === 'measure') && draft.length > 0 && (
         <Layer listening={false}>
           <Line
             points={[...draft, ...(hover ? [snapToAxes(hover, [draft.at(-1)!])] : [])].flatMap(

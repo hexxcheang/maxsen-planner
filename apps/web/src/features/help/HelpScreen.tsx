@@ -42,7 +42,11 @@ const TOPICS: Topic[] = [
       },
       {
         title: 'Place devices',
-        body: 'In the planner, drag variants from the library onto the plan. Draw LED strips and track lights as paths, type in LED lengths and head counts, and add notes where they help. Magic Plan can suggest rooms and devices to start from.',
+        body: 'In the planner, drag variants from the library onto the plan. Draw LED strips and track lights as paths, set head counts, and add notes where they help. Magic Plan can suggest rooms and devices to start from.',
+      },
+      {
+        title: 'Set the scale for LED lengths',
+        body: 'On the Lighting Plan, press the ruler in the toolbar, click both ends of something you know the length of (a wall with its dimension on the drawing) and type its real length. Every LED run is then estimated from the drawing, rounded up to the half metre, and counted in the totals. Type a length on a run to use your own instead. Magic Plan sets the scale by itself.',
       },
       {
         title: 'Review totals',

@@ -13,6 +13,7 @@ import {
 } from '../geometry/path.ts';
 import type { VariantResolver } from '../totals/compute-totals.ts';
 import type { PlanDocument, Pt, Settings } from '../types.ts';
+import { ledMetres } from '../led-length.ts';
 import { badgeTextColor, resolveCategoryStyle } from './styles.ts';
 
 export interface SceneOptions {
@@ -134,9 +135,10 @@ const STROKE_FACTOR = 0.3;
 const HEAD_FACTOR = 0.6;
 
 /** Metres as entered, trimmed to at most two decimals; `?` while not yet entered. */
-export function formatLedLabel(metres: number | null): string {
+/** An estimated length (from the plan's scale) is marked "≈". */
+export function formatLedLabel(metres: number | null, estimated = false): string {
   if (metres === null) return '? m LED Strip';
-  return `${Number(metres.toFixed(2))}m LED Strip`;
+  return `${estimated ? '≈' : ''}${Number(metres.toFixed(2))}m LED Strip`;
 }
 
 export function formatTrackLabel(categoryId: CategoryId, headCount: number): string {
@@ -268,7 +270,13 @@ export function buildScene(doc: PlanDocument, ctx: SceneContext, opts: SceneOpti
     if (wantLabel && el.showLabel) {
       const mid = pathMidpoint(el.points, closed);
       path.label = {
-        text: isLed ? formatLedLabel(el.metres) : formatTrackLabel(categoryId, el.headCount),
+        text:
+          el.kind === 'led-strip'
+            ? formatLedLabel(
+                ledMetres(el, doc.scale)?.metres ?? null,
+                ledMetres(el, doc.scale)?.estimated,
+              )
+            : formatTrackLabel(categoryId, el.headCount),
         x: mid.point.x,
         y: mid.point.y,
         fontSize: style.size * LABEL_FONT,

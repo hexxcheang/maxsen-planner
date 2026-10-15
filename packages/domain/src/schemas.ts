@@ -92,6 +92,12 @@ export const planDocumentSchema = z.object({
     hiddenCategories: z.array(categoryIdSchema),
     legendVisible: z.boolean(),
   }),
+  scale: z
+    .object({
+      unitsPerMetre: z.number().positive().finite(),
+      from: z.enum(['measured', 'run', 'magic']),
+    })
+    .optional(),
 }) satisfies z.ZodType<PlanDocument>;
 
 const customerToggles = {

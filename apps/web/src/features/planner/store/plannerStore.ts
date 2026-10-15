@@ -11,6 +11,7 @@ import {
   nextZ,
   type PlanDocument,
   type PlanElement,
+  type PlanScale,
   type PlanType,
   type PlanViewState,
   snapToAxes,
@@ -24,7 +25,9 @@ export type Armed =
   | { kind: 'marker'; variantId: string }
   | { kind: 'path'; variantId: string; elementKind: 'led-strip' | 'track' | 'curtain' }
   | { kind: 'loop'; variantId: string }
-  | { kind: 'note' };
+  | { kind: 'note' }
+  /** Two clicks along something of known length, to set the plan's scale. */
+  | { kind: 'measure' };
 
 export interface Viewport {
   /** Screen pixels per plan unit. */
@@ -78,6 +81,8 @@ export interface PlannerState {
   paste: () => string[];
   reorder: (mode: 'front' | 'forward' | 'backward' | 'back') => void;
   setView: (patch: Partial<PlanViewState>) => void;
+  /** Sets (or clears) how big the drawing is, as one undoable step. */
+  setScale: (scale: PlanScale | null) => void;
   /** Replaces the whole document as one undoable step (Magic Plan). */
   applyDocument: (doc: PlanDocument) => void;
   undo: () => void;
@@ -348,6 +353,12 @@ export function createPlannerStore() {
           result.forEach((e, i) => (e.z = i));
         });
       },
+
+      setScale: (scale) =>
+        commit((d) => {
+          if (scale) d.scale = scale;
+          else delete d.scale;
+        }),
 
       applyDocument: (doc) =>
         set((s) => ({

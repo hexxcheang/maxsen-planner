@@ -14,6 +14,7 @@ import {
   MousePointer2,
   Plus,
   Redo2,
+  Ruler,
   Spline,
   TextCursorInput,
   Undo2,
@@ -46,7 +47,9 @@ interface ToolbarProps {
   disabled: boolean;
   armed: Armed | null;
   /** Arms a drawing tool; undefined when the plan type has no variants for it. */
-  onArmTool: (tool: 'led' | 'track' | 'loop' | 'note') => void;
+  onArmTool: (tool: 'led' | 'track' | 'loop' | 'note' | 'measure') => void;
+  /** Whether the plan's scale is set, so LED lengths are estimated. */
+  scaleSet: boolean;
   canUndo: boolean;
   canRedo: boolean;
   onUndo: () => void;
@@ -119,6 +122,18 @@ export function Toolbar(p: ToolbarProps) {
                 icon={<Circle />}
                 active={p.armed?.kind === 'loop'}
                 onClick={() => p.onArmTool('loop')}
+                disabled={p.disabled}
+              />
+              <IconButton
+                size="sm"
+                label={
+                  p.scaleSet
+                    ? 'Plan scale is set: LED lengths are estimated. Click to set it again'
+                    : 'Set the plan scale (click both ends of a length you know), so LED lengths are estimated'
+                }
+                icon={<Ruler />}
+                active={p.armed?.kind === 'measure'}
+                onClick={() => p.onArmTool('measure')}
                 disabled={p.disabled}
               />
             </>

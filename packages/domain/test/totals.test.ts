@@ -155,6 +155,18 @@ describe('computeTotals', () => {
     assert.equal(line(lines, SYSTEM_VARIANT_IDS.smartLedDriver).calculated, 2);
   });
 
+  it('estimates a run with no length typed from the plan’s scale, rounded up to half a metre', () => {
+    // 100 units long; 40 units a metre: 2.5 m. A typed length still wins.
+    const scaled: PlanDocument = {
+      ...doc([led('led1', null), led('led1', 2)]),
+      scale: { unitsPerMetre: 40, from: 'measured' },
+    };
+    const l1 = line(computeTotals([scaled], resolve), 'led1');
+    assert.equal(l1.calculated, 4.5);
+    assert.equal(l1.runsEstimated, 1);
+    assert.equal(l1.runsMissingMetres, 0);
+  });
+
   it('tracks sum headCount per variant and add one Track Driver per track', () => {
     const lines = computeTotals(
       [doc([track('tr1', 3), track('tr1', 4), track('mt1', 5)])],
@@ -259,6 +271,7 @@ const totalLine = (variantId: string, calculated: number): TotalLine => ({
   calculated,
   autoAdded: false,
   runsMissingMetres: 0,
+  runsEstimated: 0,
 });
 
 const adj = (quantity: number, calculatedAtAdjustment: number): QuantityAdjustment => ({

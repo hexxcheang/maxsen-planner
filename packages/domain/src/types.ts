@@ -44,7 +44,10 @@ export interface LedStripPath {
   closed: boolean;
   /** Draw a smooth curve through the points instead of straight segments. */
   smooth: boolean;
-  /** Manually entered total length; null until the planner enters it. Never derived from scale. */
+  /**
+   * Length typed by the planner; null to use the estimate from the plan's scale (see
+   * `ledMetres`), or none while the plan has no scale.
+   */
   metres: number | null;
   showLabel: boolean;
 }
@@ -94,10 +97,22 @@ export interface PlanViewState {
   legendVisible: boolean;
 }
 
+/** How big the drawing is: plan units per real metre, used to estimate LED strip lengths. */
+export interface PlanScale {
+  unitsPerMetre: number;
+  /**
+   * `measured`: a known length marked on the drawing; `run`: from an LED run's typed length;
+   * `magic`: estimated by Magic Plan.
+   */
+  from: 'measured' | 'run' | 'magic';
+}
+
 export interface PlanDocument {
   schemaVersion: 1;
   elements: PlanElement[];
   view: PlanViewState;
+  /** Missing until the drawing's scale is set. */
+  scale?: PlanScale;
 }
 
 // ---------------------------------------------------------------------------------------------

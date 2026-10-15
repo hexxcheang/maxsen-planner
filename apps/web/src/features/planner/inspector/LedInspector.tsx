@@ -1,6 +1,13 @@
-import type { CategoryStyle, LedStripPath, VariantSnapshot } from '@maxsen/domain';
+import { useStore } from 'zustand';
+import {
+  estimateLedMetres,
+  runLengthUnits,
+  type CategoryStyle,
+  type LedStripPath,
+  type VariantSnapshot,
+} from '@maxsen/domain';
 import { CategoryGlyph } from '@/components/CategoryGlyph';
-import { Minus, Plus } from 'lucide-react';
+import { Minus, Plus, Ruler } from 'lucide-react';
 import { Badge, Button, Field, NumberField, Select, Switch } from '@/components/ui';
 import { MAX_PATH_POINTS } from '../canvas/PlanStage';
 import { usePlanner } from '../planner-context';
@@ -16,6 +23,19 @@ interface Props {
 export function LedInspector({ el, snapshot, style, variantOptions }: Props) {
   const { store, recordUse } = usePlanner();
   const update = store.getState().updateElement;
+  const scale = useStore(store, (s) => s.document.scale);
+  const estimate = estimateLedMetres(el, scale);
+  // A typed length can set the scale, unless one was measured on the drawing.
+  const canSetScale =
+    el.metres !== null && el.metres > 0 && runLengthUnits(el) > 0 && scale?.from !== 'measured';
+  const hint =
+    el.metres === null
+      ? estimate !== null
+        ? `About ${estimate} m, estimated from the plan's scale and counted in the totals. Type a length to use your own.`
+        : 'This plan has no scale yet. Set it with the ruler in the toolbar to estimate this run, or type its length.'
+      : estimate !== null
+        ? `Typed. The drawing's scale makes it about ${estimate} m.`
+        : 'Typed length, counted in the totals.';
   return (
     <>
       <InspectorSection>
@@ -42,14 +62,11 @@ export function LedInspector({ el, snapshot, style, variantOptions }: Props) {
             }}
           />
         </Field>
-        <Field
-          label="Estimated length"
-          optional
-          hint="Not shown on the plan. Enter the final length in Review totals."
-        >
+        <Field label="Length" optional hint={hint}>
           <NumberField
             compact
             value={el.metres}
+            placeholder={estimate !== null ? `≈ ${estimate}` : undefined}
             unit="m"
             precision={2}
             min={0}
@@ -57,6 +74,20 @@ export function LedInspector({ el, snapshot, style, variantOptions }: Props) {
             onChange={(metres) => update(el.id, { metres })}
           />
         </Field>
+        {canSetScale && (
+          <Button
+            size="sm"
+            icon={<Ruler className="size-4" />}
+            onClick={() =>
+              store.getState().setScale({
+                unitsPerMetre: runLengthUnits(el) / el.metres!,
+                from: 'run',
+              })
+            }
+          >
+            Use this length to estimate the other runs
+          </Button>
+        )}
         <div className="flex flex-wrap items-center gap-1.5">
           <Badge>{el.points.length} points</Badge>
           {!el.closed && (
