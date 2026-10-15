@@ -10,6 +10,9 @@ const PORT = 3994;
 let server: ChildProcess;
 
 test.beforeAll(async () => {
+  // Its tests run on desktop only. Started once there, so another device size finishing first
+  // can't stop the server under them.
+  if (test.info().project.name !== 'desktop') return;
   server = spawn('pnpm', ['exec', 'tsx', 'src/index.ts'], {
     cwd: path.resolve(import.meta.dirname, '../../server'),
     env: {
@@ -20,6 +23,8 @@ test.beforeAll(async () => {
       ADMIN_PASSCODE: 'boss',
     },
     stdio: 'ignore',
+    // Its own process group, so stopping it stops the server itself, not just pnpm.
+    detached: true,
   });
   for (let i = 0; i < 60; i++) {
     try {
@@ -38,7 +43,7 @@ test.afterEach(async () => {
 });
 
 test.afterAll(() => {
-  server?.kill();
+  if (server?.pid) process.kill(-server.pid);
 });
 
 async function device(context: BrowserContext) {

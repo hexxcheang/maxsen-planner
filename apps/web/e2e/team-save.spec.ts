@@ -10,6 +10,9 @@ const PORT = 3999;
 let server: ChildProcess;
 
 test.beforeAll(async () => {
+  // Its tests run on desktop only. Started once there, so another device size finishing first
+  // can't stop the server under them.
+  if (test.info().project.name !== 'desktop') return;
   server = spawn('pnpm', ['exec', 'tsx', 'src/index.ts'], {
     cwd: path.resolve(import.meta.dirname, '../../server'),
     env: {
@@ -19,6 +22,8 @@ test.beforeAll(async () => {
       PLANNER_PASSCODE: '',
     },
     stdio: 'ignore',
+    // Its own process group, so stopping it stops the server itself, not just pnpm.
+    detached: true,
   });
   for (let i = 0; i < 60; i++) {
     try {
@@ -37,7 +42,7 @@ test.afterEach(async () => {
 });
 
 test.afterAll(() => {
-  server?.kill();
+  if (server?.pid) process.kill(-server.pid);
 });
 
 /** A device: its own browser storage, with team calls sent to the test server. */
@@ -60,6 +65,21 @@ async function device(context: BrowserContext) {
   const page = await context.newPage();
   await signIn(page);
   return page;
+}
+
+/**
+ * Waits until the project reads "Saved for team". A busy machine can still be finishing the
+ * uploaded drawing when the save starts; the project then changes again, and the app saves it
+ * again by itself 15 seconds later. Pressing Save now again, as a person would, doesn't wait.
+ */
+async function savedForTeam(page: Page) {
+  await expect(async () => {
+    const save = page.getByRole('button', { name: 'Save now' });
+    if (await save.isVisible()) await save.click();
+    await expect(page.getByRole('status').filter({ hasText: 'Saved for team' })).toBeVisible({
+      timeout: 3000,
+    });
+  }).toPass({ timeout: 30_000 });
 }
 
 test('a project saved on one device opens, with its drawing, on another', async ({
@@ -100,7 +120,7 @@ test('a project saved on one device opens, with its drawing, on another', async 
   const projectUrl = new URL(a.url()).pathname.replace(/\/setup$/, '');
   // Saved by itself after a pause; "Save now" doesn't wait.
   await a.getByRole('button', { name: 'Save now' }).click();
-  await expect(a.getByRole('status').filter({ hasText: 'Saved for team' })).toBeVisible();
+  await savedForTeam(a);
 
   // Device B: the same sample catalogue as the team's, so nothing to choose; A's project is
   // listed, not on this device yet.

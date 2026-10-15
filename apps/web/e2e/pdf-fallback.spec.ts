@@ -10,6 +10,9 @@ const PORT = 3995;
 let server: ChildProcess;
 
 test.beforeAll(async () => {
+  // Its tests run on desktop only. Started once there, so another device size finishing first
+  // can't stop the server under them.
+  if (test.info().project.name !== 'desktop') return;
   server = spawn('pnpm', ['exec', 'tsx', 'src/index.ts'], {
     cwd: path.resolve(import.meta.dirname, '../../server'),
     env: {
