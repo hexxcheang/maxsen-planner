@@ -59,6 +59,34 @@ describe('reading an invoice PDF', () => {
     );
   });
 
+  it('reads an invoice in sections, each with its own total, and the payments on it', () => {
+    // Smart home, then electrical wiring on page 2, each with a "… Total Price" line; numbers at
+    // the foot of wrapped descriptions, rows packed tight, free gifts lettered a–d at "-".
+    const old = read('sections');
+    assert.equal(items(old).length, 38);
+    assert.equal(sum(old), 8991);
+    assert.equal(old.total, 8991);
+    assert.deepEqual(
+      old.rows.flatMap((r) => (r.kind === 'section' ? [r.title] : [])),
+      ['Smart Home + Installation', 'Electrical Wiring'],
+    );
+    const line = (start: string) => items(old).find((r) => r.description.startsWith(start))!;
+    assert.deepEqual(
+      [line('Lumi CRI 95').quantity, line('Lumi CRI 95').unitPrice],
+      [8, 18],
+      'a wrapped line takes its own numbers, not the next row’s',
+    );
+    assert.equal(line('60W Led Driver').quantity, 3);
+    assert.match(line('Free Gifts: 1 Motion').description, /Powered$/, 'no serial letter');
+    const gift = line('Free Gifts: 1 Motion');
+    assert.equal(gift.quantity * gift.unitPrice, 0, 'free gifts come to nothing');
+    assert.deepEqual([line('Supply/ Shift').quantity, line('Supply/ Shift').unitPrice], [14, 30]);
+    assert.equal(items(old).filter((r) => r.printed !== undefined).length, 0);
+    // 50% paid, 30% more asked: the next is the final payment.
+    const issued = issuedFromOld(old);
+    assert.deepEqual([issued.deposit?.due, issued.second?.due], [4495.5, 2697.3]);
+  });
+
   it('follows the table across pages, leaving out page titles and footers', () => {
     const old = read('second');
     assert.equal(items(old).length, 29);

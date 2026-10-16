@@ -141,10 +141,22 @@ export function pdfInvoiceGrid(texts: PdfText[], rules: TableRule[] = []): Cell[
       .map((c) => ({ key: HEAD.amount.test(c.str) ? 'amount' : 'other', at: centre(c) })),
   ];
   const headText = head.map((c) => c.str.toLowerCase()).join('|');
+  // Numbers go to the column whose heading they sit under; words are description.
+  const nearest = (r: Run) =>
+    numberCols.reduce((best, c) =>
+      Math.abs(c.at - centre(r)) < Math.abs(best.at - centre(r)) ? c : best,
+    ).key;
+  const hasQty = (line: Run[]) => line.some((c) => isNumber(c.str) && nearest(c) === 'qty');
+  const isTotal = (line: Run[]) =>
+    line.filter((c) => !isNumber(c.str)).some((c) => TOTAL_LINE.test(c.str));
 
-  // The table runs from the heading to its total line; repeated headings on later pages go.
+  // The table runs from the heading to its total line; repeated headings on later pages go. A
+  // total with more items after it (before the next total) is a section's subtotal ("Smart Home
+  // + Installation Total Price" above "Electrical Wiring"): the items carry on, and the section
+  // is named after it.
   let body: Run[] = [];
   let end = all.length;
+  const subtotals: { top: number; title: string }[] = [];
   for (let i = headAt + 1; i < all.length; i++) {
     const line = all[i]!;
     if (line.map((c) => c.str.toLowerCase()).join('|') === headText) {
@@ -155,19 +167,26 @@ export function pdfInvoiceGrid(texts: PdfText[], rules: TableRule[] = []): Cell[
       );
       continue;
     }
-    const words = line.filter((c) => !isNumber(c.str));
-    if (words.some((c) => TOTAL_LINE.test(c.str))) {
+    if (isTotal(line)) {
+      const next = all.slice(i + 1);
+      const nextTotal = next.findIndex(isTotal);
+      const more = nextTotal < 0 ? next : next.slice(0, nextTotal);
+      if (more.some(hasQty)) {
+        const title = line
+          .filter((c) => !isNumber(c.str))
+          .map((c) => c.str)
+          .join(' ')
+          .replace(/\s*\btotal\b.*$/i, '')
+          .replace(/[\s+&,-]+$/, '')
+          .trim();
+        subtotals.push({ top: line[0]!.top, title });
+        continue;
+      }
       end = i;
       break;
     }
     body.push(...line);
   }
-
-  // Numbers go to the column whose heading they sit under; words are description.
-  const nearest = (r: Run) =>
-    numberCols.reduce((best, c) =>
-      Math.abs(c.at - centre(r)) < Math.abs(best.at - centre(r)) ? c : best,
-    ).key;
   const qtys = body.filter((r) => isNumber(r.str) && nearest(r) === 'qty');
   const units = body.filter((r) => isNumber(r.str) && nearest(r) === 'unit');
   // Each line's printed amount, to check its quantity and unit price against.
@@ -175,6 +194,14 @@ export function pdfInvoiceGrid(texts: PdfText[], rules: TableRule[] = []): Cell[
   const amounts = body.filter(
     (r) => (isNumber(r.str) || DASH.test(r.str)) && nearest(r) === 'amount',
   );
+  // A serial "a", "b" under S/N (free gifts) isn't description.
+  const snCol = head.find((c) => HEAD.sn.test(c.str));
+  const descCol = head.find((c) => /description|^item/i.test(c.str));
+  const inSerials = (r: Run) =>
+    !!snCol &&
+    !!descCol &&
+    /^[a-z]{1,2}\.?\)?$/i.test(r.str) &&
+    Math.abs(centre(r) - centre(snCol)) < Math.abs(centre(r) - centre(descCol));
   const words = body
     // Lone strokes are table borders read as letters; anything in the number columns (an amount
     // misread as "BO.00") isn't description.
@@ -183,6 +210,7 @@ export function pdfInvoiceGrid(texts: PdfText[], rules: TableRule[] = []): Cell[
         !isNumber(r.str) &&
         /[a-z]/i.test(r.str) &&
         !/^[|Il![\]]$/.test(r.str) &&
+        !inSerials(r) &&
         centre(r) < qtyCol.x,
     )
     .sort((a, b) => a.top - b.top);
@@ -216,13 +244,65 @@ export function pdfInvoiceGrid(texts: PdfText[], rules: TableRule[] = []): Cell[
     return assemble(rows);
   }
 
-  // Description lines in blocks: a gap wider than a line's spacing starts a new block.
-  const blocks: Run[][] = [];
+  // Description lines in blocks: a gap wider than a line's spacing starts a new block, and so
+  // does the line after a section's subtotal (that section's heading, "Electrical Wiring").
+  const lineOf = (l: Run, top: number) => Math.abs(l.top - top) <= Math.max(2, 0.45 * l.height);
+  const afterSubtotal = new Set<Run>();
+  for (const st of subtotals) {
+    const first = words.find((w) => w.top > st.top + 2);
+    if (first && !qtys.some((q) => lineOf(first, q.top))) afterSubtotal.add(first);
+  }
+  const spaced: Run[][] = [];
   for (const w of words) {
-    const block = blocks.at(-1);
+    const block = spaced.at(-1);
     const prev = block?.at(-1);
-    if (block && prev && w.top - prev.top <= 1.7 * Math.max(w.height, prev.height)) block.push(w);
-    else blocks.push([w]);
+    const near = prev && w.top - prev.top <= 1.7 * Math.max(w.height, prev.height);
+    if (block && near && !afterSubtotal.has(w) && !afterSubtotal.has(prev)) block.push(w);
+    else spaced.push([w]);
+  }
+
+  // Where a wrapped description sits beside its numbers: on its first line (the app's own PDF),
+  // its last (an Excel invoice with the numbers at the foot of the row), or its middle. Told by
+  // the blocks holding one quantity's line; it decides where tightly packed rows, read as one
+  // block, divide.
+  const onQty = (l: Run) => qtys.some((q) => lineOf(l, q.top));
+  const votes = { first: 0, last: 0, middle: 0 };
+  for (const b of spaced) {
+    const at = b.map((l, i) => (onQty(l) ? i : -1)).filter((i) => i >= 0);
+    if (b.length < 2 || at.length !== 1) continue;
+    votes[at[0] === 0 ? 'first' : at[0] === b.length - 1 ? 'last' : 'middle'] += 1;
+  }
+  const align =
+    votes.last > votes.first && votes.last >= votes.middle
+      ? 'last'
+      : votes.middle > votes.first
+        ? 'middle'
+        : 'first';
+  const blocks: Run[][] = [];
+  for (const b of spaced) {
+    const at = b.map((l, i) => (onQty(l) ? i : -1)).filter((i) => i >= 0);
+    if (at.length < 2) {
+      blocks.push(b);
+      continue;
+    }
+    // Cut between each pair of quantity lines: after the first (numbers on the last line),
+    // before the second (on the first line), or halfway.
+    let from = 0;
+    for (let k = 0; k + 1 < at.length; k++) {
+      const a = at[k]!;
+      const z = at[k + 1]!;
+      const cut =
+        align === 'last'
+          ? a + 1
+          : align === 'first'
+            ? z
+            : a +
+              1 +
+              b.slice(a + 1, z).filter((l) => l.top - b[a]!.top <= b[z]!.top - l.top).length;
+      blocks.push(b.slice(from, cut));
+      from = cut;
+    }
+    blocks.push(b.slice(from));
   }
 
   const rows: { top: number; cells: Cell[] }[] = [];
@@ -234,18 +314,29 @@ export function pdfInvoiceGrid(texts: PdfText[], rules: TableRule[] = []): Cell[
     return top < s.from ? s.from - top : top > s.to ? top - s.to : 0;
   };
   for (const q of qtys) {
-    const free = blocks.filter((b) => !used.has(b));
-    const block = free.reduce<Run[] | null>(
-      (best, b) => (!best || distance(b, q.top) < distance(best, q.top) ? b : best),
-      null,
-    );
+    const free = blocks.filter((b) => b.length && !used.has(b));
+    // The block with a line beside the quantity is its description; else the nearest.
+    const block =
+      free.find((b) => b.some((l) => lineOf(l, q.top))) ??
+      free.reduce<Run[] | null>(
+        (best, b) => (!best || distance(b, q.top) < distance(best, q.top) ? b : best),
+        null,
+      );
     if (block) used.add(block);
     const unit = units.reduce<Run | null>(
       (best, u) => (!best || Math.abs(u.top - q.top) < Math.abs(best.top - q.top) ? u : best),
       null,
     );
-    // Only an amount on the quantity's own line: one further off may be the next row's.
-    const amount = amounts.find((a) => Math.abs(a.top - q.top) < 4);
+    // The amount on the quantity's own line, or (centred in a row of several lines) beside its
+    // description; never one further off, which may be the next row's.
+    const s = block ? span(block) : null;
+    const amount =
+      amounts.find((a) => !claimed.has(a) && Math.abs(a.top - q.top) < 4) ??
+      (s
+        ? amounts.find(
+            (a) => !claimed.has(a) && a.top >= Math.min(s.from, q.top - 4) && a.top <= s.to,
+          )
+        : undefined);
     if (amount) claimed.add(amount);
     rows.push({
       top: block ? Math.min(block[0]!.top, q.top) : q.top,
@@ -257,15 +348,20 @@ export function pdfInvoiceGrid(texts: PdfText[], rules: TableRule[] = []): Cell[
       ],
     });
   }
-  // Blocks without a quantity are headings ("Lighting") or notes; parseOldInvoice sorts them.
   // Blocks without a quantity: a discount line has its amount beside it; otherwise a heading.
   for (const b of blocks) {
-    if (used.has(b)) continue;
+    if (!b.length || used.has(b)) continue;
     const s = span(b);
     const amount = amounts.find((a) => !claimed.has(a) && a.top >= s.from && a.top <= s.to);
     if (amount) claimed.add(amount);
     rows.push({ top: b[0]!.top, cells: [describe(b), null, null, amount?.str ?? null] });
   }
+  // The first section is named by its subtotal when nothing heads it ("Smart Home +
+  // Installation"); parseOldInvoice keeps short headings with items under them.
+  const firstTitle = subtotals[0]?.title;
+  const firstItem = Math.min(...rows.filter((r) => r.cells[1] !== null).map((r) => r.top));
+  if (firstTitle && !rows.some((r) => r.cells[1] === null && r.top < firstItem))
+    rows.push({ top: head[0]!.top + 1, cells: [firstTitle, null, null, null] });
   rows.sort((a, b) => a.top - b.top);
 
   return assemble(rows.map((r) => r.cells));

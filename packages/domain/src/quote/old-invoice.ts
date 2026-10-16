@@ -245,6 +245,12 @@ export function issuedFromOld(old: OldInvoice): {
       second: { ...at, due: old.secondPayment },
     };
   }
+  // "Deposit Paid" with a further "Deposit Request": that request was the 2nd payment.
+  if (old.deposit !== null && old.lessPaid && old.lessPaid + old.deposit <= total + 0.01)
+    return {
+      deposit: { ...at, due: old.lessPaid },
+      second: { ...at, due: old.deposit },
+    };
   if (old.deposit !== null) return { deposit: { ...at, due: old.deposit } };
   return {};
 }

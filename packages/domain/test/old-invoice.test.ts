@@ -50,6 +50,18 @@ describe('reading an old invoice', () => {
     assert.equal(issued.second?.due, 774);
   });
 
+  it('reads a deposit paid with a further deposit request as the 2nd payment asked for', () => {
+    // As the Excel template words a 2nd payment: 50% paid, 30% more requested.
+    const second = [
+      ...template.slice(0, -1),
+      ['Paid', 'Deposit Paid', null, null, null, 1290],
+      [null, null, null, null, 'DEPOSIT REQUEST (S$)', 774],
+    ];
+    const issued = issuedFromOld(parseOldInvoice(second));
+    assert.equal(issued.deposit?.due, 1290);
+    assert.equal(issued.second?.due, 774);
+  });
+
   it('takes the client from Attn, not the sales person under Prepared by', () => {
     const old = parseOldInvoice([
       // Read off a scan, the headings can come out in a row of their own.
