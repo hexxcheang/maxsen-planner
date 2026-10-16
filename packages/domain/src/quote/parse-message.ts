@@ -107,6 +107,18 @@ const NUMBER_WORDS: Record<string, number> = {
 
 const tokens = (s: string) => s.toLowerCase().match(/[a-z0-9]+/g) ?? [];
 
+/**
+ * Packages asked for by name, and the items they stand for. Only with the word "package", so a
+ * "multi-storey house" isn't taken for one.
+ */
+const NAMED_PACKAGES: { re: RegExp; items: string[] }[] = [
+  {
+    // The catalogue's Multi-Storey Premier package (also "Nova Premier package").
+    re: /\bmulti[\s-]?stor(?:e?y|ey|eys|ies)\b.*\bpackages?\b|\bnova\+?\s*(?:pro\s*)?premier\b.*\bpackages?\b/,
+    items: ['28 Nova+ Pro switches', '1 Nova S10 panel', '2 Zigbee gateways'],
+  },
+];
+
 /** Splits a message into phrases, one item each. */
 export function splitPhrases(text: string): string[] {
   return (
@@ -173,8 +185,14 @@ export function parseQuoteMessage(
   const lines: QuoteLine[] = [];
   const unread: string[] = [];
 
-  for (const source of splitPhrases(text)) {
-    const p = source.toLowerCase();
+  // A package named in the message stands for its items, each read like any other phrase.
+  const phrases = splitPhrases(text).flatMap((source) => {
+    const named = NAMED_PACKAGES.find((pkg) => pkg.re.test(source.toLowerCase()));
+    return named ? named.items.map((item) => ({ item, source })) : [{ item: source, source }];
+  });
+
+  for (const { item, source } of phrases) {
+    const p = item.toLowerCase();
     const words = new Set(tokens(p));
 
     // The product: by its own name first, then by the category's everyday words.

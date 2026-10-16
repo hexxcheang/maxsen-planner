@@ -8,6 +8,24 @@ test.describe('quick quote', () => {
     await signIn(page);
   });
 
+  test('reads the multi-storey package from a message and prices it as one package', async ({
+    page,
+  }) => {
+    await page.goto('/quote');
+    await page.getByLabel('Client’s message').fill('Hi, I would like the multi-storey package');
+    await page.getByRole('button', { name: 'Read message' }).click();
+    // Its 28 Nova+ Pro switches, S10 panel and 2 gateways, as items to check.
+    const items = page.getByRole('list', { name: 'Quoted items' });
+    await expect(items).toContainText('Nova S10');
+    await expect(items).toContainText('Zigbee Gateway');
+    const quote = page.getByRole('region', { name: 'Quotation' });
+    await expect(quote.getByText('Multi-Storey Premier Package').first()).toBeVisible();
+    // The panel and gateways are in the package, so not charged again.
+    await expect(quote.getByRole('row', { name: /Nova S10/ })).toHaveCount(0);
+    await expect(quote.getByRole('row', { name: /^Total\s*S\$5,290\.00$/ })).toBeVisible();
+    await expect(quote).not.toContainText('Add-On Per Nova+ Pro');
+  });
+
   test('reads a client message into an exact quotation', async ({ page }, testInfo) => {
     await page.goto('/quote');
     await page.getByLabel('Client’s message').fill(`Hi, need a quote for my 5 room HDB:

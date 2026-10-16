@@ -248,6 +248,63 @@ describe('switch packages per series', () => {
     assert.deepEqual([nova.quantity, nova.unitPrice], [10, 180]);
   });
 
+  it('quotes 28 or more Nova+ Pro switches as the multi-storey Premier package, with its S10 panel and 2 gateways', () => {
+    const panel = (variantId: string, productName: string, n: number): InvoiceInputLine => ({
+      ...line(variantId, 'control-panels', n),
+      productName,
+    });
+    const inv = buildInvoice(
+      [
+        sw('var_nova_pro_2g_black', 'Nova+ Pro', 20),
+        sw('var_nova_pro_3g_black', 'Nova+ Pro', 10),
+        panel('var_nova_s10', 'Nova S10', 1),
+        panel('var_nova_s1', 'Nova S1', 1),
+        line('var_gateway', 'gateways', 3),
+      ],
+      priceOf,
+      DEFAULT_PRICING,
+    );
+    assert.deepEqual(
+      pkgOf(inv).map((r) => [r.quantity, r.unitPrice]),
+      [[1, 5290]],
+    );
+    assert.match(pkgOf(inv)[0]!.description, /^Multi-Storey Premier Package\n28 x Nova\+ Pro/);
+    // Two switches beyond the 28, at the Nova+ Pro add-on rate.
+    const addOn = items(inv).find((r) => /Add-On Per Nova\+ Pro/.test(r.description))!;
+    assert.deepEqual([addOn.quantity, addOn.unitPrice], [2, 180]);
+    // The S10 and two gateways are in the package; the S1 and the third gateway aren't.
+    assert.equal(
+      items(inv).find((r) => r.key === 'variant:var_nova_s10'),
+      undefined,
+    );
+    assert.equal(items(inv).find((r) => r.key === 'variant:var_nova_s1')?.quantity, 1);
+    assert.equal(items(inv).find((r) => r.key === 'variant:var_gateway')?.quantity, 1);
+    // No switch is charged twice.
+    assert.equal(items(inv).filter((r) => r.description.startsWith('Nova+ Pro')).length, 0);
+  });
+
+  it('keeps the 10-switch Nova+ Pro package below 28 switches', () => {
+    const inv = buildInvoice(
+      [sw('var_nova_pro_1g_black', 'Nova+ Pro', 27)],
+      priceOf,
+      DEFAULT_PRICING,
+    );
+    assert.deepEqual(
+      pkgOf(inv).map((r) => r.unitPrice),
+      [1990],
+    );
+  });
+
+  it('adds the multi-storey package to pricing saved before it existed', () => {
+    const p = resolvePricing({
+      pricing: { ...DEFAULT_PRICING, switches: DEFAULT_PRICING.switches.slice(0, 3) },
+    });
+    assert.deepEqual(
+      p.switches.map((s) => s.id),
+      ['ark', 'nova', 'lusano', 'nova-premier'],
+    );
+  });
+
   it('turns a single saved switch package (from before series) into the Nova+ Pro one', () => {
     const p = resolvePricing({
       pricing: {
@@ -261,6 +318,7 @@ describe('switch packages per series', () => {
         ['ark', 1390],
         ['nova', 1890],
         ['lusano', 3590],
+        ['nova-premier', 5290],
       ],
     );
   });

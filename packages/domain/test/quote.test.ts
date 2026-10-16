@@ -35,6 +35,33 @@ Thanks!`);
     assert.deepEqual(r.unread, []);
   });
 
+  it('reads the multi-storey package as its 28 Nova+ Pro switches, S10 panel and 2 gateways', () => {
+    const r = read('Hi, want the multi-storey package, plus 12 downlights');
+    const q = qty(r);
+    const nova = r.lines.filter((l) => l.variantId.startsWith('var_nova_pro_'));
+    assert.equal(
+      nova.reduce((n, l) => n + l.quantity, 0),
+      28,
+    );
+    assert.equal(q['var_nova_s10'], 1);
+    assert.equal(q['var_gateway'], 2);
+    assert.equal(q['var_luna_dl_3000'], 12);
+    assert.equal(nova[0]!.source, 'want the multi-storey package');
+    assert.deepEqual(r.unread, []);
+    // Spelled other ways too.
+    for (const text of [
+      '1 x Multistorey Package',
+      'nova premier package',
+      'Multi Storey Premier package',
+    ])
+      assert.equal(qty(read(text))['var_nova_s10'], 1, text);
+  });
+
+  it('does not take a multi-storey home for the package', () => {
+    const r = read('We have a multi-storey landed house, need 10 switches');
+    assert.equal(qty(r)['var_nova_s10'], undefined);
+  });
+
   it('picks variants from the details and reads a sentence', () => {
     const r = read(
       'can quote 12 downlight cool white, 2 track lights black, 30 metres cob strip and 1 digital lock pro? also 2 cctv',

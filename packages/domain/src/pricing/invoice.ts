@@ -106,39 +106,47 @@ export function buildInvoice(
   };
 
   // --- smart home packages --------------------------------------------------------------------
-  // Each switch series has its own package (Ark, Nova+ Pro, Lusano+). Still at most one switch
-  // package per quotation: it goes to the series with the most switches, if that fills one; every
-  // other switch is priced individually (at its catalogue price, else its series' add-on rate).
+  // Each switch series has its own package (Ark, Nova+ Pro, Lusano+), and Nova+ Pro a larger
+  // multi-storey one. Still at most one switch package per quotation: it goes to the series with
+  // the most switches, if that fills one, and the largest of its packages filled; every other
+  // switch is priced individually (at its catalogue price, else its series' add-on rate).
   const isSwitch = (l: InvoiceInputLine) => l.categoryId === 'smart-switches';
-  const seriesOf = (l: InvoiceInputLine): SwitchPackage | undefined => {
-    const name = l.productName.toLowerCase();
-    return pricing.switches.find((s) =>
-      s.match
-        .split(',')
-        .map((w) => w.trim().toLowerCase())
-        .some((w) => w && name.includes(w)),
-    );
-  };
+  const words = (match: string) =>
+    match
+      .split(',')
+      .map((w) => w.trim().toLowerCase())
+      .filter(Boolean);
+  const inSeries = (l: InvoiceInputLine, s: SwitchPackage) =>
+    words(s.match).some((w) => l.productName.toLowerCase().includes(w));
+  /** A switch's series, for its add-on rate: the first package that names it. */
+  const seriesOf = (l: InvoiceInputLine): SwitchPackage | undefined =>
+    pricing.switches.find((s) => inSeries(l, s));
   const counts = pricing.switches.map((s) => ({
     s,
-    count: qty((l) => isSwitch(l) && seriesOf(l) === s),
+    count: qty((l) => isSwitch(l) && inSeries(l, s)),
   }));
   const packaged = counts
     .filter(({ s, count }) => packagesFor(count, s.packageSize) > 0)
-    .sort((a, b) => b.count - a.count)[0];
+    .sort((a, b) => b.count - a.count || b.s.packageSize - a.s.packageSize)[0];
   let swPackages = 0;
   if (packaged) {
     const { s: sw, count } = packaged;
     swPackages = packagesFor(count, sw.packageSize);
     item('switch-package', sw.description, swPackages, sw.packagePrice, true);
     item('switch-addon', sw.addOnName, count - swPackages * sw.packageSize, sw.addOnPrice);
-    for (const l of lines.filter((x) => isSwitch(x) && seriesOf(x) === sw)) used.add(l.variantId);
+    for (const l of lines.filter((x) => isSwitch(x) && inSeries(x, sw))) used.add(l.variantId);
   }
-  for (const { s } of counts)
-    if (s !== packaged?.s) perVariant((l) => isSwitch(l) && seriesOf(l) === s, s.addOnPrice);
+  const inPackage = (l: InvoiceInputLine) => packaged !== undefined && inSeries(l, packaged.s);
+  for (const s of new Set(lines.filter(isSwitch).map(seriesOf)))
+    if (s) perVariant((l) => isSwitch(l) && seriesOf(l) === s && !inPackage(l), s.addOnPrice);
   perVariant((l) => isSwitch(l) && !seriesOf(l), null);
-  // IR blasters and gateways in the switch package aren't charged again.
+  // IR blasters, gateways and control panels in the switch package aren't charged again.
   const sw = packaged?.s;
+  const panelWords = words(sw?.panelMatch ?? '');
+  const isPackagePanel = (l: InvoiceInputLine) =>
+    l.categoryId === 'control-panels' &&
+    panelWords.some((w) => `${l.productName} ${l.variantName}`.toLowerCase().includes(w));
+  perVariant(isPackagePanel, null, swPackages * (sw?.includesPanels ?? 0));
   perVariant(
     (l) => l.categoryId === 'aircon-controllers',
     null,

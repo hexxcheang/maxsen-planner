@@ -19,6 +19,9 @@ export interface SwitchPackage {
   /** Aircon IR blasters and gateways the package includes (not charged separately). */
   includesAircon: number;
   includesGateways: number;
+  /** Control panels the package includes, and words in their names (e.g. "s10"). */
+  includesPanels?: number;
+  panelMatch?: string;
   addOnName: string;
   addOnPrice: number;
 }
@@ -49,7 +52,10 @@ export interface PricingSettings {
   secondPercent: number;
   /** Invoice numbers are this prefix plus the date (yymmdd) and a 2-digit count. */
   invoicePrefix: string;
-  /** One package per switch series (Ark, Nova+ Pro, Lusano+), each with its own price. */
+  /**
+   * The switch packages: one per series (Ark, Nova+ Pro, Lusano+), and a larger one for some
+   * (Nova+ Pro multi-storey), each with its own price.
+   */
   switches: SwitchPackage[];
   lights: {
     packageSize: number;
@@ -145,6 +151,24 @@ export const DEFAULT_PRICING: PricingSettings = {
       addOnName: 'Add-On Per Lusano+ Prestige Smart Switch with Installation',
       addOnPrice: 360,
     },
+    // The catalogue's Multi-Storey Premier package: taken instead of the Nova+ Pro one from 28
+    // switches. Switches beyond it are charged at the Nova+ Pro add-on rate (the catalogue gives
+    // none of its own).
+    {
+      id: 'nova-premier',
+      name: 'Nova+ Pro multi-storey (Premier)',
+      match: 'nova',
+      packageSize: 28,
+      packagePrice: 5290,
+      description:
+        'Multi-Storey Premier Package\n28 x Nova+ Pro Series Smart Switches Installation\n1 x S10 Control Panel Installation & Integration\n2 x Zigbee Gateway\nAdvanced Network Planning\nOn-Site Wiring Liaison with Your Electrician\nSmart Home Integration\nHands-On Usage Tutorial\nApp Integration of Add-On Devices\nPackage Discounted to $5290 from $6690',
+      includesAircon: 0,
+      includesGateways: 2,
+      includesPanels: 1,
+      panelMatch: 's10',
+      addOnName: 'Add-On Per Nova+ Pro Smart Switch with Installation',
+      addOnPrice: 180,
+    },
   ],
   lights: {
     packageSize: 12,
@@ -199,7 +223,12 @@ export function resolvePricing(settings: Pick<Settings, 'pricing'>): PricingSett
  * their catalogue defaults.
  */
 function switchPackages(saved: unknown): SwitchPackage[] {
-  if (Array.isArray(saved)) return saved as SwitchPackage[];
+  if (Array.isArray(saved)) {
+    // Packages added to the catalogue since the pricing was saved join it.
+    const list = saved as SwitchPackage[];
+    const have = new Set(list.map((s) => s.id));
+    return [...list, ...DEFAULT_PRICING.switches.filter((s) => !have.has(s.id))];
+  }
   if (saved && typeof saved === 'object')
     return DEFAULT_PRICING.switches.map((s) =>
       s.id === 'nova'

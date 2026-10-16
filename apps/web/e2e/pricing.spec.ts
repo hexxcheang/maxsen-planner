@@ -13,8 +13,11 @@ test.describe('pricing', () => {
     await page.goto('/admin');
     await page.getByRole('tab', { name: 'Pricing' }).click();
     const form = page.getByRole('form', { name: 'Pricing' });
-    // One switch package per series, from the catalogue: Ark, Nova+ Pro and Lusano+.
-    await expect(form.getByLabel('Switches per package')).toHaveCount(3);
+    // One switch package per series, from the catalogue: Ark, Nova+ Pro and Lusano+, and the
+    // Nova+ Pro multi-storey Premier package of 28.
+    await expect(form.getByLabel('Switches per package')).toHaveCount(4);
+    await expect(form.getByLabel('Switches per package').last()).toHaveValue('28');
+    await expect(form.getByText('Nova+ Pro multi-storey (Premier) switch package')).toBeVisible();
     await expect(form.getByLabel('Package price (S$)').first()).toHaveValue('1390');
     await expect(form.getByText('Ark Series switch package')).toBeVisible();
     await expect(form.getByLabel('Lights per package')).toHaveValue('12');
