@@ -1,1 +1,1638 @@
-[{"page":1,"x":466.8,"y":669.6,"width":16.2,"height":7,"str":"DATE","pageHeight":792},{"page":1,"x":506,"y":669.6,"width":36,"height":7,"str":"30/11/2025","pageHeight":792},{"page":1,"x":452.4,"y":660.6,"width":30.6,"height":7,"str":"INVOICE #","pageHeight":792},{"page":1,"x":503,"y":660.6,"width":42.1,"height":7,"str":"MX2","pageHeight":792},{"page":1,"x":61.7,"y":641.8,"width":16,"height":7,"str":"Attn:","pageHeight":792},{"page":1,"x":98.8,"y":641.8,"width":7.2,"height":7,"str":"Test","pageHeight":792},{"page":1,"x":61.7,"y":632.8,"width":21.6,"height":7,"str":"Phone:","pageHeight":792},{"page":1,"x":98.7,"y":632.8,"width":30.9,"height":7,"str":"9123 4567","pageHeight":792},{"page":1,"x":61.7,"y":623.8,"width":26.4,"height":7,"str":"Address:","pageHeight":792},{"page":1,"x":98.7,"y":623.8,"width":84.6,"height":7,"str":"1 Test Road","pageHeight":792},{"page":1,"x":67.2,"y":590.6,"width":11.9,"height":7.6,"str":"S/N","pageHeight":792},{"page":1,"x":375,"y":590.6,"width":36.5,"height":7.6,"str":"QUANTITY","pageHeight":792},{"page":1,"x":425.6,"y":590.6,"width":55.6,"height":7.6,"str":"UNIT PRICE (S$)","pageHeight":792},{"page":1,"x":505.9,"y":590.6,"width":36.3,"height":7.6,"str":"PRICE (S$)","pageHeight":792},{"page":1,"x":70.9,"y":480.5,"width":4.4,"height":7.6,"str":"1","pageHeight":792},{"page":1,"x":391.1,"y":480.5,"width":4.4,"height":7.6,"str":"1","pageHeight":792},{"page":1,"x":446.8,"y":480.5,"width":13.3,"height":7.6,"str":"960","pageHeight":792},{"page":1,"x":532.9,"y":505.9,"width":20.5,"height":7,"str":"960.00","pageHeight":792},{"page":1,"x":70.9,"y":465.2,"width":4.4,"height":7.6,"str":"3","pageHeight":792},{"page":1,"x":391.1,"y":465.2,"width":4.4,"height":7.6,"str":"1","pageHeight":792},{"page":1,"x":448.9,"y":465.2,"width":8.9,"height":7.6,"str":"45","pageHeight":792},{"page":1,"x":536.5,"y":468.1,"width":17,"height":7,"str":"45.00","pageHeight":792},{"page":1,"x":70.9,"y":451.4,"width":4.4,"height":7.6,"str":"4","pageHeight":792},{"page":1,"x":391.1,"y":451.4,"width":4.4,"height":7.6,"str":"1","pageHeight":792},{"page":1,"x":448.9,"y":451.4,"width":8.9,"height":7.6,"str":"80","pageHeight":792},{"page":1,"x":536.5,"y":453.6,"width":17,"height":7,"str":"80.00","pageHeight":792},{"page":1,"x":70.9,"y":437.6,"width":4.4,"height":7.6,"str":"5","pageHeight":792},{"page":1,"x":391.1,"y":437.6,"width":4.4,"height":7.6,"str":"1","pageHeight":792},{"page":1,"x":448.9,"y":437.6,"width":8.9,"height":7.6,"str":"30","pageHeight":792},{"page":1,"x":536.5,"y":439.8,"width":17,"height":7,"str":"30.00","pageHeight":792},{"page":1,"x":70.9,"y":423.8,"width":4.4,"height":7.6,"str":"6","pageHeight":792},{"page":1,"x":391.1,"y":423.8,"width":4.4,"height":7.6,"str":"4","pageHeight":792},{"page":1,"x":446.8,"y":423.8,"width":13.3,"height":7.6,"str":"330","pageHeight":792},{"page":1,"x":526.8,"y":426,"width":26.7,"height":7,"str":"1,320.00","pageHeight":792},{"page":1,"x":70.9,"y":410,"width":4.4,"height":7.6,"str":"7","pageHeight":792},{"page":1,"x":391.1,"y":410,"width":4.4,"height":7.6,"str":"4","pageHeight":792},{"page":1,"x":448.9,"y":410,"width":8.9,"height":7.6,"str":"60","pageHeight":792},{"page":1,"x":532.9,"y":412.2,"width":20.5,"height":7,"str":"240.00","pageHeight":792},{"page":1,"x":70.9,"y":396.2,"width":4.4,"height":7.6,"str":"8","pageHeight":792},{"page":1,"x":391.1,"y":396.2,"width":4.4,"height":7.6,"str":"4","pageHeight":792},{"page":1,"x":448.9,"y":396.2,"width":8.9,"height":7.6,"str":"56","pageHeight":792},{"page":1,"x":532.9,"y":398.4,"width":20.5,"height":7,"str":"224.00","pageHeight":792},{"page":1,"x":70.9,"y":382.4,"width":4.4,"height":7.6,"str":"9","pageHeight":792},{"page":1,"x":391.1,"y":382.4,"width":4.4,"height":7.6,"str":"4","pageHeight":792},{"page":1,"x":448.9,"y":382.4,"width":8.9,"height":7.6,"str":"15","pageHeight":792},{"page":1,"x":536.5,"y":384.6,"width":17,"height":7,"str":"60.00","pageHeight":792},{"page":1,"x":68.6,"y":368.6,"width":8.9,"height":7.6,"str":"10","pageHeight":792},{"page":1,"x":391.1,"y":368.6,"width":4.4,"height":7.6,"str":"3","pageHeight":792},{"page":1,"x":446.8,"y":368.6,"width":13.3,"height":7.6,"str":"112","pageHeight":792},{"page":1,"x":532.9,"y":370.8,"width":20.5,"height":7,"str":"336.00","pageHeight":792},{"page":1,"x":68.6,"y":354.8,"width":8.9,"height":7.6,"str":"11","pageHeight":792},{"page":1,"x":391.1,"y":354.8,"width":4.4,"height":7.6,"str":"3","pageHeight":792},{"page":1,"x":448.9,"y":354.8,"width":8.9,"height":7.6,"str":"20","pageHeight":792},{"page":1,"x":536.5,"y":357,"width":17,"height":7,"str":"60.00","pageHeight":792},{"page":1,"x":68.6,"y":332.4,"width":8.9,"height":7.6,"str":"12","pageHeight":792},{"page":1,"x":391.1,"y":332.4,"width":4.4,"height":7.6,"str":"8","pageHeight":792},{"page":1,"x":448.9,"y":332.4,"width":8.9,"height":7.6,"str":"18","pageHeight":792},{"page":1,"x":532.9,"y":338.9,"width":20.5,"height":7,"str":"144.00","pageHeight":792},{"page":1,"x":68.6,"y":318.6,"width":8.9,"height":7.6,"str":"13","pageHeight":792},{"page":1,"x":391.1,"y":318.6,"width":4.4,"height":7.6,"str":"3","pageHeight":792},{"page":1,"x":448.9,"y":318.6,"width":8.9,"height":7.6,"str":"42","pageHeight":792},{"page":1,"x":532.9,"y":320.8,"width":20.5,"height":7,"str":"126.00","pageHeight":792},{"page":1,"x":68.6,"y":304.8,"width":8.9,"height":7.6,"str":"14","pageHeight":792},{"page":1,"x":391.1,"y":304.8,"width":4.4,"height":7.6,"str":"8","pageHeight":792},{"page":1,"x":448.9,"y":304.8,"width":8.9,"height":7.6,"str":"15","pageHeight":792},{"page":1,"x":532.9,"y":307,"width":20.5,"height":7,"str":"120.00","pageHeight":792},{"page":1,"x":68.6,"y":282.4,"width":8.9,"height":7.6,"str":"15","pageHeight":792},{"page":1,"x":391.1,"y":282.4,"width":4.4,"height":7.6,"str":"7","pageHeight":792},{"page":1,"x":448.9,"y":282.4,"width":8.9,"height":7.6,"str":"42","pageHeight":792},{"page":1,"x":532.9,"y":288.8,"width":20.5,"height":7,"str":"294.00","pageHeight":792},{"page":1,"x":68.6,"y":268.9,"width":8.9,"height":7.6,"str":"16","pageHeight":792},{"page":1,"x":391.1,"y":268.9,"width":4.4,"height":7.6,"str":"1","pageHeight":792},{"page":1,"x":448.9,"y":268.9,"width":8.9,"height":7.6,"str":"68","pageHeight":792},{"page":1,"x":536.5,"y":271,"width":17,"height":7,"str":"68.00","pageHeight":792},{"page":1,"x":68.6,"y":253.7,"width":8.9,"height":7.6,"str":"17","pageHeight":792},{"page":1,"x":391.1,"y":253.7,"width":4.4,"height":7.6,"str":"7","pageHeight":792},{"page":1,"x":448.9,"y":253.7,"width":8.9,"height":7.6,"str":"32","pageHeight":792},{"page":1,"x":532.9,"y":256.6,"width":20.5,"height":7,"str":"224.00","pageHeight":792},{"page":1,"x":68.6,"y":238.4,"width":8.9,"height":7.6,"str":"18","pageHeight":792},{"page":1,"x":391.1,"y":238.4,"width":4.4,"height":7.6,"str":"6","pageHeight":792},{"page":1,"x":448.9,"y":238.4,"width":8.9,"height":7.6,"str":"30","pageHeight":792},{"page":1,"x":532.9,"y":241.3,"width":20.5,"height":7,"str":"180.00","pageHeight":792},{"page":1,"x":68.6,"y":223.2,"width":8.9,"height":7.6,"str":"19","pageHeight":792},{"page":1,"x":391.1,"y":223.2,"width":4.4,"height":7.6,"str":"5","pageHeight":792},{"page":1,"x":448.9,"y":223.2,"width":8.9,"height":7.6,"str":"50","pageHeight":792},{"page":1,"x":532.9,"y":226.1,"width":20.5,"height":7,"str":"250.00","pageHeight":792},{"page":1,"x":68.6,"y":208,"width":8.9,"height":7.6,"str":"20","pageHeight":792},{"page":1,"x":391.1,"y":208,"width":4.4,"height":7.6,"str":"2","pageHeight":792},{"page":1,"x":448.9,"y":208,"width":8.9,"height":7.6,"str":"15","pageHeight":792},{"page":1,"x":536.5,"y":210.8,"width":17,"height":7,"str":"30.00","pageHeight":792},{"page":1,"x":68.6,"y":192.7,"width":8.9,"height":7.6,"str":"21","pageHeight":792},{"page":1,"x":391.1,"y":192.7,"width":4.4,"height":7.6,"str":"1","pageHeight":792},{"page":1,"x":448.9,"y":192.7,"width":8.9,"height":7.6,"str":"25","pageHeight":792},{"page":1,"x":536.5,"y":195.6,"width":17,"height":7,"str":"25.00","pageHeight":792},{"page":1,"x":68.6,"y":177.5,"width":8.9,"height":7.6,"str":"22","pageHeight":792},{"page":1,"x":391.1,"y":177.5,"width":4.4,"height":7.6,"str":"2","pageHeight":792},{"page":1,"x":448.9,"y":177.5,"width":8.9,"height":7.6,"str":"15","pageHeight":792},{"page":1,"x":536.5,"y":180.4,"width":17,"height":7,"str":"30.00","pageHeight":792},{"page":1,"x":71,"y":153.7,"width":4,"height":7.6,"str":"a","pageHeight":792},{"page":1,"x":391.1,"y":153.7,"width":4.4,"height":7.6,"str":"0","pageHeight":792},{"page":1,"x":446.8,"y":153.7,"width":13.3,"height":7.6,"str":"160","pageHeight":792},{"page":1,"x":543.7,"y":160.9,"width":2.6,"height":7,"str":"-","pageHeight":792},{"page":1,"x":70.9,"y":130.3,"width":4.4,"height":7.6,"str":"b","pageHeight":792},{"page":1,"x":391.1,"y":130.3,"width":4.4,"height":7.6,"str":"0","pageHeight":792},{"page":1,"x":446.8,"y":130.3,"width":13.3,"height":7.6,"str":"620","pageHeight":792},{"page":1,"x":543.7,"y":137.3,"width":2.6,"height":7,"str":"-","pageHeight":792},{"page":1,"x":71.2,"y":115.6,"width":3.9,"height":7.6,"str":"c","pageHeight":792},{"page":1,"x":391.1,"y":115.6,"width":4.4,"height":7.6,"str":"0","pageHeight":792},{"page":1,"x":448.9,"y":115.6,"width":8.9,"height":7.6,"str":"60","pageHeight":792},{"page":1,"x":543.7,"y":118.2,"width":2.6,"height":7,"str":"-","pageHeight":792},{"page":1,"x":70.9,"y":94.4,"width":4.4,"height":7.6,"str":"d","pageHeight":792},{"page":1,"x":391.1,"y":94.4,"width":4.4,"height":7.6,"str":"0","pageHeight":792},{"page":1,"x":446.8,"y":94.4,"width":13.3,"height":7.6,"str":"300","pageHeight":792},{"page":1,"x":543.7,"y":100.3,"width":2.6,"height":7,"str":"-","pageHeight":792},{"page":1,"x":520.8,"y":67.6,"width":32.2,"height":7.6,"str":"4,846.00","pageHeight":792},{"page":1,"x":156.1,"y":437.6,"width":149.9,"height":7.6,"str":"Installation & Integration of Heater Switch","pageHeight":792},{"page":1,"x":165,"y":238.4,"width":131.6,"height":7.6,"str":"Installation of 6m of Tracklights (6m)","pageHeight":792},{"page":1,"x":180.5,"y":223.2,"width":100.5,"height":7.6,"str":"Installation of 5 Ceiling Fans","pageHeight":792},{"page":1,"x":156.7,"y":208,"width":148.2,"height":7.6,"str":"Installation of Ceiling Light in 2 Bedrooms","pageHeight":792},{"page":1,"x":164.8,"y":192.7,"width":132.1,"height":7.6,"str":"Installation of Mirror Light in 1 Toilet","pageHeight":792},{"page":1,"x":160.4,"y":177.5,"width":140.8,"height":7.6,"str":"Installation of Ceiling Lights in 2 Toilets","pageHeight":792},{"page":1,"x":152.6,"y":396.2,"width":156.9,"height":7.6,"str":"Orbi Surface Single Head Spotlights (3 Tone)","pageHeight":792},{"page":1,"x":188,"y":382.4,"width":85.9,"height":7.6,"str":"Installation of Spotlights","pageHeight":792},{"page":1,"x":154.4,"y":368.6,"width":153.2,"height":7.6,"str":"Orbi Surface Twin Head Spotlights (3 Tone)","pageHeight":792},{"page":1,"x":188,"y":354.8,"width":85.9,"height":7.6,"str":"Installation of Spotlights","pageHeight":792},{"page":1,"x":118.2,"y":342.5,"width":225.3,"height":7.6,"str":"Lumi CRI 95 COB CCT Warm White Led Strips (per m) (Tri Tone)","pageHeight":792},{"page":1,"x":222.6,"y":332.4,"width":16.4,"height":7.6,"str":"(8m)","pageHeight":792},{"page":1,"x":133.7,"y":318.6,"width":194.7,"height":7.6,"str":"60W Led Driver for Lumi Strips (for Approx. 3m) 3 Sets","pageHeight":792},{"page":1,"x":148.2,"y":304.8,"width":165.7,"height":7.6,"str":"Installation & Integration of Lumi Cove (per m)","pageHeight":792},{"page":1,"x":105,"y":292.4,"width":251.6,"height":7.6,"str":"Aura Coveless Profile + CRI 95 COB CCT Warm White Led Strips (per m)","pageHeight":792},{"page":1,"x":162.6,"y":282.4,"width":136.5,"height":7.6,"str":"(Tri Tone) for 1 Rooms Total 7 Meters.","pageHeight":792},{"page":1,"x":56,"y":724.2,"width":99.2,"height":11,"str":"Maxsen Smart Home","pageHeight":792},{"page":1,"x":61.7,"y":711.1,"width":96.4,"height":7,"str":"Company Reg. No. 202433824M","pageHeight":792},{"page":1,"x":61.7,"y":703.7,"width":88.7,"height":7,"str":"9004 Tampines St 93, #2-122","pageHeight":792},{"page":1,"x":61.7,"y":694.7,"width":54.1,"height":7,"str":"Singapore 528838","pageHeight":792},{"page":1,"x":61.7,"y":686.6,"width":46.7,"height":7,"str":"(+65) 87615161","pageHeight":792},{"page":1,"x":61.7,"y":678.6,"width":83.3,"height":7,"str":"Email: hexiang@maxsen.sg","pageHeight":792},{"page":1,"x":61.7,"y":669.6,"width":102.5,"height":7,"str":"Website: http://www.maxsen.sg","pageHeight":792},{"page":1,"x":61.9,"y":650.8,"width":27.3,"height":7.6,"str":"BILL TO","pageHeight":792},{"page":1,"x":198.1,"y":590.6,"width":65.8,"height":7.6,"str":"ITEM/DESCRIPTION","pageHeight":792},{"page":1,"x":199.7,"y":530.9,"width":62.3,"height":7.6,"str":"Essential Package","pageHeight":792},{"page":1,"x":175.8,"y":520.8,"width":110.2,"height":7.6,"str":"8 x Nova Smart Series Switches","pageHeight":792},{"page":1,"x":193.9,"y":510.7,"width":73.8,"height":7.6,"str":"Remove 3 IR Blasters","pageHeight":792},{"page":1,"x":193.6,"y":500.6,"width":74.7,"height":7.6,"str":"1 x Gateway in Room","pageHeight":792},{"page":1,"x":177.2,"y":490.6,"width":107.3,"height":7.6,"str":"With Installation & Integration","pageHeight":792},{"page":1,"x":159.1,"y":480.5,"width":143.3,"height":7.6,"str":"Package Discounted to $960 from $1290","pageHeight":792},{"page":1,"x":184.9,"y":451.4,"width":92.3,"height":7.6,"str":"Nova Smart Heater Switch","pageHeight":792},{"page":1,"x":150,"y":423.8,"width":162,"height":7.6,"str":"Tour Customised Zigbee Smart Curtain Tracks","pageHeight":792},{"page":1,"x":143.6,"y":410,"width":174.8,"height":7.6,"str":"Installation & Integration of Smart Curtain Tracks","pageHeight":792},{"page":1,"x":181.9,"y":465.2,"width":97.9,"height":7.6,"str":"Nova Smart Wireless Switch","pageHeight":792},{"page":1,"x":99.1,"y":268.9,"width":263.8,"height":7.6,"str":"150W Led Driver for Lumi Strips (for Approx. 7m) for Bedrooms Aura Cove","pageHeight":792},{"page":1,"x":132,"y":253.7,"width":197.5,"height":7.6,"str":"Installation & Integration of Aura Cove + Profile (per m)","pageHeight":792},{"page":1,"x":97.2,"y":163.8,"width":267.1,"height":7.6,"str":"Free Gifts: Lumi/Aura Led Smart Control for COB Strips Need 4 Sets (Comes","pageHeight":792},{"page":1,"x":184.8,"y":153.7,"width":92,"height":7.6,"str":"With Aura Cove Purchase)","pageHeight":792},{"page":1,"x":130.3,"y":140.4,"width":201,"height":7.6,"str":"Free Gifts: Nova S8 Smart Control Panel with Installation","pageHeight":792},{"page":1,"x":192.5,"y":130.3,"width":76.6,"height":7.6,"str":"(8 Inch) (Worth $620)","pageHeight":792},{"page":1,"x":151.8,"y":115.6,"width":158,"height":7.6,"str":"Free Gifts: 1 Motion Sensor Battery Powered","pageHeight":792},{"page":1,"x":146.8,"y":104.5,"width":168.1,"height":7.6,"str":"Free Gifts: 3 x Nova 3.0 Smart Switch Upgrades","pageHeight":792},{"page":1,"x":153.6,"y":94.4,"width":154.4,"height":7.6,"str":"to S1 Nova Mini Control Panel (Worth $300)","pageHeight":792},{"page":1,"x":164.6,"y":67.6,"width":132.9,"height":7.6,"str":"Smart Home + Installation Total Price","pageHeight":792},{"page":2,"x":70.9,"y":700.9,"width":4.4,"height":7.6,"str":"1","pageHeight":792},{"page":2,"x":391.1,"y":700.9,"width":4.4,"height":7.6,"str":"2","pageHeight":792},{"page":2,"x":448.9,"y":700.9,"width":8.9,"height":7.6,"str":"50","pageHeight":792},{"page":2,"x":532.9,"y":702.7,"width":20.5,"height":7,"str":"100.00","pageHeight":792},{"page":2,"x":70.9,"y":687.8,"width":4.4,"height":7.6,"str":"2","pageHeight":792},{"page":2,"x":391.1,"y":687.8,"width":4.4,"height":7.6,"str":"6","pageHeight":792},{"page":2,"x":448.9,"y":687.8,"width":8.9,"height":7.6,"str":"55","pageHeight":792},{"page":2,"x":532.9,"y":689.6,"width":20.5,"height":7,"str":"330.00","pageHeight":792},{"page":2,"x":70.9,"y":674.8,"width":4.4,"height":7.6,"str":"3","pageHeight":792},{"page":2,"x":388.8,"y":674.8,"width":8.9,"height":7.6,"str":"17","pageHeight":792},{"page":2,"x":448.9,"y":674.8,"width":8.9,"height":7.6,"str":"60","pageHeight":792},{"page":2,"x":526.8,"y":676.6,"width":26.7,"height":7,"str":"1,020.00","pageHeight":792},{"page":2,"x":70.9,"y":661.7,"width":4.4,"height":7.6,"str":"4","pageHeight":792},{"page":2,"x":391.1,"y":661.7,"width":4.4,"height":7.6,"str":"4","pageHeight":792},{"page":2,"x":448.9,"y":661.7,"width":8.9,"height":7.6,"str":"40","pageHeight":792},{"page":2,"x":532.9,"y":663.5,"width":20.5,"height":7,"str":"160.00","pageHeight":792},{"page":2,"x":70.9,"y":648.6,"width":4.4,"height":7.6,"str":"5","pageHeight":792},{"page":2,"x":391.1,"y":648.6,"width":4.4,"height":7.6,"str":"4","pageHeight":792},{"page":2,"x":448.9,"y":648.6,"width":8.9,"height":7.6,"str":"20","pageHeight":792},{"page":2,"x":536.5,"y":650.4,"width":17,"height":7,"str":"80.00","pageHeight":792},{"page":2,"x":70.9,"y":627.6,"width":4.4,"height":7.6,"str":"6","pageHeight":792},{"page":2,"x":391.1,"y":627.6,"width":4.4,"height":7.6,"str":"4","pageHeight":792},{"page":2,"x":448.9,"y":627.6,"width":8.9,"height":7.6,"str":"75","pageHeight":792},{"page":2,"x":532.9,"y":633.4,"width":20.5,"height":7,"str":"300.00","pageHeight":792},{"page":2,"x":70.9,"y":614.5,"width":4.4,"height":7.6,"str":"7","pageHeight":792},{"page":2,"x":391.1,"y":614.5,"width":4.4,"height":7.6,"str":"3","pageHeight":792},{"page":2,"x":448.9,"y":614.5,"width":8.9,"height":7.6,"str":"40","pageHeight":792},{"page":2,"x":532.9,"y":616.3,"width":20.5,"height":7,"str":"120.00","pageHeight":792},{"page":2,"x":70.9,"y":570.5,"width":4.4,"height":7.6,"str":"8","pageHeight":792},{"page":2,"x":388.8,"y":570.5,"width":8.9,"height":7.6,"str":"14","pageHeight":792},{"page":2,"x":448.9,"y":570.5,"width":8.9,"height":7.6,"str":"30","pageHeight":792},{"page":2,"x":532.9,"y":587.8,"width":20.5,"height":7,"str":"420.00","pageHeight":792},{"page":2,"x":70.9,"y":538.1,"width":4.4,"height":7.6,"str":"9","pageHeight":792},{"page":2,"x":391.1,"y":538.1,"width":4.4,"height":7.6,"str":"6","pageHeight":792},{"page":2,"x":448.9,"y":538.1,"width":8.9,"height":7.6,"str":"60","pageHeight":792},{"page":2,"x":532.9,"y":549.6,"width":20.5,"height":7,"str":"360.00","pageHeight":792},{"page":2,"x":68.6,"y":525,"width":8.9,"height":7.6,"str":"10","pageHeight":792},{"page":2,"x":388.8,"y":525,"width":8.9,"height":7.6,"str":"12","pageHeight":792},{"page":2,"x":448.9,"y":525,"width":8.9,"height":7.6,"str":"50","pageHeight":792},{"page":2,"x":532.9,"y":526.8,"width":20.5,"height":7,"str":"600.00","pageHeight":792},{"page":2,"x":68.6,"y":502.1,"width":8.9,"height":7.6,"str":"11","pageHeight":792},{"page":2,"x":391.1,"y":502.1,"width":4.4,"height":7.6,"str":"9","pageHeight":792},{"page":2,"x":448.9,"y":502.1,"width":8.9,"height":7.6,"str":"20","pageHeight":792},{"page":2,"x":532.9,"y":508.8,"width":20.5,"height":7,"str":"180.00","pageHeight":792},{"page":2,"x":68.6,"y":489,"width":8.9,"height":7.6,"str":"12","pageHeight":792},{"page":2,"x":391.1,"y":489,"width":4.4,"height":7.6,"str":"8","pageHeight":792},{"page":2,"x":448.9,"y":489,"width":8.9,"height":7.6,"str":"50","pageHeight":792},{"page":2,"x":532.9,"y":490.8,"width":20.5,"height":7,"str":"400.00","pageHeight":792},{"page":2,"x":68.6,"y":475.9,"width":8.9,"height":7.6,"str":"13","pageHeight":792},{"page":2,"x":391.1,"y":475.9,"width":4.4,"height":7.6,"str":"3","pageHeight":792},{"page":2,"x":448.9,"y":475.9,"width":8.9,"height":7.6,"str":"25","pageHeight":792},{"page":2,"x":536.5,"y":477.7,"width":17,"height":7,"str":"75.00","pageHeight":792},{"page":2,"x":71,"y":462.8,"width":4,"height":7.6,"str":"a","pageHeight":792},{"page":2,"x":64,"y":436.7,"width":18.3,"height":7.6,"str":"Total","pageHeight":792},{"page":2,"x":523.8,"y":438.5,"width":29.5,"height":7,"str":"4,145.00","pageHeight":792},{"page":2,"x":65.5,"y":423.6,"width":15.2,"height":7.6,"str":"Paid","pageHeight":792},{"page":2,"x":520.8,"y":423.6,"width":32.2,"height":7.6,"str":"4,495.50","pageHeight":792},{"page":2,"x":376.7,"y":414.6,"width":1.2,"height":0.7,"str":"[42]","pageHeight":792},{"page":2,"x":417.2,"y":414.6,"width":60.6,"height":7,"str":"GRANT TOTAL (S$)","pageHeight":792},{"page":2,"x":526.8,"y":414.6,"width":26.7,"height":7,"str":"8,991.00","pageHeight":792},{"page":2,"x":417.2,"y":405.6,"width":73.5,"height":7,"str":"DEPOSIT REQUEST (S$)","pageHeight":792},{"page":2,"x":523.8,"y":405.6,"width":29.5,"height":7,"str":"2,697.30","pageHeight":792},{"page":2,"x":55.6,"y":275.3,"width":40.2,"height":7,"str":"Prepared by:","pageHeight":792},{"page":2,"x":156.6,"y":462.8,"width":148.9,"height":7.6,"str":"Single Socket & Double Socket Installation","pageHeight":792},{"page":2,"x":201.7,"y":714,"width":58.5,"height":7.6,"str":"Electrical Wiring","pageHeight":792},{"page":2,"x":156.1,"y":700.9,"width":149.8,"height":7.6,"str":"Shifting Lighting Switch (Kitchen & Dining)","pageHeight":792},{"page":2,"x":181.3,"y":687.8,"width":101.8,"height":7.6,"str":"Supply 6 x 13A Single Socket","pageHeight":792},{"page":2,"x":176.2,"y":674.8,"width":109.8,"height":7.6,"str":"Supply 17 x 13A Double Socket","pageHeight":792},{"page":2,"x":156.7,"y":637.7,"width":148.2,"height":7.6,"str":"Supply 4 x High Power 20A-40A Points for","pageHeight":792},{"page":2,"x":123.7,"y":627.6,"width":214.2,"height":7.6,"str":"Hood, Hob, Oven, Fridge with Switch Points for Hood, Oven.","pageHeight":792},{"page":2,"x":118.6,"y":614.5,"width":225,"height":7.6,"str":"Supply 3 x Switch Point (Master Bedhead Left and Right, Island)","pageHeight":792},{"page":2,"x":99.4,"y":600.7,"width":262.9,"height":7.6,"str":"Supply/ Shift 15 x 2nd Lighting Point (4 x Dining Spotlights, 1 x Dining LED","pageHeight":792},{"page":2,"x":104.9,"y":590.6,"width":252.1,"height":7.6,"str":"1 x Living LED, 1 x Living Track, 1 x Living Fan, 1 x Kitchen Tracklight,","pageHeight":792},{"page":2,"x":123.8,"y":580.6,"width":214.1,"height":7.6,"str":"1 x Master Tracklight, 1 x Master Fan, 2 x Master Wall Light,","pageHeight":792},{"page":2,"x":190.3,"y":570.5,"width":81.1,"height":7.6,"str":"1 x Toilet Mirror Light)","pageHeight":792},{"page":2,"x":106.9,"y":558.2,"width":247.8,"height":7.6,"str":"Supply 2 x New Lighting Point (Aura Cove) , 4 x New Corner Fan Point","pageHeight":792},{"page":2,"x":94.2,"y":548.2,"width":273.1,"height":7.6,"str":"(Rooms Haga Cove + Corner Fans at Kitchen, Dining and 2 Bedroom) All From","pageHeight":792},{"page":2,"x":219.1,"y":538.1,"width":23.3,"height":7.6,"str":"Switch","pageHeight":792},{"page":2,"x":177.7,"y":661.7,"width":106.5,"height":7.6,"str":"Extend 4 x 13A Double Socket","pageHeight":792},{"page":2,"x":102.5,"y":525,"width":257.1,"height":7.6,"str":"Hacking/Cutting & Conceal During Wiring of Light/Power Points/Switches","pageHeight":792},{"page":2,"x":55.6,"y":248,"width":83.3,"height":7,"str":"Email: hexiang@maxsen.sg","pageHeight":792},{"page":2,"x":165.6,"y":648.6,"width":130.8,"height":7.6,"str":"Changing 4 x Single to Double Socket","pageHeight":792},{"page":2,"x":55.7,"y":385.4,"width":26.3,"height":7,"str":"DETAILS","pageHeight":792},{"page":2,"x":55.6,"y":376.2,"width":249,"height":7,"str":"Delivery Terms: The services/items will commence after receiving 50% deposit.","pageHeight":792},{"page":2,"x":55.6,"y":367.2,"width":492.5,"height":7,"str":"Payment Terms: Next, 30% to be paid within 3 days before installation of stated smart home items. Last, 20% to be paid within 3 days after the integration of","pageHeight":792},{"page":2,"x":55.6,"y":358.2,"width":480.1,"height":7,"str":"all stated smart home devices into the smartlife application. Grant Total in the final invoice is subjected to changes made during the renovation process.","pageHeight":792},{"page":2,"x":55.6,"y":346.1,"width":70,"height":7,"str":"Bank details as follow:","pageHeight":792},{"page":2,"x":59.6,"y":337.1,"width":136.8,"height":7,"str":"- Beneficiary: Maxsen Smart Home Pte. Ltd.","pageHeight":792},{"page":2,"x":59.6,"y":328.1,"width":165.1,"height":7,"str":"- Bank: Oversea-Chinese Banking Corporation (OCBC)","pageHeight":792},{"page":2,"x":59.6,"y":319.1,"width":61.7,"height":7,"str":"- UEN.: 202433824M","pageHeight":792},{"page":2,"x":55.6,"y":310.1,"width":458.8,"height":7,"str":"We accept both cheque payment, bank transfer, PayNow. If you have any questions about this invoice, please contact Cheang He Xiang, 87615161,","pageHeight":792},{"page":2,"x":55.6,"y":301.1,"width":64.1,"height":7,"str":"hexiang@maxsen.sg.","pageHeight":792},{"page":2,"x":181.2,"y":436.7,"width":99.6,"height":7.6,"str":"Total Electrical Wiring Price","pageHeight":792},{"page":2,"x":209,"y":423.6,"width":43.9,"height":7.6,"str":"Deposit Paid","pageHeight":792},{"page":2,"x":111.6,"y":512.2,"width":238.4,"height":7.6,"str":"Supply 9 x 4 Core cable for LED Strip Point (1 x Kitchen, 3 x Island,","pageHeight":792},{"page":2,"x":182,"y":502.1,"width":97.7,"height":7.6,"str":"3 x Living, 2 x Rooms Cove)","pageHeight":792},{"page":2,"x":152.8,"y":489,"width":156.6,"height":7.6,"str":"Supply Neutral Wires to a Light Switch Point","pageHeight":792},{"page":2,"x":150.8,"y":475.9,"width":160.5,"height":7.6,"str":"Install Waterproof Casing for Balcony Sockets","pageHeight":792},{"page":2,"x":55.6,"y":266.3,"width":74.3,"height":7,"str":"Name: Cheang He Xiang","pageHeight":792},{"page":2,"x":55.6,"y":257.3,"width":62.6,"height":7,"str":"Maxsen Smart Home","pageHeight":792}]
+[
+  {
+    "page": 1,
+    "x": 466.8,
+    "y": 669.6,
+    "width": 16.2,
+    "height": 7,
+    "str": "DATE",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 506,
+    "y": 669.6,
+    "width": 36,
+    "height": 7,
+    "str": "30/11/2025",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 452.4,
+    "y": 660.6,
+    "width": 30.6,
+    "height": 7,
+    "str": "INVOICE #",
+    "pageHeight": 792
+  },
+  { "page": 1, "x": 503, "y": 660.6, "width": 42.1, "height": 7, "str": "MX2", "pageHeight": 792 },
+  { "page": 1, "x": 61.7, "y": 641.8, "width": 16, "height": 7, "str": "Attn:", "pageHeight": 792 },
+  { "page": 1, "x": 98.8, "y": 641.8, "width": 7.2, "height": 7, "str": "Test", "pageHeight": 792 },
+  {
+    "page": 1,
+    "x": 61.7,
+    "y": 632.8,
+    "width": 21.6,
+    "height": 7,
+    "str": "Phone:",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 98.7,
+    "y": 632.8,
+    "width": 30.9,
+    "height": 7,
+    "str": "9123 4567",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 61.7,
+    "y": 623.8,
+    "width": 26.4,
+    "height": 7,
+    "str": "Address:",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 98.7,
+    "y": 623.8,
+    "width": 84.6,
+    "height": 7,
+    "str": "1 Test Road",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 67.2,
+    "y": 590.6,
+    "width": 11.9,
+    "height": 7.6,
+    "str": "S/N",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 375,
+    "y": 590.6,
+    "width": 36.5,
+    "height": 7.6,
+    "str": "QUANTITY",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 425.6,
+    "y": 590.6,
+    "width": 55.6,
+    "height": 7.6,
+    "str": "UNIT PRICE (S$)",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 505.9,
+    "y": 590.6,
+    "width": 36.3,
+    "height": 7.6,
+    "str": "PRICE (S$)",
+    "pageHeight": 792
+  },
+  { "page": 1, "x": 70.9, "y": 480.5, "width": 4.4, "height": 7.6, "str": "1", "pageHeight": 792 },
+  { "page": 1, "x": 391.1, "y": 480.5, "width": 4.4, "height": 7.6, "str": "1", "pageHeight": 792 },
+  {
+    "page": 1,
+    "x": 446.8,
+    "y": 480.5,
+    "width": 13.3,
+    "height": 7.6,
+    "str": "960",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 532.9,
+    "y": 505.9,
+    "width": 20.5,
+    "height": 7,
+    "str": "960.00",
+    "pageHeight": 792
+  },
+  { "page": 1, "x": 70.9, "y": 465.2, "width": 4.4, "height": 7.6, "str": "3", "pageHeight": 792 },
+  { "page": 1, "x": 391.1, "y": 465.2, "width": 4.4, "height": 7.6, "str": "1", "pageHeight": 792 },
+  {
+    "page": 1,
+    "x": 448.9,
+    "y": 465.2,
+    "width": 8.9,
+    "height": 7.6,
+    "str": "45",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 536.5,
+    "y": 468.1,
+    "width": 17,
+    "height": 7,
+    "str": "45.00",
+    "pageHeight": 792
+  },
+  { "page": 1, "x": 70.9, "y": 451.4, "width": 4.4, "height": 7.6, "str": "4", "pageHeight": 792 },
+  { "page": 1, "x": 391.1, "y": 451.4, "width": 4.4, "height": 7.6, "str": "1", "pageHeight": 792 },
+  {
+    "page": 1,
+    "x": 448.9,
+    "y": 451.4,
+    "width": 8.9,
+    "height": 7.6,
+    "str": "80",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 536.5,
+    "y": 453.6,
+    "width": 17,
+    "height": 7,
+    "str": "80.00",
+    "pageHeight": 792
+  },
+  { "page": 1, "x": 70.9, "y": 437.6, "width": 4.4, "height": 7.6, "str": "5", "pageHeight": 792 },
+  { "page": 1, "x": 391.1, "y": 437.6, "width": 4.4, "height": 7.6, "str": "1", "pageHeight": 792 },
+  {
+    "page": 1,
+    "x": 448.9,
+    "y": 437.6,
+    "width": 8.9,
+    "height": 7.6,
+    "str": "30",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 536.5,
+    "y": 439.8,
+    "width": 17,
+    "height": 7,
+    "str": "30.00",
+    "pageHeight": 792
+  },
+  { "page": 1, "x": 70.9, "y": 423.8, "width": 4.4, "height": 7.6, "str": "6", "pageHeight": 792 },
+  { "page": 1, "x": 391.1, "y": 423.8, "width": 4.4, "height": 7.6, "str": "4", "pageHeight": 792 },
+  {
+    "page": 1,
+    "x": 446.8,
+    "y": 423.8,
+    "width": 13.3,
+    "height": 7.6,
+    "str": "330",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 526.8,
+    "y": 426,
+    "width": 26.7,
+    "height": 7,
+    "str": "1,320.00",
+    "pageHeight": 792
+  },
+  { "page": 1, "x": 70.9, "y": 410, "width": 4.4, "height": 7.6, "str": "7", "pageHeight": 792 },
+  { "page": 1, "x": 391.1, "y": 410, "width": 4.4, "height": 7.6, "str": "4", "pageHeight": 792 },
+  { "page": 1, "x": 448.9, "y": 410, "width": 8.9, "height": 7.6, "str": "60", "pageHeight": 792 },
+  {
+    "page": 1,
+    "x": 532.9,
+    "y": 412.2,
+    "width": 20.5,
+    "height": 7,
+    "str": "240.00",
+    "pageHeight": 792
+  },
+  { "page": 1, "x": 70.9, "y": 396.2, "width": 4.4, "height": 7.6, "str": "8", "pageHeight": 792 },
+  { "page": 1, "x": 391.1, "y": 396.2, "width": 4.4, "height": 7.6, "str": "4", "pageHeight": 792 },
+  {
+    "page": 1,
+    "x": 448.9,
+    "y": 396.2,
+    "width": 8.9,
+    "height": 7.6,
+    "str": "56",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 532.9,
+    "y": 398.4,
+    "width": 20.5,
+    "height": 7,
+    "str": "224.00",
+    "pageHeight": 792
+  },
+  { "page": 1, "x": 70.9, "y": 382.4, "width": 4.4, "height": 7.6, "str": "9", "pageHeight": 792 },
+  { "page": 1, "x": 391.1, "y": 382.4, "width": 4.4, "height": 7.6, "str": "4", "pageHeight": 792 },
+  {
+    "page": 1,
+    "x": 448.9,
+    "y": 382.4,
+    "width": 8.9,
+    "height": 7.6,
+    "str": "15",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 536.5,
+    "y": 384.6,
+    "width": 17,
+    "height": 7,
+    "str": "60.00",
+    "pageHeight": 792
+  },
+  { "page": 1, "x": 68.6, "y": 368.6, "width": 8.9, "height": 7.6, "str": "10", "pageHeight": 792 },
+  { "page": 1, "x": 391.1, "y": 368.6, "width": 4.4, "height": 7.6, "str": "3", "pageHeight": 792 },
+  {
+    "page": 1,
+    "x": 446.8,
+    "y": 368.6,
+    "width": 13.3,
+    "height": 7.6,
+    "str": "112",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 532.9,
+    "y": 370.8,
+    "width": 20.5,
+    "height": 7,
+    "str": "336.00",
+    "pageHeight": 792
+  },
+  { "page": 1, "x": 68.6, "y": 354.8, "width": 8.9, "height": 7.6, "str": "11", "pageHeight": 792 },
+  { "page": 1, "x": 391.1, "y": 354.8, "width": 4.4, "height": 7.6, "str": "3", "pageHeight": 792 },
+  {
+    "page": 1,
+    "x": 448.9,
+    "y": 354.8,
+    "width": 8.9,
+    "height": 7.6,
+    "str": "20",
+    "pageHeight": 792
+  },
+  { "page": 1, "x": 536.5, "y": 357, "width": 17, "height": 7, "str": "60.00", "pageHeight": 792 },
+  { "page": 1, "x": 68.6, "y": 332.4, "width": 8.9, "height": 7.6, "str": "12", "pageHeight": 792 },
+  { "page": 1, "x": 391.1, "y": 332.4, "width": 4.4, "height": 7.6, "str": "8", "pageHeight": 792 },
+  {
+    "page": 1,
+    "x": 448.9,
+    "y": 332.4,
+    "width": 8.9,
+    "height": 7.6,
+    "str": "18",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 532.9,
+    "y": 338.9,
+    "width": 20.5,
+    "height": 7,
+    "str": "144.00",
+    "pageHeight": 792
+  },
+  { "page": 1, "x": 68.6, "y": 318.6, "width": 8.9, "height": 7.6, "str": "13", "pageHeight": 792 },
+  { "page": 1, "x": 391.1, "y": 318.6, "width": 4.4, "height": 7.6, "str": "3", "pageHeight": 792 },
+  {
+    "page": 1,
+    "x": 448.9,
+    "y": 318.6,
+    "width": 8.9,
+    "height": 7.6,
+    "str": "42",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 532.9,
+    "y": 320.8,
+    "width": 20.5,
+    "height": 7,
+    "str": "126.00",
+    "pageHeight": 792
+  },
+  { "page": 1, "x": 68.6, "y": 304.8, "width": 8.9, "height": 7.6, "str": "14", "pageHeight": 792 },
+  { "page": 1, "x": 391.1, "y": 304.8, "width": 4.4, "height": 7.6, "str": "8", "pageHeight": 792 },
+  {
+    "page": 1,
+    "x": 448.9,
+    "y": 304.8,
+    "width": 8.9,
+    "height": 7.6,
+    "str": "15",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 532.9,
+    "y": 307,
+    "width": 20.5,
+    "height": 7,
+    "str": "120.00",
+    "pageHeight": 792
+  },
+  { "page": 1, "x": 68.6, "y": 282.4, "width": 8.9, "height": 7.6, "str": "15", "pageHeight": 792 },
+  { "page": 1, "x": 391.1, "y": 282.4, "width": 4.4, "height": 7.6, "str": "7", "pageHeight": 792 },
+  {
+    "page": 1,
+    "x": 448.9,
+    "y": 282.4,
+    "width": 8.9,
+    "height": 7.6,
+    "str": "42",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 532.9,
+    "y": 288.8,
+    "width": 20.5,
+    "height": 7,
+    "str": "294.00",
+    "pageHeight": 792
+  },
+  { "page": 1, "x": 68.6, "y": 268.9, "width": 8.9, "height": 7.6, "str": "16", "pageHeight": 792 },
+  { "page": 1, "x": 391.1, "y": 268.9, "width": 4.4, "height": 7.6, "str": "1", "pageHeight": 792 },
+  {
+    "page": 1,
+    "x": 448.9,
+    "y": 268.9,
+    "width": 8.9,
+    "height": 7.6,
+    "str": "68",
+    "pageHeight": 792
+  },
+  { "page": 1, "x": 536.5, "y": 271, "width": 17, "height": 7, "str": "68.00", "pageHeight": 792 },
+  { "page": 1, "x": 68.6, "y": 253.7, "width": 8.9, "height": 7.6, "str": "17", "pageHeight": 792 },
+  { "page": 1, "x": 391.1, "y": 253.7, "width": 4.4, "height": 7.6, "str": "7", "pageHeight": 792 },
+  {
+    "page": 1,
+    "x": 448.9,
+    "y": 253.7,
+    "width": 8.9,
+    "height": 7.6,
+    "str": "32",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 532.9,
+    "y": 256.6,
+    "width": 20.5,
+    "height": 7,
+    "str": "224.00",
+    "pageHeight": 792
+  },
+  { "page": 1, "x": 68.6, "y": 238.4, "width": 8.9, "height": 7.6, "str": "18", "pageHeight": 792 },
+  { "page": 1, "x": 391.1, "y": 238.4, "width": 4.4, "height": 7.6, "str": "6", "pageHeight": 792 },
+  {
+    "page": 1,
+    "x": 448.9,
+    "y": 238.4,
+    "width": 8.9,
+    "height": 7.6,
+    "str": "30",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 532.9,
+    "y": 241.3,
+    "width": 20.5,
+    "height": 7,
+    "str": "180.00",
+    "pageHeight": 792
+  },
+  { "page": 1, "x": 68.6, "y": 223.2, "width": 8.9, "height": 7.6, "str": "19", "pageHeight": 792 },
+  { "page": 1, "x": 391.1, "y": 223.2, "width": 4.4, "height": 7.6, "str": "5", "pageHeight": 792 },
+  {
+    "page": 1,
+    "x": 448.9,
+    "y": 223.2,
+    "width": 8.9,
+    "height": 7.6,
+    "str": "50",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 532.9,
+    "y": 226.1,
+    "width": 20.5,
+    "height": 7,
+    "str": "250.00",
+    "pageHeight": 792
+  },
+  { "page": 1, "x": 68.6, "y": 208, "width": 8.9, "height": 7.6, "str": "20", "pageHeight": 792 },
+  { "page": 1, "x": 391.1, "y": 208, "width": 4.4, "height": 7.6, "str": "2", "pageHeight": 792 },
+  { "page": 1, "x": 448.9, "y": 208, "width": 8.9, "height": 7.6, "str": "15", "pageHeight": 792 },
+  {
+    "page": 1,
+    "x": 536.5,
+    "y": 210.8,
+    "width": 17,
+    "height": 7,
+    "str": "30.00",
+    "pageHeight": 792
+  },
+  { "page": 1, "x": 68.6, "y": 192.7, "width": 8.9, "height": 7.6, "str": "21", "pageHeight": 792 },
+  { "page": 1, "x": 391.1, "y": 192.7, "width": 4.4, "height": 7.6, "str": "1", "pageHeight": 792 },
+  {
+    "page": 1,
+    "x": 448.9,
+    "y": 192.7,
+    "width": 8.9,
+    "height": 7.6,
+    "str": "25",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 536.5,
+    "y": 195.6,
+    "width": 17,
+    "height": 7,
+    "str": "25.00",
+    "pageHeight": 792
+  },
+  { "page": 1, "x": 68.6, "y": 177.5, "width": 8.9, "height": 7.6, "str": "22", "pageHeight": 792 },
+  { "page": 1, "x": 391.1, "y": 177.5, "width": 4.4, "height": 7.6, "str": "2", "pageHeight": 792 },
+  {
+    "page": 1,
+    "x": 448.9,
+    "y": 177.5,
+    "width": 8.9,
+    "height": 7.6,
+    "str": "15",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 536.5,
+    "y": 180.4,
+    "width": 17,
+    "height": 7,
+    "str": "30.00",
+    "pageHeight": 792
+  },
+  { "page": 1, "x": 71, "y": 153.7, "width": 4, "height": 7.6, "str": "a", "pageHeight": 792 },
+  { "page": 1, "x": 391.1, "y": 153.7, "width": 4.4, "height": 7.6, "str": "0", "pageHeight": 792 },
+  {
+    "page": 1,
+    "x": 446.8,
+    "y": 153.7,
+    "width": 13.3,
+    "height": 7.6,
+    "str": "160",
+    "pageHeight": 792
+  },
+  { "page": 1, "x": 543.7, "y": 160.9, "width": 2.6, "height": 7, "str": "-", "pageHeight": 792 },
+  { "page": 1, "x": 70.9, "y": 130.3, "width": 4.4, "height": 7.6, "str": "b", "pageHeight": 792 },
+  { "page": 1, "x": 391.1, "y": 130.3, "width": 4.4, "height": 7.6, "str": "0", "pageHeight": 792 },
+  {
+    "page": 1,
+    "x": 446.8,
+    "y": 130.3,
+    "width": 13.3,
+    "height": 7.6,
+    "str": "620",
+    "pageHeight": 792
+  },
+  { "page": 1, "x": 543.7, "y": 137.3, "width": 2.6, "height": 7, "str": "-", "pageHeight": 792 },
+  { "page": 1, "x": 71.2, "y": 115.6, "width": 3.9, "height": 7.6, "str": "c", "pageHeight": 792 },
+  { "page": 1, "x": 391.1, "y": 115.6, "width": 4.4, "height": 7.6, "str": "0", "pageHeight": 792 },
+  {
+    "page": 1,
+    "x": 448.9,
+    "y": 115.6,
+    "width": 8.9,
+    "height": 7.6,
+    "str": "60",
+    "pageHeight": 792
+  },
+  { "page": 1, "x": 543.7, "y": 118.2, "width": 2.6, "height": 7, "str": "-", "pageHeight": 792 },
+  { "page": 1, "x": 70.9, "y": 94.4, "width": 4.4, "height": 7.6, "str": "d", "pageHeight": 792 },
+  { "page": 1, "x": 391.1, "y": 94.4, "width": 4.4, "height": 7.6, "str": "0", "pageHeight": 792 },
+  {
+    "page": 1,
+    "x": 446.8,
+    "y": 94.4,
+    "width": 13.3,
+    "height": 7.6,
+    "str": "300",
+    "pageHeight": 792
+  },
+  { "page": 1, "x": 543.7, "y": 100.3, "width": 2.6, "height": 7, "str": "-", "pageHeight": 792 },
+  {
+    "page": 1,
+    "x": 520.8,
+    "y": 67.6,
+    "width": 32.2,
+    "height": 7.6,
+    "str": "4,846.00",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 156.1,
+    "y": 437.6,
+    "width": 149.9,
+    "height": 7.6,
+    "str": "Installation & Integration of Heater Switch",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 165,
+    "y": 238.4,
+    "width": 131.6,
+    "height": 7.6,
+    "str": "Installation of 6m of Tracklights (6m)",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 180.5,
+    "y": 223.2,
+    "width": 100.5,
+    "height": 7.6,
+    "str": "Installation of 5 Ceiling Fans",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 156.7,
+    "y": 208,
+    "width": 148.2,
+    "height": 7.6,
+    "str": "Installation of Ceiling Light in 2 Bedrooms",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 164.8,
+    "y": 192.7,
+    "width": 132.1,
+    "height": 7.6,
+    "str": "Installation of Mirror Light in 1 Toilet",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 160.4,
+    "y": 177.5,
+    "width": 140.8,
+    "height": 7.6,
+    "str": "Installation of Ceiling Lights in 2 Toilets",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 152.6,
+    "y": 396.2,
+    "width": 156.9,
+    "height": 7.6,
+    "str": "Orbi Surface Single Head Spotlights (3 Tone)",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 188,
+    "y": 382.4,
+    "width": 85.9,
+    "height": 7.6,
+    "str": "Installation of Spotlights",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 154.4,
+    "y": 368.6,
+    "width": 153.2,
+    "height": 7.6,
+    "str": "Orbi Surface Twin Head Spotlights (3 Tone)",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 188,
+    "y": 354.8,
+    "width": 85.9,
+    "height": 7.6,
+    "str": "Installation of Spotlights",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 118.2,
+    "y": 342.5,
+    "width": 225.3,
+    "height": 7.6,
+    "str": "Lumi CRI 95 COB CCT Warm White Led Strips (per m) (Tri Tone)",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 222.6,
+    "y": 332.4,
+    "width": 16.4,
+    "height": 7.6,
+    "str": "(8m)",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 133.7,
+    "y": 318.6,
+    "width": 194.7,
+    "height": 7.6,
+    "str": "60W Led Driver for Lumi Strips (for Approx. 3m) 3 Sets",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 148.2,
+    "y": 304.8,
+    "width": 165.7,
+    "height": 7.6,
+    "str": "Installation & Integration of Lumi Cove (per m)",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 105,
+    "y": 292.4,
+    "width": 251.6,
+    "height": 7.6,
+    "str": "Aura Coveless Profile + CRI 95 COB CCT Warm White Led Strips (per m)",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 162.6,
+    "y": 282.4,
+    "width": 136.5,
+    "height": 7.6,
+    "str": "(Tri Tone) for 1 Rooms Total 7 Meters.",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 56,
+    "y": 724.2,
+    "width": 99.2,
+    "height": 11,
+    "str": "Maxsen Smart Home",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 61.7,
+    "y": 711.1,
+    "width": 96.4,
+    "height": 7,
+    "str": "Company Reg. No. 202433824M",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 61.7,
+    "y": 703.7,
+    "width": 88.7,
+    "height": 7,
+    "str": "9004 Tampines St 93, #2-122",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 61.7,
+    "y": 694.7,
+    "width": 54.1,
+    "height": 7,
+    "str": "Singapore 528838",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 61.7,
+    "y": 686.6,
+    "width": 46.7,
+    "height": 7,
+    "str": "(+65) 87615161",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 61.7,
+    "y": 678.6,
+    "width": 83.3,
+    "height": 7,
+    "str": "Email: hexiang@maxsen.sg",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 61.7,
+    "y": 669.6,
+    "width": 102.5,
+    "height": 7,
+    "str": "Website: http://www.maxsen.sg",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 61.9,
+    "y": 650.8,
+    "width": 27.3,
+    "height": 7.6,
+    "str": "BILL TO",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 198.1,
+    "y": 590.6,
+    "width": 65.8,
+    "height": 7.6,
+    "str": "ITEM/DESCRIPTION",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 199.7,
+    "y": 530.9,
+    "width": 62.3,
+    "height": 7.6,
+    "str": "Essential Package",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 175.8,
+    "y": 520.8,
+    "width": 110.2,
+    "height": 7.6,
+    "str": "8 x Nova Smart Series Switches",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 193.9,
+    "y": 510.7,
+    "width": 73.8,
+    "height": 7.6,
+    "str": "Remove 3 IR Blasters",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 193.6,
+    "y": 500.6,
+    "width": 74.7,
+    "height": 7.6,
+    "str": "1 x Gateway in Room",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 177.2,
+    "y": 490.6,
+    "width": 107.3,
+    "height": 7.6,
+    "str": "With Installation & Integration",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 159.1,
+    "y": 480.5,
+    "width": 143.3,
+    "height": 7.6,
+    "str": "Package Discounted to $960 from $1290",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 184.9,
+    "y": 451.4,
+    "width": 92.3,
+    "height": 7.6,
+    "str": "Nova Smart Heater Switch",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 150,
+    "y": 423.8,
+    "width": 162,
+    "height": 7.6,
+    "str": "Tour Customised Zigbee Smart Curtain Tracks",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 143.6,
+    "y": 410,
+    "width": 174.8,
+    "height": 7.6,
+    "str": "Installation & Integration of Smart Curtain Tracks",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 181.9,
+    "y": 465.2,
+    "width": 97.9,
+    "height": 7.6,
+    "str": "Nova Smart Wireless Switch",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 99.1,
+    "y": 268.9,
+    "width": 263.8,
+    "height": 7.6,
+    "str": "150W Led Driver for Lumi Strips (for Approx. 7m) for Bedrooms Aura Cove",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 132,
+    "y": 253.7,
+    "width": 197.5,
+    "height": 7.6,
+    "str": "Installation & Integration of Aura Cove + Profile (per m)",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 97.2,
+    "y": 163.8,
+    "width": 267.1,
+    "height": 7.6,
+    "str": "Free Gifts: Lumi/Aura Led Smart Control for COB Strips Need 4 Sets (Comes",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 184.8,
+    "y": 153.7,
+    "width": 92,
+    "height": 7.6,
+    "str": "With Aura Cove Purchase)",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 130.3,
+    "y": 140.4,
+    "width": 201,
+    "height": 7.6,
+    "str": "Free Gifts: Nova S8 Smart Control Panel with Installation",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 192.5,
+    "y": 130.3,
+    "width": 76.6,
+    "height": 7.6,
+    "str": "(8 Inch) (Worth $620)",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 151.8,
+    "y": 115.6,
+    "width": 158,
+    "height": 7.6,
+    "str": "Free Gifts: 1 Motion Sensor Battery Powered",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 146.8,
+    "y": 104.5,
+    "width": 168.1,
+    "height": 7.6,
+    "str": "Free Gifts: 3 x Nova 3.0 Smart Switch Upgrades",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 153.6,
+    "y": 94.4,
+    "width": 154.4,
+    "height": 7.6,
+    "str": "to S1 Nova Mini Control Panel (Worth $300)",
+    "pageHeight": 792
+  },
+  {
+    "page": 1,
+    "x": 164.6,
+    "y": 67.6,
+    "width": 132.9,
+    "height": 7.6,
+    "str": "Smart Home + Installation Total Price",
+    "pageHeight": 792
+  },
+  { "page": 2, "x": 70.9, "y": 700.9, "width": 4.4, "height": 7.6, "str": "1", "pageHeight": 792 },
+  { "page": 2, "x": 391.1, "y": 700.9, "width": 4.4, "height": 7.6, "str": "2", "pageHeight": 792 },
+  {
+    "page": 2,
+    "x": 448.9,
+    "y": 700.9,
+    "width": 8.9,
+    "height": 7.6,
+    "str": "50",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 532.9,
+    "y": 702.7,
+    "width": 20.5,
+    "height": 7,
+    "str": "100.00",
+    "pageHeight": 792
+  },
+  { "page": 2, "x": 70.9, "y": 687.8, "width": 4.4, "height": 7.6, "str": "2", "pageHeight": 792 },
+  { "page": 2, "x": 391.1, "y": 687.8, "width": 4.4, "height": 7.6, "str": "6", "pageHeight": 792 },
+  {
+    "page": 2,
+    "x": 448.9,
+    "y": 687.8,
+    "width": 8.9,
+    "height": 7.6,
+    "str": "55",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 532.9,
+    "y": 689.6,
+    "width": 20.5,
+    "height": 7,
+    "str": "330.00",
+    "pageHeight": 792
+  },
+  { "page": 2, "x": 70.9, "y": 674.8, "width": 4.4, "height": 7.6, "str": "3", "pageHeight": 792 },
+  {
+    "page": 2,
+    "x": 388.8,
+    "y": 674.8,
+    "width": 8.9,
+    "height": 7.6,
+    "str": "17",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 448.9,
+    "y": 674.8,
+    "width": 8.9,
+    "height": 7.6,
+    "str": "60",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 526.8,
+    "y": 676.6,
+    "width": 26.7,
+    "height": 7,
+    "str": "1,020.00",
+    "pageHeight": 792
+  },
+  { "page": 2, "x": 70.9, "y": 661.7, "width": 4.4, "height": 7.6, "str": "4", "pageHeight": 792 },
+  { "page": 2, "x": 391.1, "y": 661.7, "width": 4.4, "height": 7.6, "str": "4", "pageHeight": 792 },
+  {
+    "page": 2,
+    "x": 448.9,
+    "y": 661.7,
+    "width": 8.9,
+    "height": 7.6,
+    "str": "40",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 532.9,
+    "y": 663.5,
+    "width": 20.5,
+    "height": 7,
+    "str": "160.00",
+    "pageHeight": 792
+  },
+  { "page": 2, "x": 70.9, "y": 648.6, "width": 4.4, "height": 7.6, "str": "5", "pageHeight": 792 },
+  { "page": 2, "x": 391.1, "y": 648.6, "width": 4.4, "height": 7.6, "str": "4", "pageHeight": 792 },
+  {
+    "page": 2,
+    "x": 448.9,
+    "y": 648.6,
+    "width": 8.9,
+    "height": 7.6,
+    "str": "20",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 536.5,
+    "y": 650.4,
+    "width": 17,
+    "height": 7,
+    "str": "80.00",
+    "pageHeight": 792
+  },
+  { "page": 2, "x": 70.9, "y": 627.6, "width": 4.4, "height": 7.6, "str": "6", "pageHeight": 792 },
+  { "page": 2, "x": 391.1, "y": 627.6, "width": 4.4, "height": 7.6, "str": "4", "pageHeight": 792 },
+  {
+    "page": 2,
+    "x": 448.9,
+    "y": 627.6,
+    "width": 8.9,
+    "height": 7.6,
+    "str": "75",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 532.9,
+    "y": 633.4,
+    "width": 20.5,
+    "height": 7,
+    "str": "300.00",
+    "pageHeight": 792
+  },
+  { "page": 2, "x": 70.9, "y": 614.5, "width": 4.4, "height": 7.6, "str": "7", "pageHeight": 792 },
+  { "page": 2, "x": 391.1, "y": 614.5, "width": 4.4, "height": 7.6, "str": "3", "pageHeight": 792 },
+  {
+    "page": 2,
+    "x": 448.9,
+    "y": 614.5,
+    "width": 8.9,
+    "height": 7.6,
+    "str": "40",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 532.9,
+    "y": 616.3,
+    "width": 20.5,
+    "height": 7,
+    "str": "120.00",
+    "pageHeight": 792
+  },
+  { "page": 2, "x": 70.9, "y": 570.5, "width": 4.4, "height": 7.6, "str": "8", "pageHeight": 792 },
+  {
+    "page": 2,
+    "x": 388.8,
+    "y": 570.5,
+    "width": 8.9,
+    "height": 7.6,
+    "str": "14",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 448.9,
+    "y": 570.5,
+    "width": 8.9,
+    "height": 7.6,
+    "str": "30",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 532.9,
+    "y": 587.8,
+    "width": 20.5,
+    "height": 7,
+    "str": "420.00",
+    "pageHeight": 792
+  },
+  { "page": 2, "x": 70.9, "y": 538.1, "width": 4.4, "height": 7.6, "str": "9", "pageHeight": 792 },
+  { "page": 2, "x": 391.1, "y": 538.1, "width": 4.4, "height": 7.6, "str": "6", "pageHeight": 792 },
+  {
+    "page": 2,
+    "x": 448.9,
+    "y": 538.1,
+    "width": 8.9,
+    "height": 7.6,
+    "str": "60",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 532.9,
+    "y": 549.6,
+    "width": 20.5,
+    "height": 7,
+    "str": "360.00",
+    "pageHeight": 792
+  },
+  { "page": 2, "x": 68.6, "y": 525, "width": 8.9, "height": 7.6, "str": "10", "pageHeight": 792 },
+  { "page": 2, "x": 388.8, "y": 525, "width": 8.9, "height": 7.6, "str": "12", "pageHeight": 792 },
+  { "page": 2, "x": 448.9, "y": 525, "width": 8.9, "height": 7.6, "str": "50", "pageHeight": 792 },
+  {
+    "page": 2,
+    "x": 532.9,
+    "y": 526.8,
+    "width": 20.5,
+    "height": 7,
+    "str": "600.00",
+    "pageHeight": 792
+  },
+  { "page": 2, "x": 68.6, "y": 502.1, "width": 8.9, "height": 7.6, "str": "11", "pageHeight": 792 },
+  { "page": 2, "x": 391.1, "y": 502.1, "width": 4.4, "height": 7.6, "str": "9", "pageHeight": 792 },
+  {
+    "page": 2,
+    "x": 448.9,
+    "y": 502.1,
+    "width": 8.9,
+    "height": 7.6,
+    "str": "20",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 532.9,
+    "y": 508.8,
+    "width": 20.5,
+    "height": 7,
+    "str": "180.00",
+    "pageHeight": 792
+  },
+  { "page": 2, "x": 68.6, "y": 489, "width": 8.9, "height": 7.6, "str": "12", "pageHeight": 792 },
+  { "page": 2, "x": 391.1, "y": 489, "width": 4.4, "height": 7.6, "str": "8", "pageHeight": 792 },
+  { "page": 2, "x": 448.9, "y": 489, "width": 8.9, "height": 7.6, "str": "50", "pageHeight": 792 },
+  {
+    "page": 2,
+    "x": 532.9,
+    "y": 490.8,
+    "width": 20.5,
+    "height": 7,
+    "str": "400.00",
+    "pageHeight": 792
+  },
+  { "page": 2, "x": 68.6, "y": 475.9, "width": 8.9, "height": 7.6, "str": "13", "pageHeight": 792 },
+  { "page": 2, "x": 391.1, "y": 475.9, "width": 4.4, "height": 7.6, "str": "3", "pageHeight": 792 },
+  {
+    "page": 2,
+    "x": 448.9,
+    "y": 475.9,
+    "width": 8.9,
+    "height": 7.6,
+    "str": "25",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 536.5,
+    "y": 477.7,
+    "width": 17,
+    "height": 7,
+    "str": "75.00",
+    "pageHeight": 792
+  },
+  { "page": 2, "x": 71, "y": 462.8, "width": 4, "height": 7.6, "str": "a", "pageHeight": 792 },
+  {
+    "page": 2,
+    "x": 64,
+    "y": 436.7,
+    "width": 18.3,
+    "height": 7.6,
+    "str": "Total",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 523.8,
+    "y": 438.5,
+    "width": 29.5,
+    "height": 7,
+    "str": "4,145.00",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 65.5,
+    "y": 423.6,
+    "width": 15.2,
+    "height": 7.6,
+    "str": "Paid",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 520.8,
+    "y": 423.6,
+    "width": 32.2,
+    "height": 7.6,
+    "str": "4,495.50",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 376.7,
+    "y": 414.6,
+    "width": 1.2,
+    "height": 0.7,
+    "str": "[42]",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 417.2,
+    "y": 414.6,
+    "width": 60.6,
+    "height": 7,
+    "str": "GRANT TOTAL (S$)",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 526.8,
+    "y": 414.6,
+    "width": 26.7,
+    "height": 7,
+    "str": "8,991.00",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 417.2,
+    "y": 405.6,
+    "width": 73.5,
+    "height": 7,
+    "str": "DEPOSIT REQUEST (S$)",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 523.8,
+    "y": 405.6,
+    "width": 29.5,
+    "height": 7,
+    "str": "2,697.30",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 55.6,
+    "y": 275.3,
+    "width": 40.2,
+    "height": 7,
+    "str": "Prepared by:",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 156.6,
+    "y": 462.8,
+    "width": 148.9,
+    "height": 7.6,
+    "str": "Single Socket & Double Socket Installation",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 201.7,
+    "y": 714,
+    "width": 58.5,
+    "height": 7.6,
+    "str": "Electrical Wiring",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 156.1,
+    "y": 700.9,
+    "width": 149.8,
+    "height": 7.6,
+    "str": "Shifting Lighting Switch (Kitchen & Dining)",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 181.3,
+    "y": 687.8,
+    "width": 101.8,
+    "height": 7.6,
+    "str": "Supply 6 x 13A Single Socket",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 176.2,
+    "y": 674.8,
+    "width": 109.8,
+    "height": 7.6,
+    "str": "Supply 17 x 13A Double Socket",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 156.7,
+    "y": 637.7,
+    "width": 148.2,
+    "height": 7.6,
+    "str": "Supply 4 x High Power 20A-40A Points for",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 123.7,
+    "y": 627.6,
+    "width": 214.2,
+    "height": 7.6,
+    "str": "Hood, Hob, Oven, Fridge with Switch Points for Hood, Oven.",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 118.6,
+    "y": 614.5,
+    "width": 225,
+    "height": 7.6,
+    "str": "Supply 3 x Switch Point (Master Bedhead Left and Right, Island)",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 99.4,
+    "y": 600.7,
+    "width": 262.9,
+    "height": 7.6,
+    "str": "Supply/ Shift 15 x 2nd Lighting Point (4 x Dining Spotlights, 1 x Dining LED",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 104.9,
+    "y": 590.6,
+    "width": 252.1,
+    "height": 7.6,
+    "str": "1 x Living LED, 1 x Living Track, 1 x Living Fan, 1 x Kitchen Tracklight,",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 123.8,
+    "y": 580.6,
+    "width": 214.1,
+    "height": 7.6,
+    "str": "1 x Master Tracklight, 1 x Master Fan, 2 x Master Wall Light,",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 190.3,
+    "y": 570.5,
+    "width": 81.1,
+    "height": 7.6,
+    "str": "1 x Toilet Mirror Light)",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 106.9,
+    "y": 558.2,
+    "width": 247.8,
+    "height": 7.6,
+    "str": "Supply 2 x New Lighting Point (Aura Cove) , 4 x New Corner Fan Point",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 94.2,
+    "y": 548.2,
+    "width": 273.1,
+    "height": 7.6,
+    "str": "(Rooms Haga Cove + Corner Fans at Kitchen, Dining and 2 Bedroom) All From",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 219.1,
+    "y": 538.1,
+    "width": 23.3,
+    "height": 7.6,
+    "str": "Switch",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 177.7,
+    "y": 661.7,
+    "width": 106.5,
+    "height": 7.6,
+    "str": "Extend 4 x 13A Double Socket",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 102.5,
+    "y": 525,
+    "width": 257.1,
+    "height": 7.6,
+    "str": "Hacking/Cutting & Conceal During Wiring of Light/Power Points/Switches",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 55.6,
+    "y": 248,
+    "width": 83.3,
+    "height": 7,
+    "str": "Email: hexiang@maxsen.sg",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 165.6,
+    "y": 648.6,
+    "width": 130.8,
+    "height": 7.6,
+    "str": "Changing 4 x Single to Double Socket",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 55.7,
+    "y": 385.4,
+    "width": 26.3,
+    "height": 7,
+    "str": "DETAILS",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 55.6,
+    "y": 376.2,
+    "width": 249,
+    "height": 7,
+    "str": "Delivery Terms: The services/items will commence after receiving 50% deposit.",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 55.6,
+    "y": 367.2,
+    "width": 492.5,
+    "height": 7,
+    "str": "Payment Terms: Next, 30% to be paid within 3 days before installation of stated smart home items. Last, 20% to be paid within 3 days after the integration of",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 55.6,
+    "y": 358.2,
+    "width": 480.1,
+    "height": 7,
+    "str": "all stated smart home devices into the smartlife application. Grant Total in the final invoice is subjected to changes made during the renovation process.",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 55.6,
+    "y": 346.1,
+    "width": 70,
+    "height": 7,
+    "str": "Bank details as follow:",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 59.6,
+    "y": 337.1,
+    "width": 136.8,
+    "height": 7,
+    "str": "- Beneficiary: Maxsen Smart Home Pte. Ltd.",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 59.6,
+    "y": 328.1,
+    "width": 165.1,
+    "height": 7,
+    "str": "- Bank: Oversea-Chinese Banking Corporation (OCBC)",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 59.6,
+    "y": 319.1,
+    "width": 61.7,
+    "height": 7,
+    "str": "- UEN.: 202433824M",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 55.6,
+    "y": 310.1,
+    "width": 458.8,
+    "height": 7,
+    "str": "We accept both cheque payment, bank transfer, PayNow. If you have any questions about this invoice, please contact Cheang He Xiang, 87615161,",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 55.6,
+    "y": 301.1,
+    "width": 64.1,
+    "height": 7,
+    "str": "hexiang@maxsen.sg.",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 181.2,
+    "y": 436.7,
+    "width": 99.6,
+    "height": 7.6,
+    "str": "Total Electrical Wiring Price",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 209,
+    "y": 423.6,
+    "width": 43.9,
+    "height": 7.6,
+    "str": "Deposit Paid",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 111.6,
+    "y": 512.2,
+    "width": 238.4,
+    "height": 7.6,
+    "str": "Supply 9 x 4 Core cable for LED Strip Point (1 x Kitchen, 3 x Island,",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 182,
+    "y": 502.1,
+    "width": 97.7,
+    "height": 7.6,
+    "str": "3 x Living, 2 x Rooms Cove)",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 152.8,
+    "y": 489,
+    "width": 156.6,
+    "height": 7.6,
+    "str": "Supply Neutral Wires to a Light Switch Point",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 150.8,
+    "y": 475.9,
+    "width": 160.5,
+    "height": 7.6,
+    "str": "Install Waterproof Casing for Balcony Sockets",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 55.6,
+    "y": 266.3,
+    "width": 74.3,
+    "height": 7,
+    "str": "Name: Cheang He Xiang",
+    "pageHeight": 792
+  },
+  {
+    "page": 2,
+    "x": 55.6,
+    "y": 257.3,
+    "width": 62.6,
+    "height": 7,
+    "str": "Maxsen Smart Home",
+    "pageHeight": 792
+  }
+]

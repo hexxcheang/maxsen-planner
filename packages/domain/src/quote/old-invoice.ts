@@ -69,7 +69,8 @@ function amountBeside(grid: Cell[][], label: RegExp): number | null {
     if (i < 0) continue;
     for (let j = i + 1; j < row.length; j++) {
       const v = num(row[j]);
-      if (v !== null) return v;
+      // To the cent: a formula's result can carry float noise (4096.200000000001).
+      if (v !== null) return Math.round(v * 100) / 100;
     }
   }
   return null;
@@ -157,6 +158,13 @@ export function parseOldInvoice(grid: Cell[][]): OldInvoice {
     if (head < 0 || col.amount < 0) return null;
     return /^[-–—]$/.test(text(row[col.amount])) ? 0 : num(row[col.amount]);
   };
+  /** Lines with a quantity and price but nothing in the amount column. */
+  const blank = new Set<OldInvoiceRow>();
+  /** Where the section being read starts in `rows`, to name it after its subtotal. */
+  let sectionAt = 0;
+  /** A row's quantity and unit price, as numbers when they're there. */
+  const qtyAndUnit = (row: Cell[]) =>
+    head >= 0 ? [num(row[col.qty]), num(row[col.unit])] : [null, null];
   for (let r = start; r < grid.length; r++) {
     const row = grid[r]!;
     let description: string;
@@ -177,11 +185,38 @@ export function parseOldInvoice(grid: Cell[][]): OldInvoice {
       if (nums.length >= 3 && typeof row[0] !== 'undefined' && num(row[0]) !== null) nums.shift();
       [quantity = null, unitPrice = null] = nums;
     }
-    // The total row ends the items (a package's text can mention a total too, with a quantity).
-    if (head >= 0 && quantity === null && TOTAL.test(description)) break;
+    // The total row ends the items (a package's text can mention a total too, with a quantity),
+    // unless more items follow it before the next total: then it's a section's subtotal ("Total
+    // Price: Electrical Wiring"), and names the section above it if nothing heads it.
+    if (head >= 0 && quantity === null && TOTAL.test(description)) {
+      const later = grid.slice(r + 1);
+      const nextTotal = later.findIndex(
+        (x) => num(x[col.qty]) === null && TOTAL.test(text(x[col.desc]) || text(x[col.desc + 1])),
+      );
+      const more = (nextTotal < 0 ? later : later.slice(0, nextTotal)).some((x) => {
+        const [q, u] = qtyAndUnit(x);
+        return q !== null && u !== null;
+      });
+      if (!more) break;
+      const title = description
+        .replace(/\btotal\s*(price|amount)?\s*:?/i, '')
+        .replace(/^[\s:+&,-]+|[\s:+&,-]+$/g, '')
+        .trim();
+      if (title && rows[sectionAt] && rows[sectionAt]!.kind !== 'section')
+        rows.splice(sectionAt, 0, { kind: 'section', title });
+      sectionAt = rows.length;
+      continue;
+    }
     if (!description && quantity === null) continue;
     if (quantity !== null && unitPrice !== null && description) {
-      rows.push({ kind: 'item', description, ...checked(quantity, unitPrice, amountOf(row)) });
+      const line: OldInvoiceRow = {
+        kind: 'item',
+        description,
+        ...checked(quantity, unitPrice, amountOf(row)),
+      };
+      if (col.amount >= 0 && text(row[col.amount]) === '' && quantity * unitPrice !== 0)
+        blank.add(line);
+      rows.push(line);
     } else if (description && quantity === null && unitPrice === null && amountOf(row)) {
       // An amount with no quantity: a discount or charge line ("Discount 5%: …  -S$99.50").
       rows.push({ kind: 'item', description, quantity: 1, unitPrice: amountOf(row)! });
@@ -190,6 +225,19 @@ export function parseOldInvoice(grid: Cell[][]): OldInvoice {
       if (description.length <= 40 && !/warranty|terms|deposit|payment/i.test(description))
         rows.push({ kind: 'section', title: description });
     }
+  }
+  // A line with nothing in its amount column wasn't charged, when the total leaves it out: the
+  // lines come to the total only without them. (A sheet whose formulas weren't saved has blank
+  // amounts too, but its total counts them, so they're kept.)
+  const total =
+    amountBeside(grid, /gran[dt]\s*total/i) ??
+    amountBeside(grid, /total\s*price/i) ??
+    amountBeside(grid, /^total$/i);
+  const value = (rs: OldInvoiceRow[]) =>
+    rs.reduce((s, r) => s + (r.kind === 'item' ? r.quantity * r.unitPrice : 0), 0);
+  if (total !== null && blank.size && !near(value(rows), total)) {
+    if (near(value(rows) - value([...blank]), total))
+      for (const r of blank) if (r.kind === 'item') r.unitPrice = 0;
   }
   // Drop sections with nothing under them.
   const kept = rows.filter(
@@ -200,10 +248,6 @@ export function parseOldInvoice(grid: Cell[][]): OldInvoice {
   // The client's details, not the sales person's under "Prepared by" at the foot.
   const foot = grid.findIndex((r) => r.some((c) => /^prepared\s*by\b/i.test(text(c))));
   const top = foot < 0 ? grid : grid.slice(0, foot);
-  const total =
-    amountBeside(grid, /gran[dt]\s*total/i) ??
-    amountBeside(grid, /total\s*price/i) ??
-    amountBeside(grid, /^total$/i);
   const paid = amountBeside(grid, /less\s*paid|already\s*paid|deposit\b.*\bpaid\b/i);
   return {
     number: text(

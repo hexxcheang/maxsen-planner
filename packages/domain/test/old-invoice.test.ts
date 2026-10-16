@@ -62,6 +62,61 @@ describe('reading an old invoice', () => {
     assert.equal(issued.second?.due, 774);
   });
 
+  it('reads every section of a sheet split by section totals', () => {
+    // Like an invoice with a smart home part and an electrical part, each with its own total.
+    const head = template.slice(0, 7);
+    const old = parseOldInvoice([
+      ...head,
+      [1, 'Essential Package', null, 1, 920, 920],
+      [2, 'Free Gift: Panel', null, 1, 0, null],
+      [3, 'Luna Downlight', null, 11, 52, 572],
+      [null, 'Total Price: Lighting + Smart Home + Setup & Installation', null, null, null, 1492],
+      [null, 'Electrical Wiring', null, null, null, null],
+      [1, 'Extend 5 x data cable', null, 5, 45, 225],
+      // Not charged: no amount, and the totals leave it out.
+      [2, 'Supply 1 x 13A WC Power', null, 1, 60, null],
+      [3, 'Installation per socket', null, 0, 12, null],
+      [4, 'Supply 24 x Lighting Points', null, 24, 40, 960],
+      [null, 'Total Price: Electrical Wiring', null, null, null, 1185],
+      [null, null, null, '[42]', 'Subtotal', 2677],
+      [null, null, null, null, 'GRANT TOTAL (S$)', 2677],
+      [null, null, null, null, 'DEPOSIT REQUEST', 1606.2],
+    ]);
+    assert.deepEqual(
+      old.rows.map((r) => (r.kind === 'item' ? [r.quantity, r.unitPrice] : r.title)),
+      [
+        'Lighting + Smart Home + Setup & Installation',
+        [1, 920],
+        [1, 0],
+        [11, 52],
+        'Electrical Wiring',
+        [5, 45],
+        [1, 0],
+        [0, 12],
+        [24, 40],
+      ],
+    );
+    assert.equal(old.total, 2677);
+    assert.equal(old.deposit, 1606.2);
+  });
+
+  it('keeps a line without an amount when the total counts it (formulas not saved)', () => {
+    const head = template.slice(0, 7);
+    const old = parseOldInvoice([
+      ...head,
+      [1, 'Essential Package', null, 1, 920, null],
+      [2, 'Luna Downlight', null, 11, 52, 572],
+      [null, null, null, null, 'GRANT TOTAL (S$)', 1492],
+    ]);
+    assert.deepEqual(
+      old.rows.map((r) => (r.kind === 'item' ? [r.quantity, r.unitPrice] : r.title)),
+      [
+        [1, 920],
+        [11, 52],
+      ],
+    );
+  });
+
   it('takes the client from Attn, not the sales person under Prepared by', () => {
     const old = parseOldInvoice([
       // Read off a scan, the headings can come out in a row of their own.
