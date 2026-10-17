@@ -1,6 +1,12 @@
 import { useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { FileText, Upload } from 'lucide-react';
-import { resolvePricing, type PricingSettings, type SwitchPackage } from '@maxsen/domain';
+import {
+  resolvePricing,
+  STARTER_SIZE,
+  starterPackages,
+  type PricingSettings,
+  type SwitchPackage,
+} from '@maxsen/domain';
 import {
   Button,
   buttonClass,
@@ -193,6 +199,18 @@ export function PricingSection() {
               onChange={(e) => setSeries(i, { description: e.target.value })}
             />
           </Field>
+          {starterPackages(draft.switches)
+            .filter((st) => st.id === `${sw.id}-starter`)
+            .map((st) => (
+              <p key={st.id} className={`${wide} text-meta text-ink-2`}>
+                <strong className="font-semibold text-ink">
+                  {STARTER_SIZE}-switch package: S${st.packagePrice.toLocaleString('en-SG')}
+                </strong>{' '}
+                ({STARTER_SIZE} switches, {st.includesAircon} IR blasters, {st.includesGateways}{' '}
+                gateway), half this package plus S$100. Quoted for {STARTER_SIZE} to{' '}
+                {sw.packageSize - 1} switches; follows this package’s price.
+              </p>
+            ))}
         </Group>
       ))}
 

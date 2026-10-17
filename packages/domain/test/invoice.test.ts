@@ -283,6 +283,53 @@ describe('switch packages per series', () => {
     assert.equal(items(inv).filter((r) => r.description.startsWith('Nova+ Pro')).length, 0);
   });
 
+  it('quotes 5 to 9 switches as the series’ 5-switch package at half its package + S$100', () => {
+    for (const [variant, series, price, addOn] of [
+      ['var_ark_1g', 'Ark Series', 795, 100],
+      ['var_nova_pro_1g_black', 'Nova+ Pro', 1095, 180],
+      ['var_lusano_1g', 'Lusano+ Prestige', 1895, 360],
+    ] as const) {
+      const inv = buildInvoice(
+        [
+          sw(variant, series, 7),
+          line('var_ir_aircon', 'aircon-controllers', 3),
+          line('var_gateway', 'gateways', 1),
+        ],
+        priceOf,
+        DEFAULT_PRICING,
+      );
+      assert.deepEqual(
+        pkgOf(inv).map((r) => [r.quantity, r.unitPrice]),
+        [[1, price]],
+        series,
+      );
+      assert.match(pkgOf(inv)[0]!.description, /5 x .*Switches\n2 x .*\n1 x .*Gateway/);
+      // Two switches beyond the five as add-ons; 2 IR blasters and the gateway are included.
+      const extra = items(inv).find((r) => r.key === 'switch-addon')!;
+      assert.deepEqual([extra.quantity, extra.unitPrice], [2, addOn]);
+      assert.equal(items(inv).find((r) => r.key === 'variant:var_ir_aircon')?.quantity, 1);
+      assert.equal(
+        items(inv).find((r) => r.key === 'variant:var_gateway'),
+        undefined,
+      );
+    }
+  });
+
+  it('prices the 5-switch package from the series’ package, and not below 5 or from 10', () => {
+    const p = {
+      ...DEFAULT_PRICING,
+      switches: DEFAULT_PRICING.switches.map((s) =>
+        s.id === 'ark' ? { ...s, packagePrice: 1500 } : s,
+      ),
+    };
+    const at = (n: number) =>
+      pkgOf(buildInvoice([sw('var_ark_1g', 'Ark Series', n)], priceOf, p)).map((r) => r.unitPrice);
+    assert.deepEqual(at(4), []);
+    assert.deepEqual(at(5), [850]);
+    assert.deepEqual(at(9), [850]);
+    assert.deepEqual(at(10), [1500]);
+  });
+
   it('keeps the 10-switch Nova+ Pro package below 28 switches', () => {
     const inv = buildInvoice(
       [sw('var_nova_pro_1g_black', 'Nova+ Pro', 27)],

@@ -18,6 +18,9 @@ test.describe('pricing', () => {
     await expect(form.getByLabel('Switches per package')).toHaveCount(4);
     await expect(form.getByLabel('Switches per package').last()).toHaveValue('28');
     await expect(form.getByText('Nova+ Pro multi-storey (Premier) switch package')).toBeVisible();
+    // Each series' 5-switch package, from its package price.
+    await expect(form.getByText('5-switch package: S$795')).toBeVisible();
+    await expect(form.getByText('5-switch package: S$1,095')).toBeVisible();
     await expect(form.getByLabel('Package price (S$)').first()).toHaveValue('1390');
     await expect(form.getByText('Ark Series switch package')).toBeVisible();
     await expect(form.getByLabel('Lights per package')).toHaveValue('12');

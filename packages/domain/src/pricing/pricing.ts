@@ -203,6 +203,49 @@ export const DEFAULT_PRICING: PricingSettings = {
   catalogueUploadedAt: null,
 };
 
+/** Switches in each series' small package, and what it includes. */
+export const STARTER_SIZE = 5;
+const STARTER_AIRCON = 2;
+const STARTER_GATEWAYS = 1;
+
+/** A small package's price: half its series' package, plus S$100. */
+export const starterPrice = (seriesPrice: number) => Math.round(seriesPrice / 2 + 100);
+
+/**
+ * Each series' small package, made from its own (the smallest of 10 or more switches): 5
+ * switches, 2 IR blasters and a gateway at half its price plus S$100, for 5 to 9 switches. It
+ * follows the series' package, so changing that price in Admin changes this one too.
+ */
+export function starterPackages(switches: SwitchPackage[]): SwitchPackage[] {
+  return switches
+    .filter(
+      (s) =>
+        s.packageSize > STARTER_SIZE &&
+        !switches.some(
+          (o) =>
+            o !== s &&
+            o.match === s.match &&
+            o.packageSize > STARTER_SIZE &&
+            o.packageSize < s.packageSize,
+        ),
+    )
+    .map((s) => {
+      const price = starterPrice(s.packagePrice);
+      return {
+        ...s,
+        id: `${s.id}-starter`,
+        name: `${s.name} starter`,
+        packageSize: STARTER_SIZE,
+        packagePrice: price,
+        description: `${s.name} Starter Package\n${STARTER_SIZE} x ${s.name} Smart Switches\n${STARTER_AIRCON} x IR Blasters\n${STARTER_GATEWAYS} x Zigbee Gateway\nWith Installation & Integration\nPackage Price $${price}`,
+        includesAircon: STARTER_AIRCON,
+        includesGateways: STARTER_GATEWAYS,
+        includesPanels: 0,
+        panelMatch: '',
+      };
+    });
+}
+
 /** The pricing in effect: saved settings over the defaults. */
 export function resolvePricing(settings: Pick<Settings, 'pricing'>): PricingSettings {
   const p = settings.pricing;

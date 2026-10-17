@@ -5,7 +5,7 @@
  * beyond it is charged at add-on rates, and everything else at its catalogue price.
  */
 import { SYSTEM_VARIANT_IDS, type CategoryId } from '../categories.ts';
-import type { PricingSettings, SwitchPackage } from './pricing.ts';
+import { starterPackages, type PricingSettings, type SwitchPackage } from './pricing.ts';
 
 /** The parts of a Review totals line the invoice needs. */
 /** An RGBCCT strip (the add-on upgrade from CCT), by its product and variant names. */
@@ -121,7 +121,9 @@ export function buildInvoice(
   /** A switch's series, for its add-on rate: the first package that names it. */
   const seriesOf = (l: InvoiceInputLine): SwitchPackage | undefined =>
     pricing.switches.find((s) => inSeries(l, s));
-  const counts = pricing.switches.map((s) => ({
+  // The series' own packages, and their 5-switch packages (for 5 to 9 switches).
+  const packages = [...pricing.switches, ...starterPackages(pricing.switches)];
+  const counts = packages.map((s) => ({
     s,
     count: qty((l) => isSwitch(l) && inSeries(l, s)),
   }));

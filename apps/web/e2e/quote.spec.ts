@@ -26,6 +26,17 @@ test.describe('quick quote', () => {
     await expect(quote).not.toContainText('Add-On Per Nova+ Pro');
   });
 
+  test('quotes 5 to 9 switches as the 5-switch package, by itself', async ({ page }) => {
+    await page.goto('/quote');
+    await page.getByLabel('Client’s message').fill('7 nova pro switches and 2 aircon IR');
+    await page.getByRole('button', { name: 'Read message' }).click();
+    const quote = page.getByRole('region', { name: 'Quotation' });
+    // Half the Nova+ Pro package (S$1,990) + S$100, with 2 add-ons; the IR blasters included.
+    await expect(quote.getByText('Nova+ Pro Starter Package').first()).toBeVisible();
+    await expect(quote.getByRole('row', { name: /Add-On Per Nova\+ Pro/ })).toContainText('2');
+    await expect(quote.getByRole('row', { name: /^Total\s*S\$1,455\.00$/ })).toBeVisible();
+  });
+
   test('reads a client message into an exact quotation', async ({ page }, testInfo) => {
     await page.goto('/quote');
     await page.getByLabel('Client’s message').fill(`Hi, need a quote for my 5 room HDB:

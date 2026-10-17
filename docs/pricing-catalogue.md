@@ -18,6 +18,12 @@ beyond it is an add-on.
 | Lusano+ Prestige Crystallised, Swarovski (neutral required) | Premium Core                    | 10 Lusano+ switches, 50+ crystal colours                                                                             | **3590** | 4690 | **360** (installation add-on) |
 | Nova+ Pro, multi-storey                                     | Premier                         | 28 Nova+ Pro switches, S10 control panel, 2 Zigbee gateways, network planning, wiring liaison, integration, tutorial | 5290     | 6690 | —                             |
 
+**5-switch packages (owner's rule, Oct 2026):** each series also has a 5-switch package (5
+switches, 2 IR blasters, 1 Zigbee gateway, installation & integration) at **half its 10-switch
+package plus S$100**: Ark 795, Nova+ Pro 1095, Lusano+ 1895. It's quoted for 5 to 9 switches, with
+switches beyond 5 at the series' add-on rate, and follows the package price set in Admin. Note the
+catalogue's Ark Starter is 790; the rule makes it 795.
+
 In the app, the multi-storey **Premier** package is taken instead of the 10-switch Nova+ Pro one from
 28 Nova+ Pro switches. It covers one **S10** panel (catalogue p. 5 names the S10, not the S8) and 2
 Zigbee gateways, which aren't charged again. Switches beyond 28 are charged at the Nova+ Pro add-on
