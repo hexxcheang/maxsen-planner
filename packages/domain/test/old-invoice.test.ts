@@ -1,0 +1,216 @@
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import { issuedFromOld, parseOldInvoice, type Cell } from '../src/quote/old-invoice.ts';
+import { ELECTRICAL_RATES } from '../src/electrical/rates.ts';
+
+// Cells as the invoice template lays them out (A–F).
+const template: Cell[][] = [
+  ['MAXSEN SMART HOME', null, null, null, null, null],
+  ['Website: http://www.maxsen.sg', null, null, null, 'DATE', '2026-09-01'],
+  [null, null, null, null, 'INVOICE #', 'MXN-HX-26090101'],
+  ['TO:', null, null, null, null, null],
+  ['Phone:', '91234567', null, null, null, null],
+  ['Name:', 'Mr Tan', null, null, null, null],
+  ['S/N', 'ITEM/DESCRIPTION', 'ITEM/DESCRIPTION', 'QUANTITY', 'UNIT PRICE (S$)', 'PRICE (S$)'],
+  [1, 'Ark Core Package\n10 x Ark Series Smart Switches', null, 1, 1390, 1390],
+  [2, 'Add-On Per Ark Series Smart Switch with Installation', null, 2, 100, 200],
+  [null, 'Lighting', null, null, null, null],
+  [3, 'Luna Downlight, 3000K', null, 15, 78, 1170],
+  [5, 'Light Package of 12\n(Total 12 Selection of Downlights)', null, 1, 988, 988],
+  [4, 'Integration Waived', null, 15, -12, -180],
+  [null, '2 Years On-Site Warranty for All Devices Stated in the Invoice.', null, null, null, null],
+  [null, 'Smart Home + Installation Total Price', null, null, null, 2580],
+  [null, null, null, null, 'GRANT TOTAL (S$)', 2580],
+  [null, null, null, null, 'DEPOSIT REQUEST (S$)', 1548],
+];
+
+describe('reading an old invoice', () => {
+  it('keeps every line as invoiced, with the header details', () => {
+    const old = parseOldInvoice(template);
+    assert.equal(old.number, 'MXN-HX-26090101');
+    assert.equal(old.date, '2026-09-01');
+    assert.deepEqual(old.client, { name: 'Mr Tan', contact: '91234567' });
+    assert.deepEqual(
+      old.rows.map((r) => (r.kind === 'item' ? [r.quantity, r.unitPrice] : r.title)),
+      [[1, 1390], [2, 100], 'Lighting', [15, 78], [1, 988], [15, -12]],
+    );
+    assert.equal(old.total, 2580);
+    assert.equal(old.deposit, 1548);
+    assert.deepEqual(issuedFromOld(old).deposit?.due, 1548);
+  });
+
+  it('picks up what a 2nd payment invoice asked for', () => {
+    const second = [
+      ...template.slice(0, -1),
+      [null, null, null, null, 'LESS PAID (S$)', 1548],
+      [null, null, null, null, '2ND PAYMENT (S$)', 774],
+    ];
+    const issued = issuedFromOld(parseOldInvoice(second));
+    assert.equal(issued.deposit?.due, 1548);
+    assert.equal(issued.second?.due, 774);
+  });
+
+  it('reads a deposit paid with a further deposit request as the 2nd payment asked for', () => {
+    // As the Excel template words a 2nd payment: 50% paid, 30% more requested.
+    const second = [
+      ...template.slice(0, -1),
+      ['Paid', 'Deposit Paid', null, null, null, 1290],
+      [null, null, null, null, 'DEPOSIT REQUEST (S$)', 774],
+    ];
+    const issued = issuedFromOld(parseOldInvoice(second));
+    assert.equal(issued.deposit?.due, 1290);
+    assert.equal(issued.second?.due, 774);
+  });
+
+  it('reads every section of a sheet split by section totals', () => {
+    // Like an invoice with a smart home part and an electrical part, each with its own total.
+    const head = template.slice(0, 7);
+    const old = parseOldInvoice([
+      ...head,
+      [1, 'Essential Package', null, 1, 920, 920],
+      [2, 'Free Gift: Panel', null, 1, 0, null],
+      [3, 'Luna Downlight', null, 11, 52, 572],
+      [null, 'Total Price: Lighting + Smart Home + Setup & Installation', null, null, null, 1492],
+      [null, 'Electrical Wiring', null, null, null, null],
+      [1, 'Extend 5 x data cable', null, 5, 45, 225],
+      // Not charged: no amount, and the totals leave it out.
+      [2, 'Supply 1 x 13A WC Power', null, 1, 60, null],
+      [3, 'Installation per socket', null, 0, 12, null],
+      [4, 'Supply 24 x Lighting Points', null, 24, 40, 960],
+      [null, 'Total Price: Electrical Wiring', null, null, null, 1185],
+      [null, null, null, '[42]', 'Subtotal', 2677],
+      [null, null, null, null, 'GRANT TOTAL (S$)', 2677],
+      [null, null, null, null, 'DEPOSIT REQUEST', 1606.2],
+    ]);
+    assert.deepEqual(
+      old.rows.map((r) => (r.kind === 'item' ? [r.quantity, r.unitPrice] : r.title)),
+      [
+        'Lighting + Smart Home + Setup & Installation',
+        [1, 920],
+        [1, 0],
+        [11, 52],
+        'Electrical Wiring',
+        [5, 45],
+        [1, 0],
+        [0, 12],
+        [24, 40],
+      ],
+    );
+    assert.equal(old.total, 2677);
+    assert.equal(old.deposit, 1606.2);
+  });
+
+  it('keeps a line without an amount when the total counts it (formulas not saved)', () => {
+    const head = template.slice(0, 7);
+    const old = parseOldInvoice([
+      ...head,
+      [1, 'Essential Package', null, 1, 920, null],
+      [2, 'Luna Downlight', null, 11, 52, 572],
+      [null, null, null, null, 'GRANT TOTAL (S$)', 1492],
+    ]);
+    assert.deepEqual(
+      old.rows.map((r) => (r.kind === 'item' ? [r.quantity, r.unitPrice] : r.title)),
+      [
+        [1, 920],
+        [11, 52],
+      ],
+    );
+  });
+
+  it('takes the client from Attn, not the sales person under Prepared by', () => {
+    const old = parseOldInvoice([
+      // Read off a scan, the headings can come out in a row of their own.
+      ['TO', 'Attn:'],
+      ...template.slice(0, 5),
+      ['Attn:', 'Ting', null, null, null, null],
+      ...template.slice(6),
+      ['Prepared by:', null, null, null, null, null],
+      ['Name: Cheang He Xiang', null, null, null, null, null],
+    ]);
+    assert.equal(old.client.name, 'Ting');
+  });
+
+  it('restores a deposit whose leading digits a narrow column cut off', () => {
+    const cut = (deposit: number) =>
+      parseOldInvoice([
+        ...template.slice(0, -2),
+        [null, null, null, null, 'GRANT TOTAL (S$)', 4830],
+        [null, null, null, null, 'DEPOSIT REQUEST (S$', deposit],
+      ]).deposit;
+    // "898.00" printed for S$2,898.00, 60% of S$4,830.
+    assert.equal(cut(898), 2898);
+    // A whole percentage is kept as printed.
+    assert.equal(cut(2415), 2415);
+  });
+
+  it('puts a misread quantity or price right from the line’s amount, or marks it to check', () => {
+    const rows = (lines: Cell[][]) =>
+      parseOldInvoice([
+        ['S/N', 'ITEM/DESCRIPTION', 'QUANTITY', 'UNIT PRICE (S$)', 'PRICE (S$)'],
+        ...lines,
+      ]).rows.map((r) => (r.kind === 'item' ? [r.quantity, r.unitPrice, r.printed] : null));
+    assert.deepEqual(
+      rows([
+        [1, 'Matches', 2, 50, 100],
+        [2, 'Unit read 20 for 30', 3, 20, 90],
+        [3, 'Quantity read 1 for 7', 1, 33.33, 233.31],
+        [4, 'Either: 2 x 90 or 9 x 20', 2, 20, 180],
+        [5, 'Amount misread too', 3, 260, 70],
+        [6, 'No amount', 4, 15, null],
+      ]),
+      [
+        [2, 50, undefined],
+        [3, 30, undefined],
+        [7, 33.33, undefined],
+        [2, 20, 180],
+        [3, 260, 70],
+        [4, 15, undefined],
+      ],
+    );
+  });
+
+  it('keeps free gifts (amount "-") at no charge, and lines with only an amount', () => {
+    const old = parseOldInvoice([
+      ['S/N', 'ITEM/DESCRIPTION', 'QUANTITY', 'UNIT PRICE (S$)', 'PRICE (S$)'],
+      [1, 'Core Package', 1, 1788, 1788],
+      [2, 'Free Gift: Nova S8 Centralised Control Panel', 1, 680, '-'],
+      [null, 'Discount 5%: Core Package', null, null, '-S$89.40'],
+      [null, 'Lighting', null, null, null],
+      [3, 'Luna Premier Light Package', 1, 988, 988],
+    ]);
+    assert.deepEqual(
+      old.rows.map((r) => (r.kind === 'item' ? [r.description, r.quantity, r.unitPrice] : r.title)),
+      [
+        ['Core Package', 1, 1788],
+        ['Free Gift: Nova S8 Centralised Control Panel', 1, 0],
+        ['Discount 5%: Core Package', 1, -89.4],
+        'Lighting',
+        ['Luna Premier Light Package', 1, 988],
+      ],
+    );
+  });
+
+  it('reads rows pasted from a spreadsheet without headings', () => {
+    const old = parseOldInvoice([
+      ['1', 'Nova Package', '1', '1,990.00'],
+      ['2', 'Smart Curtain Track, Single', '2', 'S$380'],
+    ]);
+    assert.deepEqual(
+      old.rows.map((r) => (r.kind === 'item' ? [r.description, r.quantity, r.unitPrice] : null)),
+      [
+        ['Nova Package', 1, 1990],
+        ['Smart Curtain Track, Single', 2, 380],
+      ],
+    );
+  });
+});
+
+describe('electrical rates', () => {
+  it('sit within their market range, with unique ids', () => {
+    const items = ELECTRICAL_RATES.flatMap((s) => s.items);
+    assert.equal(new Set(items.map((i) => i.id)).size, items.length);
+    for (const i of items) assert.ok(i.low <= i.rate && i.rate <= i.high, i.id);
+    const socket = items.find((i) => i.id === 'socket-single')!;
+    assert.equal(socket.rate, 75);
+  });
+});

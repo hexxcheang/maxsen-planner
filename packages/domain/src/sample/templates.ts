@@ -11,7 +11,8 @@ export const SAMPLE_TEMPLATES: Template[] = [
   {
     id: 'tpl_hdb_4room',
     name: 'HDB 4-room standard',
-    description: 'Typical 4-room layout: Nova+ Pro switches throughout, S8 panel at the entrance, cove lighting in living and master.',
+    description:
+      'Typical 4-room layout: Nova+ Pro switches throughout, S8 panel at the entrance, cove lighting in living and master.',
     sourceProjectId: 'proj_sample_tan',
     structure: {
       levels: [
@@ -27,7 +28,10 @@ export const SAMPLE_TEMPLATES: Template[] = [
         },
       ],
       exportSettings: defaultExportSettings(['1']),
-      catalogueSnapshot: buildSnapshot([tanSmartHome.document, tanLighting.document], '2026-09-20T02:00:00.000Z'),
+      catalogueSnapshot: buildSnapshot(
+        [tanSmartHome.document, tanLighting.document],
+        '2026-09-20T02:00:00.000Z',
+      ),
     },
     createdAt: '2026-09-20T02:00:00.000Z',
     updatedAt: '2026-09-20T02:00:00.000Z',

@@ -1,0 +1,300 @@
+/**
+ * Reads an old invoice back in: from the cells of an invoice spreadsheet (Maxsen's template or
+ * any sheet with Description / Qty / Unit price columns) or rows pasted from one. Every line is
+ * kept as it was invoiced, quantity and unit price, along with what was asked for already (the
+ * deposit, a 2nd payment), so the next payment's invoice can be made from it.
+ */
+
+export type Cell = string | number | null | undefined;
+
+export interface OldInvoiceLine {
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  /**
+   * The line's amount as printed, when its quantity × unit price as read doesn't come to it and
+   * it can't be told which was misread: the line to check.
+   */
+  printed?: number;
+}
+
+export type OldInvoiceRow =
+  ({ kind: 'item' } & OldInvoiceLine) | { kind: 'section'; title: string };
+
+export interface OldInvoice {
+  number: string;
+  date: string;
+  client: { name: string; contact: string };
+  rows: OldInvoiceRow[];
+  /** The totals and payments printed on it, when found. */
+  total: number | null;
+  deposit: number | null;
+  lessPaid: number | null;
+  secondPayment: number | null;
+  finalPayment: number | null;
+}
+
+const text = (c: Cell) => (c === null || c === undefined ? '' : String(c).trim());
+const num = (c: Cell): number | null => {
+  if (typeof c === 'number') return Number.isFinite(c) ? c : null;
+  const t = text(c).replace(/[,\s]|S\$|\$/gi, '');
+  if (!/^-?\d+(\.\d+)?$/.test(t)) return null;
+  return Number(t);
+};
+
+/** A label rather than a value: "Attn:", "Phone:". */
+const isLabel = (t: string) => /^[A-Za-z][A-Za-z .#/]*:$/.test(t);
+
+/** The first non-empty cell after a label (in the same row), for header fields. */
+function after(grid: Cell[][], label: RegExp): Cell {
+  for (const row of grid) {
+    const i = row.findIndex((c) => label.test(text(c)));
+    if (i < 0) continue;
+    // The value may share the cell ("Name: Mr Tan").
+    const own = text(row[i])
+      .replace(label, '')
+      .replace(/^[:\s]+/, '');
+    if (own && !isLabel(own)) return own;
+    // Another label beside it ("TO", "Attn:") isn't its value: look further on.
+    for (let j = i + 1; j < row.length; j++)
+      if (text(row[j]) && !isLabel(text(row[j]))) return row[j];
+  }
+  return null;
+}
+
+/** The amount printed beside a total/payment label anywhere on the sheet. */
+function amountBeside(grid: Cell[][], label: RegExp): number | null {
+  for (const row of grid) {
+    const i = row.findIndex((c) => label.test(text(c)));
+    if (i < 0) continue;
+    for (let j = i + 1; j < row.length; j++) {
+      const v = num(row[j]);
+      // To the cent: a formula's result can carry float noise (4096.200000000001).
+      if (v !== null) return Math.round(v * 100) / 100;
+    }
+  }
+  return null;
+}
+
+const TOTAL = /total/i;
+
+/**
+ * The deposit as printed, or what it was before a narrow column cut its leading digits off
+ * ("898.00" for S$2,898.00): when the printed amount isn't a whole percentage of the total but
+ * the end of one is, that's the deposit.
+ */
+function wholeDeposit(printed: number | null, total: number | null): number | null {
+  if (printed === null || !total || total <= 0) return printed;
+  const isWhole = (n: number) => Math.abs(((n / total) * 100) % 1) < 0.005;
+  if (isWhole(printed)) return printed;
+  const tail = printed.toFixed(2);
+  for (let p = 1; p <= 100; p++) {
+    const due = Math.round(total * p) / 100;
+    if (due > printed && due.toFixed(2).endsWith(tail)) return due;
+  }
+  return printed;
+}
+
+const near = (a: number, b: number) => Math.abs(a - b) < 0.011;
+
+/** The same number of digits, one of them different ("20" and "90"). */
+function oneOff(read: number, fixed: number): boolean {
+  const a = String(read);
+  const b = String(fixed);
+  return a.length === b.length && [...a].filter((c, i) => c !== b[i]).length === 1;
+}
+
+/**
+ * A line's quantity and unit price checked against its printed amount. When they don't come to it,
+ * one was misread (a scanned "90" read as "20"): if only one of them can be put right from the
+ * amount, it is; if either could, the line is marked to check rather than guessed.
+ */
+function checked(
+  quantity: number,
+  unitPrice: number,
+  amount: number | null,
+): Pick<OldInvoiceLine, 'quantity' | 'unitPrice' | 'printed'> {
+  if (amount === null || near(quantity * unitPrice, amount)) return { quantity, unitPrice };
+  // Nothing to pay on it: a free gift, kept at no charge.
+  if (amount === 0) return { quantity, unitPrice: 0 };
+  const unit = quantity !== 0 ? Math.round((amount / quantity) * 100) / 100 : null;
+  const qty = unitPrice !== 0 ? amount / unitPrice : null;
+  // Only a one-character misread is put right ("20" for "90"): anything more, and the amount
+  // itself may be misread. Either one could be it, and the line is left to check.
+  const byUnit = unit !== null && near(unit * quantity, amount) && oneOff(unitPrice, unit);
+  const byQty =
+    qty !== null &&
+    qty > 0 &&
+    Math.abs(qty - Math.round(qty)) < 1e-6 &&
+    oneOff(quantity, Math.round(qty));
+  if (byUnit && !byQty) return { quantity, unitPrice: unit };
+  if (byQty && !byUnit) return { quantity: Math.round(qty), unitPrice };
+  return { quantity, unitPrice, printed: amount };
+}
+
+export function parseOldInvoice(grid: Cell[][]): OldInvoice {
+  // The item table's heading row, and which columns hold what.
+  let head = -1;
+  let col = { desc: -1, qty: -1, unit: -1, amount: -1 };
+  for (let r = 0; r < grid.length && head < 0; r++) {
+    const cells = grid[r]!.map((c) => text(c).toLowerCase());
+    const qty = cells.findIndex((c) => /^(qty|quantity)\b/.test(c));
+    const unit = cells.findIndex((c) => /unit\s*(price|rate|cost)|^rate\b/.test(c));
+    const desc = cells.findIndex((c) => /description|^item/.test(c));
+    if (qty >= 0 && unit >= 0) {
+      head = r;
+      // The line's amount: "PRICE (S$)", "Amount", "Total" (not the unit price).
+      const amount = cells.findIndex(
+        (c, i) => i !== unit && /^(amount|price|total|line total)\b/.test(c),
+      );
+      col = { desc: desc >= 0 ? desc : Math.max(0, Math.min(qty, unit) - 1), qty, unit, amount };
+    }
+  }
+
+  const rows: OldInvoiceRow[] = [];
+  const start = head >= 0 ? head + 1 : 0;
+  /** The line's printed amount: "-" (as for a free gift) is nothing. */
+  const amountOf = (row: Cell[]): number | null => {
+    if (head < 0 || col.amount < 0) return null;
+    return /^[-–—]$/.test(text(row[col.amount])) ? 0 : num(row[col.amount]);
+  };
+  /** Lines with a quantity and price but nothing in the amount column. */
+  const blank = new Set<OldInvoiceRow>();
+  /** Where the section being read starts in `rows`, to name it after its subtotal. */
+  let sectionAt = 0;
+  /** A row's quantity and unit price, as numbers when they're there. */
+  const qtyAndUnit = (row: Cell[]) =>
+    head >= 0 ? [num(row[col.qty]), num(row[col.unit])] : [null, null];
+  for (let r = start; r < grid.length; r++) {
+    const row = grid[r]!;
+    let description: string;
+    let quantity: number | null;
+    let unitPrice: number | null;
+    if (head >= 0) {
+      description = text(row[col.desc]) || text(row[col.desc + 1]);
+      quantity = num(row[col.qty]);
+      unitPrice = num(row[col.unit]);
+    } else {
+      // Pasted rows: the words are the description, then quantity and unit price.
+      description = row
+        .filter((c) => num(c) === null && text(c))
+        .map(text)
+        .join(' ');
+      const nums = row.map(num).filter((v): v is number => v !== null);
+      // A leading serial number isn't the quantity.
+      if (nums.length >= 3 && typeof row[0] !== 'undefined' && num(row[0]) !== null) nums.shift();
+      [quantity = null, unitPrice = null] = nums;
+    }
+    // The total row ends the items (a package's text can mention a total too, with a quantity),
+    // unless more items follow it before the next total: then it's a section's subtotal ("Total
+    // Price: Electrical Wiring"), and names the section above it if nothing heads it.
+    if (head >= 0 && quantity === null && TOTAL.test(description)) {
+      const later = grid.slice(r + 1);
+      const nextTotal = later.findIndex(
+        (x) => num(x[col.qty]) === null && TOTAL.test(text(x[col.desc]) || text(x[col.desc + 1])),
+      );
+      const more = (nextTotal < 0 ? later : later.slice(0, nextTotal)).some((x) => {
+        const [q, u] = qtyAndUnit(x);
+        return q !== null && u !== null;
+      });
+      if (!more) break;
+      const title = description
+        .replace(/\btotal\s*(price|amount)?\s*:?/i, '')
+        .replace(/^[\s:+&,-]+|[\s:+&,-]+$/g, '')
+        .trim();
+      if (title && rows[sectionAt] && rows[sectionAt]!.kind !== 'section')
+        rows.splice(sectionAt, 0, { kind: 'section', title });
+      sectionAt = rows.length;
+      continue;
+    }
+    if (!description && quantity === null) continue;
+    if (quantity !== null && unitPrice !== null && description) {
+      const line: OldInvoiceRow = {
+        kind: 'item',
+        description,
+        ...checked(quantity, unitPrice, amountOf(row)),
+      };
+      if (col.amount >= 0 && text(row[col.amount]) === '' && quantity * unitPrice !== 0)
+        blank.add(line);
+      rows.push(line);
+    } else if (description && quantity === null && unitPrice === null && amountOf(row)) {
+      // An amount with no quantity: a discount or charge line ("Discount 5%: …  -S$99.50").
+      rows.push({ kind: 'item', description, quantity: 1, unitPrice: amountOf(row)! });
+    } else if (description && quantity === null && unitPrice === null) {
+      // A short heading (e.g. "Lighting") starts a section; longer text (warranty) is left out.
+      if (description.length <= 40 && !/warranty|terms|deposit|payment/i.test(description))
+        rows.push({ kind: 'section', title: description });
+    }
+  }
+  // A line with nothing in its amount column wasn't charged, when the total leaves it out: the
+  // lines come to the total only without them. (A sheet whose formulas weren't saved has blank
+  // amounts too, but its total counts them, so they're kept.)
+  const total =
+    amountBeside(grid, /gran[dt]\s*total/i) ??
+    amountBeside(grid, /total\s*price/i) ??
+    amountBeside(grid, /^total$/i);
+  const value = (rs: OldInvoiceRow[]) =>
+    rs.reduce((s, r) => s + (r.kind === 'item' ? r.quantity * r.unitPrice : 0), 0);
+  if (total !== null && blank.size && !near(value(rows), total)) {
+    if (near(value(rows) - value([...blank]), total))
+      for (const r of blank) if (r.kind === 'item') r.unitPrice = 0;
+  }
+  // Drop sections with nothing under them.
+  const kept = rows.filter(
+    (r, i) => r.kind === 'item' || (rows[i + 1] !== undefined && rows[i + 1]!.kind === 'item'),
+  );
+
+  const date = after(grid, /^date\b/i);
+  // The client's details, not the sales person's under "Prepared by" at the foot.
+  const foot = grid.findIndex((r) => r.some((c) => /^prepared\s*by\b/i.test(text(c))));
+  const top = foot < 0 ? grid : grid.slice(0, foot);
+  const paid = amountBeside(grid, /less\s*paid|already\s*paid|deposit\b.*\bpaid\b/i);
+  return {
+    number: text(
+      after(grid, /invoice\s*(#|no\.?|number)|quotation\s*(#|no\.?)/i) ??
+        // The app's own PDF: "QUOTATION MX-…" or "INVOICE MX-…".
+        after(grid, /^(invoice|quotation)\b\s*:?/i),
+    ),
+    date: text(date),
+    client: {
+      name:
+        text(after(top, /^name\s*:?/i)) ||
+        text(after(top, /^prepared\s*for\s*:?/i)) ||
+        text(after(top, /^(to|attn)\b\s*:?/i)),
+      contact: text(after(top, /^(phone|contact|tel)\s*:?/i)),
+    },
+    rows: kept,
+    total,
+    deposit: wholeDeposit(
+      amountBeside(grid, /deposit\s*request/i) ?? amountBeside(grid, /^deposit\s*\(\d+%\)/i),
+      total,
+    ),
+    // Printed as "-S$2,353.20" on the PDF.
+    lessPaid: paid === null ? null : Math.abs(paid),
+    secondPayment: amountBeside(grid, /(2nd|second)\s*payment(?!\s*paid)/i),
+    finalPayment: amountBeside(grid, /final\s*payment(?!\s*paid)/i),
+  };
+}
+
+/** What the old invoice asked for already, as the issued invoices a payment stage builds on. */
+export function issuedFromOld(old: OldInvoice): {
+  deposit?: { number: string; total: number; due: number; date: string };
+  second?: { number: string; total: number; due: number; date: string };
+} {
+  const total = old.total ?? 0;
+  const at = { number: old.number, total, date: old.date };
+  if (old.secondPayment !== null) {
+    return {
+      deposit: { ...at, due: old.lessPaid ?? 0 },
+      second: { ...at, due: old.secondPayment },
+    };
+  }
+  // "Deposit Paid" with a further "Deposit Request": that request was the 2nd payment.
+  if (old.deposit !== null && old.lessPaid && old.lessPaid + old.deposit <= total + 0.01)
+    return {
+      deposit: { ...at, due: old.lessPaid },
+      second: { ...at, due: old.deposit },
+    };
+  if (old.deposit !== null) return { deposit: { ...at, due: old.deposit } };
+  return {};
+}

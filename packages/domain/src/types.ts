@@ -6,6 +6,8 @@
  * widths and note font sizes are all expressed in plan units.
  */
 import type { BadgeStyle, CategoryId, PlanType } from './categories.ts';
+import type { RoomLayout } from './magic/room-layout.ts';
+import type { PricingSettings } from './pricing/pricing.ts';
 
 export type { BadgeStyle, CategoryId, PlanType };
 
@@ -42,7 +44,10 @@ export interface LedStripPath {
   closed: boolean;
   /** Draw a smooth curve through the points instead of straight segments. */
   smooth: boolean;
-  /** Manually entered total length; null until the planner enters it. Never derived from scale. */
+  /**
+   * Length typed by the planner; null to use the estimate from the plan's scale (see
+   * `ledMetres`), or none while the plan has no scale.
+   */
   metres: number | null;
   showLabel: boolean;
 }
@@ -56,6 +61,15 @@ export interface TrackPath {
   /** Number of light heads / modules drawn along the track; ≥ 1. */
   headCount: number;
   showLabel: boolean;
+}
+
+/** A curtain or blind track, drawn as a dotted line along the window it covers. */
+export interface CurtainPath {
+  kind: 'curtain';
+  id: string;
+  z: number;
+  variantId: string;
+  points: Pt[];
 }
 
 export interface TextNote {
@@ -74,7 +88,7 @@ export interface TextNote {
   highlight: string | null;
 }
 
-export type PlanElement = PointMarker | LedStripPath | TrackPath | TextNote;
+export type PlanElement = PointMarker | LedStripPath | TrackPath | CurtainPath | TextNote;
 export type PlanElementKind = PlanElement['kind'];
 
 /** Editor view state: saved with the plan but not part of undo history. */
@@ -83,10 +97,22 @@ export interface PlanViewState {
   legendVisible: boolean;
 }
 
+/** How big the drawing is: plan units per real metre, used to estimate LED strip lengths. */
+export interface PlanScale {
+  unitsPerMetre: number;
+  /**
+   * `measured`: a known length marked on the drawing; `run`: from an LED run's typed length;
+   * `magic`: estimated by Magic Plan.
+   */
+  from: 'measured' | 'run' | 'magic';
+}
+
 export interface PlanDocument {
   schemaVersion: 1;
   elements: PlanElement[];
   view: PlanViewState;
+  /** Missing until the drawing's scale is set. */
+  scale?: PlanScale;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -96,7 +122,16 @@ export interface PlanDocument {
 export type PaperSize = 'A4' | 'A3';
 export type Orientation = 'portrait' | 'landscape';
 export type PropertyType = 'HDB' | 'Condo' | 'Landed' | 'Commercial' | 'Other';
-export type ProjectStatus = 'draft' | 'in-progress' | 'completed';
+/** Where a project is, from first sketch to handover; in the order they usually happen. */
+export const PROJECT_STATUSES = [
+  'draft',
+  'in-progress',
+  'quoted',
+  'deposit-paid',
+  'installing',
+  'completed',
+] as const;
+export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
 
 /** The product/variant facts a project keeps from the moment it first used a variant. */
 export interface VariantSnapshot {
@@ -144,6 +179,43 @@ export interface ProductPdfExportSettings {
 export interface ExportSettings {
   floorPlan: FloorPlanExportSettings;
   productDescription: ProductPdfExportSettings;
+  /** Invoice number for this project's (deposit) invoice; generated when absent. */
+  invoiceNumber?: string;
+  /** Which payment the next invoice asks for, and what earlier invoices asked for. */
+  billing?: ProjectBilling;
+  /** Hand-set unit prices and discounts on the invoice, by invoice row key. */
+  priceEdits?: Record<string, { unitPrice?: number; discount?: string }>;
+  /** Lines added to the invoice by hand (electrical works, and items of your own). */
+  extraLines?: {
+    id: string;
+    description: string;
+    quantity: number;
+    unitPrice: number;
+    sourceId?: string;
+    custom?: boolean;
+  }[];
+}
+
+/** The three payments in Maxsen's terms: deposit, at the start of installation, and the balance. */
+/** The usual three payments, or the whole amount at once. */
+export type InvoiceStage = 'deposit' | 'second' | 'final' | 'full';
+
+export interface IssuedInvoice {
+  number: string;
+  /** Grand total and the amount asked for, when the invoice was generated. */
+  total: number;
+  due: number;
+  date: string;
+}
+
+export interface ProjectBilling {
+  stage: InvoiceStage;
+  /** Invoice numbers for the 2nd and final invoices (the deposit uses `invoiceNumber`). */
+  numbers?: Partial<Record<InvoiceStage, string>>;
+  /** Already collected, as typed in; suggested from earlier invoices when absent. */
+  paid?: Partial<Record<InvoiceStage, number>>;
+  /** The last invoice generated at each stage. */
+  issued?: Partial<Record<InvoiceStage, IssuedInvoice>>;
 }
 
 export interface ProjectDetails {
@@ -166,7 +238,33 @@ export interface Project extends ProjectDetails {
   exportSettings: ExportSettings;
   /** Most recently used variant ids, newest first, at most 12. */
   recentVariantIds: string[];
+  /** Key dates on site, as YYYY-MM-DD. */
+  schedule?: ProjectSchedule;
+  /** The team copy on the server this device last saved or loaded. */
+  shared?: SharedState;
 }
+
+export interface SharedState {
+  version: number;
+  savedAt: string;
+  savedBy: string;
+  /** Fingerprint of the project as saved or loaded, to tell whether it has changed here since. */
+  fingerprint: string;
+}
+
+/** The on-site milestones, in the order they happen. */
+export const SCHEDULE_STEPS = [
+  'siteLiaison',
+  'lightsDelivery',
+  'installation',
+  'integration',
+] as const;
+export type ScheduleStep = (typeof SCHEDULE_STEPS)[number];
+
+export type ProjectSchedule = Partial<Record<ScheduleStep, string | null>> & {
+  /** No lights are delivered for this project, so that step is skipped. */
+  noLightsDelivery?: boolean;
+};
 
 export interface Level {
   id: string;
@@ -208,6 +306,8 @@ export interface Plan {
   /** Incremented on every saved document change; used for optimistic concurrency. */
   revision: number;
   updatedAt: string;
+  /** Rooms outlined on the drawing for Magic Plan, kept so it can be run again. */
+  magicLayout?: RoomLayout;
 }
 
 export interface SourceFile {
@@ -261,6 +361,11 @@ export interface Variant {
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
+  /**
+   * Selling price in S$ per piece (per metre for LED strips), used only on the invoice; never shown
+   * in the product description. Null or absent until set.
+   */
+  price?: number | null;
 }
 
 export interface CategoryStyleOverride {
@@ -277,6 +382,8 @@ export interface Showroom {
 
 export interface Branding {
   logoFileId: string | null;
+  /** Artwork behind the export covers and contact page (SVG, PNG or JPG); none for plain. */
+  proposalBackgroundFileId?: string | null;
   whatsapp: string;
   website: string;
   showrooms: Showroom[];
@@ -287,6 +394,12 @@ export interface Settings {
   branding: Branding;
   categoryStyles: Partial<Record<CategoryId, CategoryStyleOverride>>;
   favouriteVariantIds: string[];
+  /** Categories whose every product was deleted on purpose, so sample products aren't re-added. */
+  emptiedCategories?: CategoryId[];
+  /** Sample variants added to an existing catalogue once, so deleting one keeps it gone. */
+  offeredVariantIds?: string[];
+  /** Packages, add-on rates and invoice details; defaults apply where absent. */
+  pricing?: PricingSettings;
 }
 
 export interface TemplateLevel {
@@ -316,13 +429,7 @@ export interface Template {
 }
 
 export type FileKind =
-  | 'source'
-  | 'page'
-  | 'thumbnail'
-  | 'background'
-  | 'project-thumbnail'
-  | 'product-image'
-  | 'logo';
+  'source' | 'page' | 'thumbnail' | 'background' | 'project-thumbnail' | 'product-image' | 'logo';
 
 export interface FileRecord {
   id: string;

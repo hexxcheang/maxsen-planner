@@ -43,3 +43,34 @@ export function boundsOf(points: Pt[]): Bounds {
 
 /** Formats a coordinate for SVG path strings: up to 3 decimals, no trailing zeros. */
 export const fmt = (n: number): string => String(Number(n.toFixed(3)));
+
+/** How close (degrees) a run's segment must be to level or plumb before it snaps straight. */
+export const SNAP_DEGREES = 8;
+
+/**
+ * Snaps `p` so its segments to the neighbouring points become exactly horizontal or vertical when
+ * they are within `maxDeg` of it. With two neighbours, x can line up with one and y with the
+ * other, giving a clean right-angle corner.
+ */
+export function snapToAxes(p: Pt, neighbours: Pt[], maxDeg = SNAP_DEGREES): Pt {
+  const tan = Math.tan((maxDeg * Math.PI) / 180);
+  let x = p.x;
+  let y = p.y;
+  let bestX = Infinity;
+  let bestY = Infinity;
+  for (const n of neighbours) {
+    const dx = Math.abs(p.x - n.x);
+    const dy = Math.abs(p.y - n.y);
+    if (dx === 0 && dy === 0) continue;
+    // Nearly horizontal: line up y with the neighbour. Nearly vertical: line up x.
+    if (dy <= dx * tan && dy < bestY) {
+      bestY = dy;
+      y = n.y;
+    }
+    if (dx <= dy * tan && dx < bestX) {
+      bestX = dx;
+      x = n.x;
+    }
+  }
+  return { x, y };
+}

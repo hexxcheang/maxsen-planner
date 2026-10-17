@@ -23,6 +23,16 @@
   --brass: #a8873a;
   --brass-2: #876b29;
   --brass-tint: #f4eedf;
+  /* Timetable: sales meet-ups in blue, installations in brass. */
+  --sales: #2f5fb3;
+  --sales-tint: #eaf0fb;
+  /* Timetable: integration appointments and deliveries. */
+  --integration: #6b4bb3;
+  --integration-tint: #f0ebfa;
+  --delivery: #1f7a72;
+  --delivery-tint: #e6f4f2;
+  --visit: #b03a72;
+  --visit-tint: #f9eaf2;
 
   /* Semantic */
   --warn: #b7791f;
@@ -32,7 +42,8 @@
   --ok: #3e7a4f;
 
   /* Type */
-  --font-sans: 'Instrument Sans Variable', 'Instrument Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-sans:
+    'Instrument Sans Variable', 'Instrument Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --text-caption: 11px;
   --leading-caption: 16px;
   --text-meta: 12px;
@@ -82,5 +93,13 @@
 @media (max-width: 1100px) {
   :root {
     --gutter: 20px;
+  }
+}
+
+/* Touch screens (a tablet): finger-sized buttons and fields. */
+@media (pointer: coarse) {
+  :root {
+    --control-h: 40px;
+    --control-h-compact: 36px;
   }
 }

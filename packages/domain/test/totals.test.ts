@@ -3,7 +3,11 @@ import assert from 'node:assert/strict';
 import { SYSTEM_VARIANT_IDS } from '../src/categories.ts';
 import { createEmptyPlanDocument } from '../src/plan-document.ts';
 import { applyAdjustments, setAdjustment } from '../src/totals/adjustments.ts';
-import { computeTotals, type TotalLine, type VariantResolver } from '../src/totals/compute-totals.ts';
+import {
+  computeTotals,
+  type TotalLine,
+  type VariantResolver,
+} from '../src/totals/compute-totals.ts';
 import { compareLines } from '../src/totals/sort.ts';
 import type {
   CategoryId,
@@ -151,8 +155,23 @@ describe('computeTotals', () => {
     assert.equal(line(lines, SYSTEM_VARIANT_IDS.smartLedDriver).calculated, 2);
   });
 
+  it('estimates a run with no length typed from the plan’s scale, rounded up to half a metre', () => {
+    // 100 units long; 40 units a metre: 2.5 m. A typed length still wins.
+    const scaled: PlanDocument = {
+      ...doc([led('led1', null), led('led1', 2)]),
+      scale: { unitsPerMetre: 40, from: 'measured' },
+    };
+    const l1 = line(computeTotals([scaled], resolve), 'led1');
+    assert.equal(l1.calculated, 4.5);
+    assert.equal(l1.runsEstimated, 1);
+    assert.equal(l1.runsMissingMetres, 0);
+  });
+
   it('tracks sum headCount per variant and add one Track Driver per track', () => {
-    const lines = computeTotals([doc([track('tr1', 3), track('tr1', 4), track('mt1', 5)])], resolve);
+    const lines = computeTotals(
+      [doc([track('tr1', 3), track('tr1', 4), track('mt1', 5)])],
+      resolve,
+    );
     assert.equal(line(lines, 'tr1').calculated, 7);
     assert.equal(line(lines, 'mt1').calculated, 5);
     assert.equal(line(lines, SYSTEM_VARIANT_IDS.trackDriver).calculated, 3);
@@ -160,8 +179,14 @@ describe('computeTotals', () => {
 
   it('drivers are autoAdded and resolve to SYSTEM_VARIANT_IDS', () => {
     const lines = computeTotals([doc([led('led1', 1), track('tr1', 1), marker('sw1')])], resolve);
-    const auto = lines.filter((l) => l.autoAdded).map((l) => l.variantId).sort();
-    assert.deepEqual(auto, [SYSTEM_VARIANT_IDS.smartLedDriver, SYSTEM_VARIANT_IDS.trackDriver].sort());
+    const auto = lines
+      .filter((l) => l.autoAdded)
+      .map((l) => l.variantId)
+      .sort();
+    assert.deepEqual(
+      auto,
+      [SYSTEM_VARIANT_IDS.smartLedDriver, SYSTEM_VARIANT_IDS.trackDriver].sort(),
+    );
     assert.equal(line(lines, 'sw1').autoAdded, false);
     assert.equal(line(lines, SYSTEM_VARIANT_IDS.trackDriver).productName, 'Track Driver');
   });
@@ -196,7 +221,16 @@ describe('computeTotals', () => {
 
   it('lines are sorted by category order then product then variant', () => {
     const lines = computeTotals(
-      [doc([marker('dl1'), marker('cp1'), marker('sw2'), marker('sw1'), led('led2', 1), led('led1', 1)])],
+      [
+        doc([
+          marker('dl1'),
+          marker('cp1'),
+          marker('sw2'),
+          marker('sw1'),
+          led('led2', 1),
+          led('led1', 1),
+        ]),
+      ],
       resolve,
     );
     assert.deepEqual(
@@ -211,8 +245,16 @@ describe('compareLines', () => {
     const a = { categoryId: 'downlights' as CategoryId, productName: 'A', variantName: 'A' };
     const b = { categoryId: 'smart-switches' as CategoryId, productName: 'Z', variantName: 'Z' };
     assert.ok(compareLines(a, b) > 0);
-    const g2 = { categoryId: 'smart-switches' as CategoryId, productName: 'Ark', variantName: '2-gang' };
-    const g10 = { categoryId: 'smart-switches' as CategoryId, productName: 'Ark', variantName: '10-gang' };
+    const g2 = {
+      categoryId: 'smart-switches' as CategoryId,
+      productName: 'Ark',
+      variantName: '2-gang',
+    };
+    const g10 = {
+      categoryId: 'smart-switches' as CategoryId,
+      productName: 'Ark',
+      variantName: '10-gang',
+    };
     assert.ok(compareLines(g2, g10) < 0, '2-gang sorts before 10-gang');
   });
 });
@@ -229,6 +271,7 @@ const totalLine = (variantId: string, calculated: number): TotalLine => ({
   calculated,
   autoAdded: false,
   runsMissingMetres: 0,
+  runsEstimated: 0,
 });
 
 const adj = (quantity: number, calculatedAtAdjustment: number): QuantityAdjustment => ({
@@ -268,7 +311,9 @@ describe('setAdjustment', () => {
 
   it('stores quantity with the calculated value at that moment', () => {
     const next = setAdjustment({}, 'variant:sw1', 7, 4, now);
-    assert.deepEqual(next, { 'variant:sw1': { quantity: 7, calculatedAtAdjustment: 4, adjustedAt: now } });
+    assert.deepEqual(next, {
+      'variant:sw1': { quantity: 7, calculatedAtAdjustment: 4, adjustedAt: now },
+    });
   });
 
   it('removes the entry when quantity equals calculated', () => {

@@ -1,0 +1,37 @@
+import { createContext, useContext } from 'react';
+
+export interface AuthApi {
+  signedIn: boolean;
+  signIn: (passcode: string) => Promise<boolean>;
+  signOut: () => void;
+}
+
+export interface AdminApi {
+  unlocked: boolean;
+  /** The exclusive admin (the owner): admin, plus the Team tab. Checked on the server. */
+  exclusive: boolean;
+  /** False when the server has no exclusive admin passcode set; null until known. */
+  exclusiveReady: boolean | null;
+  /** Which admin a passcode unlocked, or null if it's wrong. */
+  unlock: (passcode: string) => Promise<'exclusive' | 'admin' | null>;
+  lock: () => void;
+  /** Resolves true once admin is unlocked, opening the unlock dialog if needed. */
+  requireAdmin: (action?: string) => Promise<boolean>;
+  /** Resolves true once the exclusive admin is unlocked, asking for its passcode if needed. */
+  requireExclusive: (action?: string) => Promise<boolean>;
+}
+
+export const AuthContext = createContext<AuthApi | null>(null);
+export const AdminContext = createContext<AdminApi | null>(null);
+
+export function useAuth(): AuthApi {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used inside <AuthProvider>');
+  return ctx;
+}
+
+export function useAdmin(): AdminApi {
+  const ctx = useContext(AdminContext);
+  if (!ctx) throw new Error('useAdmin must be used inside <AuthProvider>');
+  return ctx;
+}

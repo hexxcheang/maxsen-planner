@@ -24,11 +24,13 @@ export type IconShape =
   | 'drop'
   | 'star4'
   | 'smallHexagon'
+  | 'fan'
   | 'track'
   | 'strip'
-  | 'magnetic';
+  | 'magnetic'
+  | 'curtain';
 
-export const PATH_SHAPES: readonly IconShape[] = ['track', 'strip', 'magnetic'];
+export const PATH_SHAPES: readonly IconShape[] = ['track', 'strip', 'magnetic', 'curtain'];
 
 /** Clockwise circle (SVG screen coordinates) centred on the origin. */
 const circle = (r: number, clockwise = true): string => {
@@ -61,6 +63,17 @@ const regularPolygon = (sides: number, r: number, startAngleDeg: number): string
 
 const round = (n: number): number => Math.round(n * 1000) / 1000;
 
+/** Three blades of a ceiling fan, as petals from the centre. */
+function fanBlades(): string {
+  const pt = (r: number, deg: number) => {
+    const a = (deg * Math.PI) / 180;
+    return `${round(r * Math.cos(a))} ${round(r * Math.sin(a))}`;
+  };
+  return [-90, 30, 150]
+    .map((a) => `M0 0 Q${pt(0.3, a - 32)} ${pt(0.4, a)} Q${pt(0.3, a + 32)} 0 0 Z`)
+    .join(' ');
+}
+
 const LEGEND_LINE = 'M-0.5 0 H0.5';
 
 const SHAPES: Record<IconShape, string> = {
@@ -81,9 +94,12 @@ const SHAPES: Record<IconShape, string> = {
   drop: 'M0 -0.5 C0.24 -0.22 0.35 -0.08 0.35 0.15 A0.35 0.35 0 0 1 -0.35 0.15 C-0.35 -0.08 -0.24 -0.22 0 -0.5 Z',
   star4: 'M0 -0.5 L0.17 -0.17 L0.5 0 L0.17 0.17 L0 0.5 L-0.17 0.17 L-0.5 0 L-0.17 -0.17 Z',
   smallHexagon: regularPolygon(6, 0.35, 0),
+  // Ceiling fan: an outer ring (blade sweep) around three blades and a hub.
+  fan: `${circle(0.5)} ${circle(0.44, false)} ${fanBlades()}`,
   track: LEGEND_LINE,
   strip: LEGEND_LINE,
   magnetic: LEGEND_LINE,
+  curtain: LEGEND_LINE,
 };
 
 export const ICON_SHAPES: readonly IconShape[] = Object.keys(SHAPES) as IconShape[];
@@ -119,6 +135,7 @@ const BADGE_PLACEMENTS: Partial<Record<IconShape, BadgePlacement>> = {
   arch: { x: 0, y: 0.08, scale: 0.9 },
   dot: { x: 0, y: 0, scale: 0.72 },
   smallHexagon: { x: 0, y: 0, scale: 0.72 },
+  fan: { x: 0, y: 0, scale: 0.5 },
   pill: { x: 0, y: 0, scale: 0.85 },
   panel: { x: 0, y: 0, scale: 0.9 },
 };

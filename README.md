@@ -6,7 +6,7 @@ Internal planning, device-counting and export tool for Maxsen Smart Solutions (P
 
 - `packages/domain` — framework-free TypeScript: categories, icon shapes, geometry, quantity engine, scene model, sample data.
 - `apps/web` — React + Vite single-page app (the planner UI).
-- `apps/server` — Hono API + SQLite, also serves the built web app in production.
+- `apps/server` — Hono server: `GET /api/health` and the built web app (API and SQLite arrive in Phase B).
 - `docs/` — product specification, technical design and implementation plans.
 
 ## Running
@@ -16,13 +16,225 @@ pnpm install
 pnpm dev        # web on http://localhost:5173, API on http://localhost:3000
 pnpm test       # unit tests (domain + web + server)
 pnpm typecheck
-pnpm lint
-pnpm e2e        # Playwright screens (desktop + iPad)
+pnpm lint       # zero warnings allowed
+pnpm check      # typecheck + lint + test
+pnpm e2e        # Playwright screens (desktop + iPad) → test-results/screens/*.png
 pnpm build && pnpm start   # production: single server on :3000
 ```
 
 Phase A sample passcodes: team `maxsen`, admin `admin`.
 
+If Chromium is already installed somewhere (CI images, cloud sessions), point Playwright at it instead of
+running `playwright install`: `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/path/to/chrome pnpm e2e`.
+
+Review URLs: `?sample=empty` starts with no projects, catalogue or templates; `?sample=loading` shows loading
+states; `/dev/styleguide` (dev server only) shows every UI primitive and category glyph.
+
 ## Status
 
-Phase A (foundation, design system, static UX) in progress. See `docs/superpowers/plans/`.
+**Usable MVP (runs entirely in the browser).** On top of Phase A, the app now works end to end:
+
+1. **Sign in** with `maxsen`; unlock admin with `admin`.
+2. **New project** from blank or a template (templates copy levels and export settings).
+   On **Projects**, click a project's status to change it (Draft, Planning, Quoted, Deposit paid,
+   Installing, Completed) and filter by status. Each project also shows its schedule: site liaising,
+   lights delivery (or _No lights to deliver_), installation and integration. Click a step to pick its
+   date from a calendar; past steps tick off, the next one is highlighted with how far away it is, and
+   a date earlier than the step before it is flagged.
+3. **Setup:** upload PDFs (each page is rendered in the browser) or JPG/PNG images, add and order levels,
+   set paper size and orientation, and choose a drawing for each Smart Home or Lighting plan. Turn it
+   upright, then crop it: the app suggests a crop to just the floor plan (trimming borders, title blocks
+   and notes), and you can drag the box or its handles to adjust it.
+4. **Planner:** click a library item then click the plan (or drag it on) to place devices; draw LED strips
+   and tracks by clicking points (Shift for straight runs, double-click or Enter to finish); circle LED loops;
+   text notes. Curtains are dotted lines along the window, drawn like an LED strip (click one end of the
+   window, then the other) and adjusted the same way: drag the ends, or + to add a bend. Control panels
+   are drawn larger than switches. Edit everything in Details: variant, label, rotation, LED metres, head
+   counts, note styling, layer order, duplicate, delete. Ctrl/Cmd+C copies the selection and Ctrl/Cmd+V
+   pastes it beside the original (further along each time, on any level of the same plan type).
+   Downlights and surface lights snap into line with nearby lights as you place or drag them, and to
+   even spacing once two or more share a line (magenta guides show it; hold Alt/Option to place freely).
+   Undo/redo, Ctrl/Cmd+A, Delete, Esc. Live totals update as you go.
+   Online, projects, the catalogue, prices and settings are shared with the whole team and saved
+   automatically; others find new projects under **Saved by the team** (see `docs/hosting.md`).
+5. **Review totals:** adjust export quantities; warnings if plans change afterwards.
+6. **Exports:** generate the marked floor plan PDF, the product description PDF and the quantity Excel
+   file, one at a time or all together, then download them. The PDFs are laid out as a proposal: a
+   cover with the logo over Maxsen's champagne monogram canvas (hexagon M roundels and sparkle
+   diamonds in fine rose-gold lines, on white fading to warm sand; drawn seamlessly and centred on each
+   page) or over a light background uploaded in Admin › Branding; plan pages with a framed plan, a
+   legend with how many of each device and a title block; an at-a-glance overview, product cards, and
+   a contact page. Curtains are marked
+   "S. Curtains" on the plans.
+7. **Admin:** catalogue editing with product images (delete a variant, or a whole series with its
+   variants; projects already using them keep them), branding with logo upload, icon styles, favourites,
+   and _Your data_ (restore samples or erase everything).
+
+**Quick quote:** the _Quote_ tab prices a client's text message without a project. Paste the message
+(a list or a sentence) and press _Read message_. Each item is matched to the catalogue by product name
+("Lusano", "Nova S8") or everyday words ("switches", "downlights", "cctv", "aircon"), with the variant
+from its details ("2 gang", "black", "warm white", "double") and the quantity or LED metres. LED
+drivers are added for the strip (one per 5 m, the LED package's ratio). Anything with a number that
+names no product is listed as not recognised. Check and adjust the items, and the quotation is priced
+exactly as on the invoice (packages, add-ons, integration and deposit). _Copy as text_ gives a version
+to paste into WhatsApp; _Download quotation (PDF)_ gives a proposal-style quotation (the champagne cover,
+the priced items, total, deposit, warranty, terms and payment details); _Download quotation (Excel)_
+fills the invoice template. The quote in progress
+is kept in the browser until _New quote_. In the quotation, change any row's _Unit price_, or type a _Discount_ (`50` for S$50 off the row, `10%` for 10% off): each discount is listed in red under its item, and the total, deposit, Excel and PDF follow.
+
+**Magic Plan:** in the Plan tab, _Magic Plan_ places devices for you in two steps.
+
+1. **Rooms.** Choose the type of home: a 2- to 5-room flat, an executive flat, a 2- or 3-bedroom condo,
+   or "Other". The app lists the rooms that home has. A 5-room flat, for example, has a master bedroom,
+   3 bedrooms, the living/dining room, the kitchen and 2 toilets. **Tap each room** on the drawing to drop
+   a small box there, then drag the box to move it and pull its corners or edges to fit the room (or
+   drag a box out in one go). Tapped the wrong room? Its name on the drawing is a list: pick the right
+   one. Rooms are outlined one after another (a tap or drag away from the last room starts the next); then press _Mark doors_ and tap every door in one go, as with windows: each goes to the room whose wall it's on, and tapping a door again takes it off. Tap an outlined room to select it (to add an
+   area, redraw it or move its door). **Quickest:** _Find all rooms_ (or _Skip: find rooms for me_)
+   outlines every room at once, door and all; unnamed rooms are planned by size and shape (narrow
+   ones as corridors, small ones as toilets or stores, the largest as the living room, the rest as
+   bedrooms). Name the bedrooms and living room for the most exact plan. Add or remove rooms as
+   needed, for example a service
+   yard, shelter, study or corridor. The floor area sets the drawing's scale, for spacing. Your outlines
+   are kept, so the next run starts from them. The sample drawings come already outlined.
+2. **What to place.** Tick the categories, then review the counts and place everything. One Undo
+   removes it all.
+
+How rooms are planned (Singapore practice). Light counts follow the size of the box you draw:
+
+| Room                          | Downlights                                            | LED strips                                | Also                            |
+| ----------------------------- | ----------------------------------------------------- | ----------------------------------------- | ------------------------------- |
+| Living / family / dining area | 1 per 2.5 m², 2–12 (about 8–12 in a full living room) | 1–4 by size, in the L-box along the walls | 52" ceiling fan; dining pendant |
+| Master bedroom                | 1 per 3.5 m², 2–6                                     | 1–3 by size                               | 52" ceiling fan                 |
+| Other bedrooms                | 1 per 4 m², 2–4                                       | 0–2 by size                               | 46" ceiling fan                 |
+| Kitchen                       | A row over the worktop                                | Under-cabinet strip                       |                                 |
+| Toilets                       | 1–2                                                   |                                           | Switched from outside           |
+| Service yard, store, shelter  | One surface light                                     |                                           | Switched from outside           |
+| Corridor                      | A single centre row                                   |                                           |                                 |
+
+Windows are marked by hand in the Rooms step: press _Mark windows_ and tap an X on each window's line
+(on the home's outer walls, and the glass doors onto a balcony). The app follows the glazing lines from
+the X both ways until they stop or meet a solid wall or column, and shows the window in blue. Tap an X
+again to remove it, or drag along a window to draw it yourself. A window between two outlined rooms is
+ignored. Windows the app used to guess by itself are dropped from saved plans, so mark them again.
+
+Smart curtains go only at windows, and only in living rooms, bedrooms and the study (not dining or
+family areas, kitchens or toilets). With no windows marked, no curtains are planned. A curtain room's window
+wall also gets its first LED strip as a curtain cove. Strips run close along the walls, 0.3 m in.
+
+Odd-shaped rooms (an L-shaped living room, a dining nook): after outlining a room, press the **+** on
+its corner and drag another box over the rest of it. The boxes can overlap; they join into one room.
+Press the **×** on an added area to take it off. A joined room is planned as one: lights spread over
+every area (the count is for its whole floor), one switch, one fan, and no LED strip across the seam
+between areas.
+
+Room sizes come from the floor area, shared among the listed rooms by their typical sizes, so outlining
+only some rooms doesn't inflate them.
+
+- **Spacing:** downlights are spread evenly and symmetrically, at least 0.5 m off the walls. With a fan
+  they ring the fan and stay clear of its blades. Track lights are used only in long, narrow spaces.
+- **Switches:** each room gets one switch, beside its door on the side with more wall.
+- **Smart devices:**
+  - control panels at the entrance and in the master bedroom;
+  - curtains at the windows of living rooms, bedrooms and the study;
+  - a router, gateway and mesh nodes, when ticked (they're off by default).
+
+**Optional: Claude.** If an Anthropic API key is set up, the Rooms step has a _Suggest rooms with Claude_
+button that outlines the rooms for you to check:
+
+1. Create a key at https://console.anthropic.com/settings/keys (billed to your Anthropic account; one
+   drawing usually costs well under US$1).
+2. In the `maxsen-planner` folder, copy `.env.example` to a new file named `.env` and paste the key after
+   `ANTHROPIC_API_KEY=`. The `.env` file is never uploaded to GitHub.
+3. Restart the app (Control + C, then `pnpm dev`). The Terminal shows `Magic Plan: ready`.
+
+**Online (no Mac needed):** the app can run on Render, in Singapore, from `render.yaml`; tablets,
+phones and computers then open it at its web address and can install it as an app that also works
+offline. Online, the passcode is checked on the server (`PLANNER_PASSCODE`). Step by step:
+[`docs/hosting.md`](docs/hosting.md).
+
+**On a tablet (e.g. Honor MagicPad 4):** with `pnpm dev` running on the Mac, open the _Network_
+address it prints (e.g. `http://192.168.1.23:5173`) in Chrome on the tablet, on the same Wi-Fi.
+On a touch screen the app is finger-friendly: bigger buttons and handles; on the plan, pinch to
+zoom, drag empty plan with one finger (or two) to pan, tap to place, and _Finish_ / _Remove last
+point_ buttons while drawing a strip or track. The toolbar's Copy, Paste, Duplicate and Delete
+replace the keyboard shortcuts, and the magnet turns light snapping off (instead of holding Alt).
+Chrome's _Add to home screen_ gives it the Maxsen icon. Each browser keeps its own projects.
+
+**Product sample pictures (the Sample tab):** upload a photo of a product, say what it is (category,
+and the product from the catalogue), and choose the room, interior style and light. The app writes
+the instructions (where that kind of product is installed, keeping the product exactly as
+photographed, a premium Singapore interior shot like a magazine feature) and an image model makes a
+4:3 picture, downloaded as JPG. Claude reads images but doesn't make them, so this uses Google's
+Gemini image model (recommended: best at keeping the product unchanged, about US$0.04 a picture) or
+OpenAI's:
+
+1. Create a key at https://aistudio.google.com/apikey (or an OpenAI key).
+2. Put it in `.env` as `GEMINI_API_KEY=` (or `OPENAI_API_KEY=`).
+3. Restart the app. The Terminal shows `Product samples: ready (Gemini)`.
+
+Without a key, the Sample tab still writes the instructions: copy them into the Gemini app with your
+photo. For the best pictures, photograph the product straight on, on a plain background, in soft
+daylight, filling most of the frame.
+
+**Prices and the invoice:** the _Invoice_ export fills in your own invoice template
+(`apps/web/public/templates/invoice-template.xlsx`). Quantities come from Review totals and are grouped
+into packages:
+
+| Package                  | Contents                                                      | Price   |
+| ------------------------ | ------------------------------------------------------------- | ------- |
+| Ark Core switch package  | 10 Ark switches, 4 aircon IR, 1 gateway (add-on S$100 each)   | S$1,390 |
+| Nova+ Pro switch package | 10 Nova+ Pro switches, 4 IR, 1 gateway (add-on S$180 each)    | S$1,990 |
+| Lusano+ Prestige package | 10 Lusano+ switches, 4 IR, 1 gateway (add-on S$360 each)      | S$3,590 |
+| Light                    | 12 downlights / surface lights (add-on S$78 each)             | S$988   |
+| LED                      | 30 m of LED strip with 6 drivers (add-on S$18/m, S$78/driver) | S$988   |
+
+Switches belong to a series by product name (Ark, Nova, Lusano). The full catalogue is transcribed in
+[`docs/pricing-catalogue.md`](docs/pricing-catalogue.md).
+
+A quotation has at most one switch package (for the series with most switches), one light package and
+one LED package; everything beyond is charged at the add-on rates. Integration per light and per driver is listed
+and waived. Every other device is charged at its catalogue price, and the invoice adds the total and a
+60% deposit.
+
+- Set each device's price when editing a variant in **Catalogue**. Prices appear only on the invoice,
+  never on the product description.
+- Set package prices, add-on rates, company details, invoice prefix, deposit, terms and bank details in
+  **Admin settings › Pricing**.
+- Upload your newest price catalogue PDF in the same place, for reference. Prices aren't read from it
+  automatically, because the catalogue PDF is made of images rather than text.
+- **Payments:** in **Exports › Invoice**, choose _Deposit_, _2nd payment_ or _Final_. The 2nd
+  payment invoice asks for 90% (deposit + 2nd payment %) of today's total less what was paid; the
+  final invoice asks for the balance. _Already paid_ is suggested from the earlier invoices generated
+  for the project; change it to what was actually collected.
+- **Old invoices:** in **Quote**, choose _Old invoice: next payment_ and open the invoice's Excel file
+  (or paste its rows). Every line comes in as invoiced (quantity and unit price) with what it asked
+  for already; the next payment is picked (2nd payment after a deposit invoice, final after a 2nd
+  payment invoice) and the amount already paid suggested. Edit quantities and prices, give
+  discounts, add or remove lines, then download the invoice as Excel or PDF, or copy it as text.
+- **Electrical works on invoices:** in **Exports › Invoice** (and in Quick quote), _Add electrical
+  works_ lists the Electrical tab's rates (yours where changed); set how many of each and they're
+  added under "Electrical works" on the invoice, Excel and PDF, where quantities, prices and
+  discounts can still be changed (in _Prices and discounts_) or a line removed.
+- **Electrical:** the **Electrical** tab lists average Singapore rates for electrical works (lighting
+  and power points, dedicated circuits, DB and protection, data/TV, wiring, testing), supply and
+  install, laid out as electricians quote. Enter quantities to price a job, change any rate to your
+  electrician's, add GST, and download the quotation as Excel. See
+  [`docs/electrical-rates.md`](docs/electrical-rates.md).
+- **Prices and discounts:** in **Exports › Invoice**, _Prices and discounts_ opens the invoice as an
+  editable quotation, as in Quick quote. Quantities stay in sync with Review totals; unit prices and
+  discounts (`50` or `10%`) are saved with the project and used on every invoice (deposit, 2nd and
+  final), with _Copy as text_ and _Download quotation (PDF)_ there too.
+
+**LED strips:** select a strip on the plan to get round handles on its points. Drag them to bend,
+lengthen or shorten the run. The **+** just past its end adds a point that you can drag to any angle.
+Segments within 8° of level or plumb snap exactly straight (hold Shift while drawing to force it). Lengths
+aren't shown on the plan; enter the final metres in Review totals.
+
+**Where data lives:** this browser only (localStorage for projects and settings, IndexedDB for uploaded
+files). Another device or browser starts from the sample data. Shared storage, the API and real passcode
+checks are Phase B.
+
+**Not yet:** marquee selection and saving a project as a template.
+
+See `docs/superpowers/notes/phase-a-review.md` for the Phase A review.

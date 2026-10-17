@@ -3,6 +3,13 @@ import assert from 'node:assert/strict';
 import { exportFilename, sanitiseFilename } from '../src/exports/filenames.ts';
 
 describe('sanitiseFilename', () => {
+  it('turns typographic dashes and quotes into plain ASCII', () => {
+    assert.equal(
+      sanitiseFilename('Lim Family Home — Serangoon Gardens – Tan’s “Sky” Loft'),
+      "Lim Family Home - Serangoon Gardens - Tan's Sky Loft",
+    );
+  });
+
   it('strips reserved characters', () => {
     assert.equal(sanitiseFilename('Tan / Lim: "Sky" Residence?*'), 'Tan Lim Sky Residence');
     assert.equal(sanitiseFilename('A<B>C|D\\E'), 'ABCDE');
@@ -29,7 +36,10 @@ describe('sanitiseFilename', () => {
 
 describe('exportFilename', () => {
   it('patterns match the spec', () => {
-    assert.equal(exportFilename('Tan Residence', 'floor-plan'), 'Tan Residence - Marked Floor Plan.pdf');
+    assert.equal(
+      exportFilename('Tan Residence', 'floor-plan'),
+      'Tan Residence - Marked Floor Plan.pdf',
+    );
     assert.equal(
       exportFilename('Tan Residence', 'product-description'),
       'Tan Residence - Product Description.pdf',

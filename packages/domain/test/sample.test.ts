@@ -33,7 +33,10 @@ describe('sample catalogue', () => {
 
   it('covers every category with at least one product', () => {
     for (const c of CATEGORIES) {
-      assert.ok(SAMPLE_PRODUCTS.some((p) => p.categoryId === c.id), `${c.id} has products`);
+      assert.ok(
+        SAMPLE_PRODUCTS.some((p) => p.categoryId === c.id),
+        `${c.id} has products`,
+      );
     }
   });
 
@@ -58,7 +61,10 @@ describe('sample catalogue', () => {
     for (const v of SAMPLE_VARIANTS) {
       if (v.imageFileId) assert.ok(fileIds.has(v.imageFileId), `${v.name} image`);
     }
-    assert.ok(SAMPLE_VARIANTS.filter((v) => v.imageFileId).length >= 12, 'at least 12 variants have images');
+    assert.ok(
+      SAMPLE_VARIANTS.filter((v) => v.imageFileId).length >= 12,
+      'at least 12 variants have images',
+    );
   });
 });
 
@@ -81,7 +87,11 @@ describe('sample settings', () => {
 describe('sample projects', () => {
   it('has the three projects with the expected status and level counts', () => {
     assert.deepEqual(
-      SAMPLE_PROJECTS.map((p) => [p.title, p.status, SAMPLE_LEVELS.filter((l) => l.projectId === p.id).length]),
+      SAMPLE_PROJECTS.map((p) => [
+        p.title,
+        p.status,
+        SAMPLE_LEVELS.filter((l) => l.projectId === p.id).length,
+      ]),
       [
         ['Tan Residence — Tampines 4-room', 'in-progress', 1],
         ['Lim Family Home — Serangoon Gardens', 'draft', 3],
@@ -94,7 +104,11 @@ describe('sample projects', () => {
     for (const p of SAMPLE_PROJECTS) {
       const orders = SAMPLE_LEVELS.filter((l) => l.projectId === p.id).map((l) => l.sortOrder);
       assert.equal(new Set(orders).size, orders.length, p.title);
-      assert.deepEqual([...orders].sort((a, b) => a - b), orders, 'levels are listed in order');
+      assert.deepEqual(
+        [...orders].sort((a, b) => a - b),
+        orders,
+        'levels are listed in order',
+      );
     }
     assert.ok(SAMPLE_LEVELS.some((l) => l.paperSize === 'A3' && l.orientation === 'landscape'));
     assert.ok(SAMPLE_LEVELS.some((l) => l.paperSize === 'A4' && l.orientation === 'portrait'));
@@ -116,7 +130,11 @@ describe('sample projects', () => {
     }
     const attic = SAMPLE_LEVELS.find((l) => l.name === 'Attic');
     assert.ok(attic);
-    assert.equal(SAMPLE_PLANS.filter((p) => p.levelId === attic.id).length, 1, 'attic has one plan only');
+    assert.equal(
+      SAMPLE_PLANS.filter((p) => p.levelId === attic.id).length,
+      1,
+      'attic has one plan only',
+    );
   });
 
   it('every sample plan document is structurally valid', () => {
@@ -134,7 +152,10 @@ describe('sample projects', () => {
         if (el.kind === 'track') assert.ok(el.headCount >= 1);
         if (el.kind === 'marker') assert.ok(el.x >= 0 && el.x <= 1000 && el.y >= 0);
       }
-      assert.ok(doc.elements.length >= 5 && doc.elements.length <= 40, `${plan.id} has ${doc.elements.length} elements`);
+      assert.ok(
+        doc.elements.length >= 5 && doc.elements.length <= 40,
+        `${plan.id} has ${doc.elements.length} elements`,
+      );
     }
   });
 
@@ -145,7 +166,10 @@ describe('sample projects', () => {
       for (const el of plan.document.elements) {
         if (el.kind === 'note') continue;
         assert.ok(variantIds.has(el.variantId), `${plan.id}: ${el.variantId}`);
-        assert.ok(project.catalogueSnapshot[el.variantId], `${project.title} snapshot for ${el.variantId}`);
+        assert.ok(
+          project.catalogueSnapshot[el.variantId],
+          `${project.title} snapshot for ${el.variantId}`,
+        );
       }
     }
   });
@@ -153,11 +177,23 @@ describe('sample projects', () => {
   it('includes the required showcase elements', () => {
     const all = SAMPLE_PLANS.flatMap((p) => p.document.elements);
     const leds = all.filter((e) => e.kind === 'led-strip');
-    assert.ok(leds.some((l) => l.metres === 4.5 && !l.closed && l.points.length === 3), 'L-shaped 4.5 m LED run');
-    assert.ok(leds.some((l) => l.metres === 6.2 && l.closed && l.smooth), 'circular 6.2 m LED loop');
+    assert.ok(
+      leds.some((l) => l.metres === 4.5 && !l.closed && l.points.length === 3),
+      'L-shaped 4.5 m LED run',
+    );
+    assert.ok(
+      leds.some((l) => l.metres === 6.2 && l.closed && l.smooth),
+      'circular 6.2 m LED loop',
+    );
     const tracks = all.filter((e) => e.kind === 'track');
-    assert.ok(tracks.some((t) => t.headCount === 3 && t.points.length === 2), 'straight 3-head track');
-    assert.ok(tracks.some((t) => t.headCount === 5 && t.points.length === 3), 'L-shaped 5-module magnetic track');
+    assert.ok(
+      tracks.some((t) => t.headCount === 3 && t.points.length === 2),
+      'straight 3-head track',
+    );
+    assert.ok(
+      tracks.some((t) => t.headCount === 5 && t.points.length === 3),
+      'L-shaped 5-module magnetic track',
+    );
     assert.ok(all.filter((e) => e.kind === 'note').length >= 2, 'two text notes');
   });
 
@@ -166,20 +202,29 @@ describe('sample projects', () => {
     assert.ok(lim);
     const docs = SAMPLE_PLANS.filter((p) => p.projectId === lim.id).map((p) => p.document);
     const lines = computeTotals(docs, sampleResolver(lim));
-    assert.ok(lines.some((l) => l.variantId === SYSTEM_VARIANT_IDS.smartLedDriver && l.calculated >= 1));
-    assert.ok(lines.some((l) => l.variantId === SYSTEM_VARIANT_IDS.trackDriver && l.calculated >= 1));
+    assert.ok(
+      lines.some((l) => l.variantId === SYSTEM_VARIANT_IDS.smartLedDriver && l.calculated >= 1),
+    );
+    assert.ok(
+      lines.some((l) => l.variantId === SYSTEM_VARIANT_IDS.trackDriver && l.calculated >= 1),
+    );
     assert.ok(lines.every((l) => l.productName !== 'Unknown product'));
   });
 
   it('projects reference existing levels in lastOpened and have adjustments on Tan', () => {
     for (const p of SAMPLE_PROJECTS) {
       if (p.lastOpened) {
-        assert.ok(SAMPLE_LEVELS.some((l) => l.id === p.lastOpened?.levelId && l.projectId === p.id));
+        assert.ok(
+          SAMPLE_LEVELS.some((l) => l.id === p.lastOpened?.levelId && l.projectId === p.id),
+        );
       }
       if (p.thumbnailFileId) assert.ok(fileIds.has(p.thumbnailFileId));
     }
     const tan = SAMPLE_PROJECTS[0];
-    assert.ok(tan && Object.keys(tan.quantityAdjustments).length >= 1, 'Tan has a manual adjustment for the review screen');
+    assert.ok(
+      tan && Object.keys(tan.quantityAdjustments).length >= 1,
+      'Tan has a manual adjustment for the review screen',
+    );
   });
 });
 
@@ -195,7 +240,7 @@ describe('sample sources and files', () => {
   });
 
   it('sampleFileUrl maps ids to /sample URLs and throws on unknown ids', () => {
-    assert.match(sampleFileUrl('file_sample_logo'), /^\/sample\/.*\.svg$/);
+    assert.match(sampleFileUrl('file_sample_logo'), /^\/sample\/maxsen-logo\.png$/);
     for (const f of SAMPLE_FILES) assert.match(sampleFileUrl(f.id), /^\/sample\//);
     assert.throws(() => sampleFileUrl('file_nope'), /Unknown sample file/);
   });
@@ -215,7 +260,8 @@ describe('sample templates', () => {
     for (const lvl of t.structure.levels) {
       for (const plan of lvl.plans) {
         for (const el of plan.document.elements) {
-          if (el.kind !== 'note') assert.ok(t.structure.catalogueSnapshot[el.variantId], el.variantId);
+          if (el.kind !== 'note')
+            assert.ok(t.structure.catalogueSnapshot[el.variantId], el.variantId);
         }
       }
     }

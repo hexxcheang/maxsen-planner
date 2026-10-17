@@ -8,7 +8,10 @@ export type IdPrefix =
   | 'file'
   | 'src'
   | 'page'
-  | 'tpl';
+  | 'tpl'
+  | 'room'
+  | 'cl'
+  | 'rcpt';
 
 const ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
 const ID_LENGTH = 12;

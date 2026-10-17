@@ -29,39 +29,42 @@ const SPEC_LIGHTING: [CategoryId, string][] = [
   ['led-strips', 'LED Strips'],
   ['magnetic-track-lights', 'Magnetic Track Lights'],
   ['pendant-lights', 'Pendant Lights'],
+  ['ceiling-fans', 'Ceiling Fans'],
   ['spotlights', 'Spotlights'],
   ['misc-lighting', 'Miscellaneous Lighting Accessories'],
 ];
 
 describe('CATEGORIES', () => {
-  it('has 18 categories in spec order', () => {
+  it('has 19 categories in spec order', () => {
     const expected = [...SPEC_SMART_HOME, ...SPEC_LIGHTING];
-    assert.equal(CATEGORIES.length, 18);
+    assert.equal(CATEGORIES.length, 19);
     assert.deepEqual(
       CATEGORIES.map((c) => [c.id, c.name]),
       expected,
     );
     assert.deepEqual(
       CATEGORIES.map((c) => c.order),
-      Array.from({ length: 18 }, (_, i) => i + 1),
+      Array.from({ length: 19 }, (_, i) => i + 1),
     );
   });
 
-  it('smart-home has 10 and lighting has 8', () => {
+  it('smart-home has 10 and lighting has 9', () => {
     assert.equal(categoriesForPlan('smart-home').length, 10);
-    assert.equal(categoriesForPlan('lighting').length, 8);
+    assert.equal(categoriesForPlan('lighting').length, 9);
     assert.ok(categoriesForPlan('smart-home').every((c) => c.planType === 'smart-home'));
     assert.ok(categoriesForPlan('lighting').every((c) => c.planType === 'lighting'));
   });
 
-  it('kinds: led-strips is led-strip, track-lights and magnetic-track-lights are track, all others point', () => {
+  it('kinds: led-strips is led-strip, tracks are track, curtains are curtain, all others point', () => {
     for (const c of CATEGORIES) {
       const expected =
         c.id === 'led-strips'
           ? 'led-strip'
           : c.id === 'track-lights' || c.id === 'magnetic-track-lights'
             ? 'track'
-            : 'point';
+            : c.id === 'curtains-blinds'
+              ? 'curtain'
+              : 'point';
       assert.equal(c.kind, expected, `${c.id} kind`);
     }
   });
